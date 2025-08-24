@@ -621,39 +621,6 @@
 					"default": true,
 					"description": "%settings.useAgentRules.description%"
 				},
-				"zgsm.workspaceEvents.enabled": {
-					"type": "boolean",
-					"default": true,
-					"description": "启用工作区事件监控，跟踪文件变更、保存、删除等操作"
-				},
-				"zgsm.workspaceEvents.debounceMs": {
-					"type": "number",
-					"default": 1000,
-					"minimum": 100,
-					"maximum": 10000,
-					"description": "事件批处理延迟时间（毫秒），用于减少频繁的事件触发"
-				},
-				"zgsm.workspaceEvents.batchSize": {
-					"type": "number",
-					"default": 50,
-					"minimum": 10,
-					"maximum": 1000,
-					"description": "事件批处理大小，达到此数量时立即发送事件"
-				},
-				"zgsm.workspaceEvents.maxRetries": {
-					"type": "number",
-					"default": 3,
-					"minimum": 0,
-					"maximum": 10,
-					"description": "事件发送失败时的最大重试次数"
-				},
-				"zgsm.workspaceEvents.retryDelayMs": {
-					"type": "number",
-					"default": 1000,
-					"minimum": 100,
-					"maximum": 10000,
-					"description": "重试延迟时间（毫秒）"
-				},
 				"AutoCommit": {
 					"type": "boolean",
 					"default": false,
