@@ -2208,6 +2208,19 @@ export class ClineProvider
 		await this.removeClineFromStack()
 		await this.postStateToWebview()
 		await this.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
+		await this.clearHistory()
+	}
+
+	// history
+	async clearHistory() {
+		const { getStorageBasePath } = await import("../../utils/storage")
+		const basePath = await getStorageBasePath(this.contextProxy.globalStorageUri.fsPath)
+		const taskDir = path.join(basePath, "tasks")
+		await fs.rm(taskDir, { recursive: true, force: true })
+		const homeDir = os.homedir()
+		const versionDir = path.join(homeDir, ".costrict", "share")
+		const versionFilePath = path.join(versionDir, "version.json")
+		await fs.rm(versionFilePath, { recursive: true, force: true })
 	}
 
 	// logging

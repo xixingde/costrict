@@ -1,3 +1,4 @@
+import * as os from "os"
 import * as vscode from "vscode"
 import type { ClineProvider } from "./../../webview/ClineProvider"
 import * as fs from "fs"
@@ -274,8 +275,7 @@ export class ZgsmCodebaseIndexManager implements ICodebaseIndexManager {
 	 */
 	private async getLocalVersion(): Promise<VersionInfo | undefined> {
 		try {
-			const platform = this.platformDetector.platform
-			const homeDir = platform === "windows" ? process.env.USERPROFILE : process.env.HOME
+			const homeDir = os.homedir()
 
 			if (!homeDir) {
 				throw new Error("Unable to determine user home directory path")
@@ -382,8 +382,7 @@ export class ZgsmCodebaseIndexManager implements ICodebaseIndexManager {
 	 */
 	private async saveLocalVersion(versionInfo: VersionInfo): Promise<void> {
 		try {
-			const platform = this.platformDetector.platform
-			const homeDir = platform === "windows" ? process.env.USERPROFILE : process.env.HOME
+			const homeDir = os.homedir()
 
 			if (!homeDir) {
 				throw new Error("Unable to determine user home directory path")
