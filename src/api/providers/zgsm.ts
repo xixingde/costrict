@@ -33,7 +33,7 @@ import { Package } from "../../shared/package"
 import { COSTRICT_DEFAULT_HEADERS } from "../../shared/headers"
 
 let modelsCache = new WeakRef<string[]>([])
-
+const autoModeModelId = "Auto"
 export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
 	private client: OpenAI
@@ -160,10 +160,12 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 				)
 				.withResponse()
 
-			const userInputHeader = response.headers.get("x-user-input")
-			if (userInputHeader) {
-				const decodedUserInput = decodeURIComponent(userInputHeader)
-				this.logger.info(`[x-user-input]: ${decodedUserInput}`)
+			if (this.options.zgsmModelId === autoModeModelId) {
+				const userInputHeader = response.headers.get("x-user-input")
+				if (userInputHeader) {
+					const decodedUserInput = decodeURIComponent(userInputHeader)
+					this.logger.info(`[x-user-input]: ${decodedUserInput}`)
+				}
 			}
 
 			// 6. Optimize stream processing - use batch processing and buffer
@@ -378,7 +380,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 			// Cache content for batch processing
 			if (delta.content) {
 				contentBuffer.push(delta.content)
-				if (!isPrinted && chunk.model && this.options.zgsmModelId === "Auto") {
+				if (!isPrinted && chunk.model && this.options.zgsmModelId === autoModeModelId) {
 					this.logger.info(`[Current Model]: ${chunk.model}`)
 					isPrinted = true
 				}
