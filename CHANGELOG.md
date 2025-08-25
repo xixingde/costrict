@@ -1,5 +1,19 @@
 # Costrict Change Log
 
+## [1.6.0]
+
+- Auto mode for Agent
+- Auto codebase search
+- Denied commands support
+- New codebase
+- New tools support (todolist, simpleReadFileTool etc.)
+- New telemetry report
+- Optimized tasks disk usage
+- Optimized CodeReview
+- Optimized UI
+- Sync roocode
+- Fix known issues
+
 ## [1.5.12]
 
 - Update default modelID
