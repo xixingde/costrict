@@ -331,7 +331,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			vscode.postMessage({ type: "maxOpenTabsContext", value: maxOpenTabsContext })
 			vscode.postMessage({ type: "maxWorkspaceFiles", value: maxWorkspaceFiles ?? 200 })
 			vscode.postMessage({ type: "showRooIgnoredFiles", bool: showRooIgnoredFiles })
-			vscode.postMessage({ type: "maxReadFileLine", value: maxReadFileLine ?? -1 })
+			vscode.postMessage({ type: "maxReadFileLine", value: maxReadFileLine ?? 500 })
 			vscode.postMessage({ type: "maxImageFileSize", value: maxImageFileSize ?? 5 })
 			vscode.postMessage({ type: "maxTotalImageSize", value: maxTotalImageSize ?? 20 })
 			vscode.postMessage({ type: "maxConcurrentFileReads", value: cachedState.maxConcurrentFileReads ?? 5 })
