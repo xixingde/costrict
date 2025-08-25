@@ -374,7 +374,11 @@ export const ZgsmCodebaseSettings = ({ apiConfiguration }: ZgsmCodebaseSettingsP
 									<span>{t("settings:codebase.semanticIndex.buildProgress")}</span>
 									<span>{indexStatus.progress.toFixed(1)}%</span>
 								</div>
-								<Progress value={indexStatus.progress} className="h-2" />
+								<Progress
+									value={indexStatus.progress}
+									className="h-2"
+									progressBackgroundClass="bg-vscode-button-background"
+								/>
 							</div>
 						</>
 					)}
