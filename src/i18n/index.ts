@@ -1,5 +1,5 @@
 import i18next from "./setup"
-import { changeZgsmLanguage } from "../../zgsm/src/i18n/setup"
+import { changeZgsmLanguage } from "./costrict-i18n"
 
 /**
  * Initialize i18next with the specified language

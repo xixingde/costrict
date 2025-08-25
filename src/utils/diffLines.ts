@@ -6,13 +6,13 @@ export function getDiffLines(originalContent: string, newContent: string) {
 
 	diff.forEach((part) => {
 		if (part.added || part.removed) {
-			// 使用 part.count 如果存在，否则手动计算
+			// Use part.count if available, otherwise calculate manually
 			if (part.count !== undefined) {
 				changedLineCount += part.count
 			} else {
-				// 手动计算行数
+				// Calculate line count manually
 				const lines = part.value.split("\n")
-				// 如果最后一个元素是空字符串（由于末尾换行符），则不计算
+				// If the last element is an empty string (due to trailing newline), don't count it
 				const actualLineCount = part.value.endsWith("\n") ? lines.length - 1 : lines.length
 				changedLineCount += actualLineCount
 			}

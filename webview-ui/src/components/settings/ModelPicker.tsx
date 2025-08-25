@@ -1,12 +1,15 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from "react"
 import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 import { Trans } from "react-i18next"
-import { ChevronsUpDown, Check, X } from "lucide-react"
+import { ChevronsUpDown, Check, X, ChevronUp } from "lucide-react"
 
-import { ProviderSettings, ModelInfo } from "@roo/schemas"
+import type { ProviderSettings, ModelInfo } from "@roo-code/types"
+
+import type { OrganizationAllowList } from "@roo/cloud"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useSelectedModel } from "@/components/ui/hooks/useSelectedModel"
+import { filterModels } from "./utils/organizationFilters"
 import { cn } from "@src/lib/utils"
 import {
 	Command,
@@ -20,10 +23,11 @@ import {
 	PopoverTrigger,
 	Button,
 } from "@src/components/ui"
+import { useEscapeKey } from "@src/hooks/useEscapeKey"
+import { StandardTooltip } from "@/components/ui"
 
-import { ThinkingBudget } from "./ThinkingBudget"
 import { ModelInfoView } from "./ModelInfoView"
-import { zgsmProviderKey } from "../../../../src/shared/api"
+import { ApiErrorMessage } from "./ApiErrorMessage"
 
 type ModelIdKey = keyof Pick<
 	ProviderSettings,
@@ -34,6 +38,11 @@ type ModelIdKey = keyof Pick<
 	| "openAiModelId"
 	| "litellmModelId"
 	| "zgsmModelId"
+	| "apiModelId"
+	| "ollamaModelId"
+	| "lmStudioModelId"
+	| "vsCodeLmModelSelector"
+	| "ioIntelligenceModelId"
 >
 
 interface ModelPickerProps {
@@ -43,7 +52,20 @@ interface ModelPickerProps {
 	serviceName: string
 	serviceUrl: string
 	apiConfiguration: ProviderSettings
-	setApiConfigurationField: <K extends keyof ProviderSettings>(field: K, value: ProviderSettings[K]) => void
+	setApiConfigurationField: <K extends keyof ProviderSettings>(
+		field: K,
+		value: ProviderSettings[K],
+		isUserAction?: boolean,
+	) => void
+	organizationAllowList: OrganizationAllowList
+	errorMessage?: string
+	showInfoView?: boolean
+	showLabel?: boolean
+	triggerClassName?: string
+	popoverContentClassName?: string
+	PopoverTriggerContentClassName?: string
+	buttonIconType?: "upDown" | "up"
+	tooltip?: string
 }
 
 export const ModelPicker = ({
@@ -54,6 +76,15 @@ export const ModelPicker = ({
 	serviceUrl,
 	apiConfiguration,
 	setApiConfigurationField,
+	organizationAllowList,
+	errorMessage,
+	showInfoView = true,
+	showLabel = true,
+	triggerClassName = "",
+	popoverContentClassName = "",
+	PopoverTriggerContentClassName = "",
+	buttonIconType = "upDown",
+	tooltip,
 }: ModelPickerProps) => {
 	const { t } = useAppTranslation()
 
@@ -61,11 +92,19 @@ export const ModelPicker = ({
 	const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
 	const isInitialized = useRef(false)
 	const searchInputRef = useRef<HTMLInputElement>(null)
-	const modelIds = useMemo(() => Object.keys(models ?? {}).sort((a, b) => a.localeCompare(b)), [models])
+	const selectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+	const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+	const modelIds = useMemo(() => {
+		const filteredModels = filterModels(models, apiConfiguration.apiProvider, organizationAllowList)
+
+		return Object.keys(filteredModels ?? {}).sort((a, b) => a.localeCompare(b))
+	}, [models, apiConfiguration.apiProvider, organizationAllowList])
+
 	const { id: selectedModelId, info: selectedModelInfo } = useSelectedModel(apiConfiguration)
 
 	const [searchValue, setSearchValue] = useState(
-		(apiConfiguration.apiProvider === zgsmProviderKey ? "" : selectedModelId) || "",
+		(apiConfiguration.apiProvider === "zgsm" ? "" : selectedModelId) || "",
 	)
 
 	const onSelect = useCallback(
@@ -77,8 +116,16 @@ export const ModelPicker = ({
 			setOpen(false)
 			setApiConfigurationField(modelIdKey, modelId)
 
+			// Clear any existing timeout
+			if (selectTimeoutRef.current) {
+				clearTimeout(selectTimeoutRef.current)
+			}
+
 			// Delay to ensure the popover is closed before setting the search value.
-			setTimeout(() => setSearchValue(apiConfiguration.apiProvider === zgsmProviderKey ? "" : modelId), 100)
+			selectTimeoutRef.current = setTimeout(
+				() => setSearchValue(apiConfiguration.apiProvider === "zgsm" ? "" : modelId),
+				100,
+			)
 		},
 		[apiConfiguration.apiProvider, modelIdKey, setApiConfigurationField],
 	)
@@ -89,9 +136,14 @@ export const ModelPicker = ({
 
 			// Abandon the current search if the popover is closed.
 			if (!open) {
-				// Delay to ensure the popover is closed before setting the search value.
-				setTimeout(
-					() => setSearchValue(apiConfiguration.apiProvider === zgsmProviderKey ? "" : selectedModelId),
+				// Clear any existing timeout
+				if (closeTimeoutRef.current) {
+					clearTimeout(closeTimeoutRef.current)
+				}
+
+				// Clear the search value when closing instead of prefilling it
+				closeTimeoutRef.current = setTimeout(
+					() => () => setSearchValue(apiConfiguration.apiProvider === "zgsm" ? "" : selectedModelId),
 					100,
 				)
 			}
@@ -107,28 +159,74 @@ export const ModelPicker = ({
 	useEffect(() => {
 		if (!selectedModelId && !isInitialized.current) {
 			const initialValue = modelIds.includes(selectedModelId) ? selectedModelId : defaultModelId
-			setApiConfigurationField(modelIdKey, initialValue)
+			setApiConfigurationField(modelIdKey, initialValue, false) // false = automatic initialization
 		}
 
 		isInitialized.current = true
 	}, [modelIds, setApiConfigurationField, modelIdKey, selectedModelId, defaultModelId])
 
+	// Cleanup timeouts on unmount to prevent test flakiness
+	useEffect(() => {
+		return () => {
+			if (selectTimeoutRef.current) {
+				clearTimeout(selectTimeoutRef.current)
+			}
+			if (closeTimeoutRef.current) {
+				clearTimeout(closeTimeoutRef.current)
+			}
+		}
+	}, [])
+
+	// Use the shared ESC key handler hook
+	useEscapeKey(open, () => setOpen(false))
+
 	return (
 		<>
 			<div>
-				<label className="block font-medium mb-1">{t("settings:modelPicker.label")}</label>
+				{showLabel && <label className="block font-medium mb-1">{t("settings:modelPicker.label")}</label>}
 				<Popover open={open} onOpenChange={onOpenChange}>
-					<PopoverTrigger asChild>
-						<Button
-							variant="combobox"
-							role="combobox"
-							aria-expanded={open}
-							className="w-full justify-between">
-							<div>{selectedModelId ?? t("settings:common.select")}</div>
-							<ChevronsUpDown className="opacity-50" />
-						</Button>
-					</PopoverTrigger>
-					<PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]">
+					{tooltip ? (
+						<StandardTooltip content={tooltip}>
+							<PopoverTrigger asChild>
+								<Button
+									variant="combobox"
+									role="combobox"
+									aria-expanded={open}
+									className={cn("w-full", "justify-between", triggerClassName)}
+									data-testid="model-picker-button">
+									<div className={`truncate ${PopoverTriggerContentClassName}`}>
+										{selectedModelId ?? t("settings:common.select")}
+									</div>
+									{buttonIconType === "upDown" ? (
+										<ChevronsUpDown className="opacity-50" />
+									) : (
+										<ChevronUp className="opacity-50" />
+									)}
+								</Button>
+							</PopoverTrigger>
+						</StandardTooltip>
+					) : (
+						<PopoverTrigger asChild>
+							<Button
+								variant="combobox"
+								role="combobox"
+								aria-expanded={open}
+								className={cn("w-full", "justify-between", triggerClassName)}
+								data-testid="model-picker-button">
+								<div className={PopoverTriggerContentClassName}>
+									{selectedModelId ?? t("settings:common.select")}
+								</div>
+								{buttonIconType === "upDown" ? (
+									<ChevronsUpDown className="opacity-50" />
+								) : (
+									<ChevronUp className="opacity-50" />
+								)}
+							</Button>
+						</PopoverTrigger>
+					)}
+					<PopoverContent
+						className={cn("p-0", "w-[var(--radix-popover-trigger-width)", popoverContentClassName)}
+						data-testid="model-picker-content">
 						<Command>
 							<div className="relative">
 								<CommandInput
@@ -158,8 +256,17 @@ export const ModelPicker = ({
 								</CommandEmpty>
 								<CommandGroup>
 									{modelIds.map((model) => (
-										<CommandItem key={model} value={model} onSelect={onSelect}>
-											{model}
+										<CommandItem
+											key={model}
+											value={model}
+											onSelect={onSelect}
+											data-testid={`model-option-${model}`}
+											className={
+												model === "Auto" ? "border-b border-vscode-dropdown-border" : ""
+											}>
+											<span className="truncate" title={model}>
+												{model}
+											</span>
 											<Check
 												className={cn(
 													"size-4 p-0.5 ml-auto",
@@ -181,7 +288,8 @@ export const ModelPicker = ({
 					</PopoverContent>
 				</Popover>
 			</div>
-			{selectedModelId && selectedModelInfo && (
+			{errorMessage && <ApiErrorMessage errorMessage={errorMessage} />}
+			{selectedModelId && selectedModelInfo && showInfoView && (
 				<ModelInfoView
 					apiProvider={apiConfiguration.apiProvider}
 					selectedModelId={selectedModelId}
@@ -190,12 +298,7 @@ export const ModelPicker = ({
 					setIsDescriptionExpanded={setIsDescriptionExpanded}
 				/>
 			)}
-			<ThinkingBudget
-				apiConfiguration={apiConfiguration}
-				setApiConfigurationField={setApiConfigurationField}
-				modelInfo={selectedModelInfo}
-			/>
-			{apiConfiguration.apiProvider !== zgsmProviderKey && (
+			{apiConfiguration.apiProvider !== "zgsm" && showInfoView && (
 				<div className="text-sm text-vscode-descriptionForeground">
 					<Trans
 						i18nKey="settings:modelPicker.automaticFetch"

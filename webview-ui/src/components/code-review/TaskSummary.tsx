@@ -1,5 +1,5 @@
 import React, { useMemo } from "react"
-import { ReviewIssue, IssueStatus } from "@roo/shared/codeReview"
+import { ReviewIssue, IssueStatus } from "@roo/codeReview"
 
 interface TaskSummaryProps {
 	issues: ReviewIssue[]

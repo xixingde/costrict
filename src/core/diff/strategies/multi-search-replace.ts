@@ -1,7 +1,10 @@
+/* eslint-disable no-irregular-whitespace */
+
 import { distance } from "fastest-levenshtein"
 
+import { ToolProgressStatus } from "@roo-code/types"
+
 import { addLineNumbers, everyLineHasLineNumbers, stripLineNumbers } from "../../../integrations/misc/extract-text"
-import { ToolProgressStatus } from "../../../shared/ExtensionMessage"
 import { ToolUse, DiffStrategy, DiffResult } from "../../../shared/tools"
 import { normalizeString } from "../../../utils/text-normalization"
 
@@ -89,10 +92,8 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 
 	getToolDescription(args: { cwd: string; toolOptions?: { [key: string]: string } }): string {
 		return `## apply_diff
-Description: Request to replace existing code using a search and replace block.
-This tool allows for precise, surgical replaces to files by specifying exactly what content to search for and what to replace it with.
-The tool will maintain proper indentation and formatting while making changes.
-Only a single operation is allowed per tool use.
+Description: Request to apply PRECISE, TARGETED modifications to an existing file by searching for specific sections of content and replacing them. This tool is for SURGICAL EDITS ONLY - specific changes to existing code.
+You can perform multiple distinct search and replace operations within a single \`apply_diff\` call by providing multiple SEARCH/REPLACE blocks in the \`diff\` parameter. This is the preferred way to make several targeted changes efficiently.
 The SEARCH section must exactly match existing content including whitespace and indentation.
 If you're not confident in the exact content to search for, use the read_file tool first to get the exact content.
 When applying the diffs, be extra careful to remember to change any closing brackets or other syntax that may be affected by the diff farther down in the file.
@@ -144,7 +145,7 @@ def calculate_total(items):
 
 \`\`\`
 
-Search/Replace content with multi edits:
+Search/Replace content with multiple edits:
 \`\`\`
 <<<<<<< SEARCH
 :start_line:1
@@ -197,7 +198,10 @@ Only use a single line of '=======' between search and replacement content, beca
 		}
 		const state = { current: State.START, line: 0 }
 
-		const SEARCH = "<<<<<<< SEARCH"
+		// Pattern allows optional '>' after SEARCH to handle AI-generated diffs
+		// (e.g., Sonnet 4 sometimes adds an extra '>')
+		const SEARCH_PATTERN = /^<<<<<<< SEARCH>?$/
+		const SEARCH = SEARCH_PATTERN.source.replace(/[\^$]/g, "") // Remove regex anchors for display
 		const SEP = "======="
 		const REPLACE = ">>>>>>> REPLACE"
 		const SEARCH_PREFIX = "<<<<<<<"
@@ -242,8 +246,32 @@ Only use a single line of '=======' between search and replacement content, beca
 				">>>>>>> REPLACE\n",
 		})
 
+		const reportLineMarkerInReplaceError = (marker: string) => ({
+			success: false,
+			error:
+				`ERROR: Invalid line marker '${marker}' found in REPLACE section at line ${state.line}\n` +
+				"\n" +
+				"Line markers (:start_line: and :end_line:) are only allowed in SEARCH sections.\n" +
+				"\n" +
+				"CORRECT FORMAT:\n" +
+				"<<<<<<< SEARCH\n" +
+				":start_line:5\n" +
+				"content to find\n" +
+				"=======\n" +
+				"replacement content\n" +
+				">>>>>>> REPLACE\n" +
+				"\n" +
+				"INCORRECT FORMAT:\n" +
+				"<<<<<<< SEARCH\n" +
+				"content to find\n" +
+				"=======\n" +
+				":start_line:5    <-- Invalid location\n" +
+				"replacement content\n" +
+				">>>>>>> REPLACE\n",
+		})
+
 		const lines = diffContent.split("\n")
-		const searchCount = lines.filter((l) => l.trim() === SEARCH).length
+		const searchCount = lines.filter((l) => SEARCH_PATTERN.test(l.trim())).length
 		const sepCount = lines.filter((l) => l.trim() === SEP).length
 		const replaceCount = lines.filter((l) => l.trim() === REPLACE).length
 
@@ -253,6 +281,16 @@ Only use a single line of '=======' between search and replacement content, beca
 			state.line++
 			const marker = line.trim()
 
+			// Check for line markers in REPLACE sections (but allow escaped ones)
+			if (state.current === State.AFTER_SEPARATOR) {
+				if (marker.startsWith(":start_line:") && !line.trim().startsWith("\\:start_line:")) {
+					return reportLineMarkerInReplaceError(":start_line:")
+				}
+				if (marker.startsWith(":end_line:") && !line.trim().startsWith("\\:end_line:")) {
+					return reportLineMarkerInReplaceError(":end_line:")
+				}
+			}
+
 			switch (state.current) {
 				case State.START:
 					if (marker === SEP)
@@ -261,12 +299,12 @@ Only use a single line of '=======' between search and replacement content, beca
 							: reportMergeConflictError(SEP, SEARCH)
 					if (marker === REPLACE) return reportInvalidDiffError(REPLACE, SEARCH)
 					if (marker.startsWith(REPLACE_PREFIX)) return reportMergeConflictError(marker, SEARCH)
-					if (marker === SEARCH) state.current = State.AFTER_SEARCH
+					if (SEARCH_PATTERN.test(marker)) state.current = State.AFTER_SEARCH
 					else if (marker.startsWith(SEARCH_PREFIX)) return reportMergeConflictError(marker, SEARCH)
 					break
 
 				case State.AFTER_SEARCH:
-					if (marker === SEARCH) return reportInvalidDiffError(SEARCH, SEP)
+					if (SEARCH_PATTERN.test(marker)) return reportInvalidDiffError(SEARCH_PATTERN.source, SEP)
 					if (marker.startsWith(SEARCH_PREFIX)) return reportMergeConflictError(marker, SEARCH)
 					if (marker === REPLACE) return reportInvalidDiffError(REPLACE, SEP)
 					if (marker.startsWith(REPLACE_PREFIX)) return reportMergeConflictError(marker, SEARCH)
@@ -274,7 +312,7 @@ Only use a single line of '=======' between search and replacement content, beca
 					break
 
 				case State.AFTER_SEPARATOR:
-					if (marker === SEARCH) return reportInvalidDiffError(SEARCH, REPLACE)
+					if (SEARCH_PATTERN.test(marker)) return reportInvalidDiffError(SEARCH_PATTERN.source, REPLACE)
 					if (marker.startsWith(SEARCH_PREFIX)) return reportMergeConflictError(marker, REPLACE)
 					if (marker === SEP)
 						return likelyBadStructure
@@ -343,7 +381,7 @@ Only use a single line of '=======' between search and replacement content, beca
 
 		let matches = [
 			...diffContent.matchAll(
-				/(?:^|\n)(?<!\\)<<<<<<< SEARCH\s*\n((?:\:start_line:\s*(\d+)\s*\n))?((?:\:end_line:\s*(\d+)\s*\n))?((?<!\\)-------\s*\n)?([\s\S]*?)(?:\n)?(?:(?<=\n)(?<!\\)=======\s*\n)([\s\S]*?)(?:\n)?(?:(?<=\n)(?<!\\)>>>>>>> REPLACE)(?=\n|$)/g,
+				/(?:^|\n)(?<!\\)<<<<<<< SEARCH>?\s*\n((?:\:start_line:\s*(\d+)\s*\n))?((?:\:end_line:\s*(\d+)\s*\n))?((?<!\\)-------\s*\n)?([\s\S]*?)(?:\n)?(?:(?<=\n)(?<!\\)=======\s*\n)([\s\S]*?)(?:\n)?(?:(?<=\n)(?<!\\)>>>>>>> REPLACE)(?=\n|$)/g,
 			),
 		]
 

@@ -1,19 +1,19 @@
 import cloneDeep from "clone-deep"
 import { serializeError } from "serialize-error"
 
-import type { ToolName } from "../../schemas"
+import type { ToolName, ClineAsk, ToolProgressStatus } from "@roo-code/types"
+import { TelemetryService } from "@roo-code/telemetry"
 
 import { defaultModeSlug, getModeBySlug } from "../../shared/modes"
 import type { ToolParamName, ToolResponse } from "../../shared/tools"
-import type { ClineAsk, ToolProgressStatus } from "../../shared/ExtensionMessage"
-
-import { telemetryService } from "../../services/telemetry/TelemetryService"
 
 import { fetchInstructionsTool } from "../tools/fetchInstructionsTool"
 import { listFilesTool } from "../tools/listFilesTool"
-import { readFileTool } from "../tools/readFileTool"
+import { getReadFileToolDescription, readFileTool } from "../tools/readFileTool"
+import { getSimpleReadFileToolDescription, simpleReadFileTool } from "../tools/simpleReadFileTool"
+import { shouldUseSingleFileRead } from "@roo-code/types"
 import { writeToFileTool } from "../tools/writeToFileTool"
-import { applyDiffTool } from "../tools/applyDiffTool"
+import { applyDiffTool } from "../tools/multiApplyDiffTool"
 import { insertContentTool } from "../tools/insertContentTool"
 import { searchAndReplaceTool } from "../tools/searchAndReplaceTool"
 import { listCodeDefinitionNamesTool } from "../tools/listCodeDefinitionNamesTool"
@@ -27,11 +27,14 @@ import { switchModeTool } from "../tools/switchModeTool"
 import { attemptCompletionTool } from "../tools/attemptCompletionTool"
 import { newTaskTool } from "../tools/newTaskTool"
 
-import { checkpointSave } from "../checkpoints"
+import { updateTodoListTool } from "../tools/updateTodoListTool"
 
 import { formatResponse } from "../prompts/responses"
 import { validateToolUse } from "../tools/validateToolUse"
 import { Task } from "../task/Task"
+import { codebaseSearchTool } from "../tools/codebaseSearchTool"
+import { experiments, EXPERIMENT_IDS } from "../../shared/experiments"
+import { applyDiffToolLegacy } from "../tools/applyDiffTool"
 
 /**
  * Processes and presents assistant message content to the user interface.
@@ -52,7 +55,7 @@ import { Task } from "../task/Task"
 
 export async function presentAssistantMessage(cline: Task) {
 	if (cline.abort) {
-		throw new Error(`[Cline#presentAssistantMessage] task ${cline.taskId}.${cline.instanceId} aborted`)
+		throw new Error(`[Task#presentAssistantMessage] task ${cline.taskId}.${cline.instanceId} aborted`)
 	}
 
 	if (cline.presentAssistantMessageLocked) {
@@ -154,13 +157,36 @@ export async function presentAssistantMessage(cline: Task) {
 					case "execute_command":
 						return `[${block.name} for '${block.params.command}']`
 					case "read_file":
-						return `[${block.name} for '${block.params.path}']`
+						// Check if this model should use the simplified description
+						const modelId = cline.api.getModel().id
+						if (shouldUseSingleFileRead(modelId)) {
+							return getSimpleReadFileToolDescription(block.name, block.params)
+						} else {
+							return getReadFileToolDescription(block.name, block.params)
+						}
 					case "fetch_instructions":
 						return `[${block.name} for '${block.params.task}']`
 					case "write_to_file":
 						return `[${block.name} for '${block.params.path}']`
 					case "apply_diff":
-						return `[${block.name} for '${block.params.path}']`
+						// Handle both legacy format and new multi-file format
+						if (block.params.path) {
+							return `[${block.name} for '${block.params.path}']`
+						} else if (block.params.args) {
+							// Try to extract first file path from args for display
+							const match = block.params.args.match(/<file>.*?<path>([^<]+)<\/path>/s)
+							if (match) {
+								const firstPath = match[1]
+								// Check if there are multiple files
+								const fileCount = (block.params.args.match(/<file>/g) || []).length
+								if (fileCount > 1) {
+									return `[${block.name} for '${firstPath}' and ${fileCount - 1} more file${fileCount > 2 ? "s" : ""}]`
+								} else {
+									return `[${block.name} for '${firstPath}']`
+								}
+							}
+						}
+						return `[${block.name}]`
 					case "search_files":
 						return `[${block.name} for '${block.params.regex}'${
 							block.params.file_pattern ? ` in '${block.params.file_pattern}'` : ""
@@ -185,6 +211,10 @@ export async function presentAssistantMessage(cline: Task) {
 						return `[${block.name}]`
 					case "switch_mode":
 						return `[${block.name} to '${block.params.mode_slug}'${block.params.reason ? ` because: ${block.params.reason}` : ""}]`
+					case "codebase_search": // Add case for the new tool
+						return `[${block.name} for '${block.params.query}']`
+					case "update_todo_list":
+						return `[${block.name}]`
 					case "new_task": {
 						const mode = block.params.mode ?? defaultModeSlug
 						const message = block.params.message ?? "(no message)"
@@ -241,8 +271,15 @@ export async function presentAssistantMessage(cline: Task) {
 				type: ClineAsk,
 				partialMessage?: string,
 				progressStatus?: ToolProgressStatus,
+				isProtected?: boolean,
 			) => {
-				const { response, text, images } = await cline.ask(type, partialMessage, false, progressStatus)
+				const { response, text, images } = await cline.ask(
+					type,
+					partialMessage,
+					false,
+					progressStatus,
+					isProtected || false,
+				)
 
 				if (response !== "yesButtonClicked") {
 					// Handle both messageResponse and noButtonClicked with text.
@@ -318,7 +355,7 @@ export async function presentAssistantMessage(cline: Task) {
 
 			if (!block.partial) {
 				cline.recordToolUsage(block.name)
-				telemetryService.captureToolUsage(cline.taskId, block.name)
+				TelemetryService.instance.captureToolUsage(cline.taskId, block.name)
 			}
 
 			// Validate tool use before execution.
@@ -366,7 +403,7 @@ export async function presentAssistantMessage(cline: Task) {
 						await cline.say("user_feedback", text, images)
 
 						// Track tool repetition in telemetry.
-						telemetryService.captureConsecutiveMistakeError(cline.taskId)
+						TelemetryService.instance.captureConsecutiveMistakeError(cline.taskId)
 					}
 
 					// Return tool result message about the repetition
@@ -381,26 +418,73 @@ export async function presentAssistantMessage(cline: Task) {
 
 			switch (block.name) {
 				case "write_to_file":
+					await checkpointSaveAndMark(cline)
 					await writeToFileTool(cline, block, askApproval, handleError, pushToolResult, removeClosingTag)
 					break
-				case "apply_diff":
-					await applyDiffTool(cline, block, askApproval, handleError, pushToolResult, removeClosingTag)
+				case "update_todo_list":
+					await updateTodoListTool(cline, block, askApproval, handleError, pushToolResult, removeClosingTag)
 					break
+				case "apply_diff": {
+					// Get the provider and state to check experiment settings
+					const provider = cline.providerRef.deref()
+					let isMultiFileApplyDiffEnabled = false
+
+					if (provider) {
+						const state = await provider.getState()
+						isMultiFileApplyDiffEnabled = experiments.isEnabled(
+							state.experiments ?? {},
+							EXPERIMENT_IDS.MULTI_FILE_APPLY_DIFF,
+						)
+					}
+
+					if (isMultiFileApplyDiffEnabled) {
+						await checkpointSaveAndMark(cline)
+						await applyDiffTool(cline, block, askApproval, handleError, pushToolResult, removeClosingTag)
+					} else {
+						await checkpointSaveAndMark(cline)
+						await applyDiffToolLegacy(
+							cline,
+							block,
+							askApproval,
+							handleError,
+							pushToolResult,
+							removeClosingTag,
+						)
+					}
+					break
+				}
 				case "insert_content":
+					await checkpointSaveAndMark(cline)
 					await insertContentTool(cline, block, askApproval, handleError, pushToolResult, removeClosingTag)
 					break
 				case "search_and_replace":
+					await checkpointSaveAndMark(cline)
 					await searchAndReplaceTool(cline, block, askApproval, handleError, pushToolResult, removeClosingTag)
 					break
 				case "read_file":
-					await readFileTool(cline, block, askApproval, handleError, pushToolResult, removeClosingTag)
-
+					// Check if this model should use the simplified single-file read tool
+					const modelId = cline.api.getModel().id
+					if (shouldUseSingleFileRead(modelId)) {
+						await simpleReadFileTool(
+							cline,
+							block,
+							askApproval,
+							handleError,
+							pushToolResult,
+							removeClosingTag,
+						)
+					} else {
+						await readFileTool(cline, block, askApproval, handleError, pushToolResult, removeClosingTag)
+					}
 					break
 				case "fetch_instructions":
 					await fetchInstructionsTool(cline, block, askApproval, handleError, pushToolResult)
 					break
 				case "list_files":
 					await listFilesTool(cline, block, askApproval, handleError, pushToolResult, removeClosingTag)
+					break
+				case "codebase_search":
+					await codebaseSearchTool(cline, block, askApproval, handleError, pushToolResult, removeClosingTag)
 					break
 				case "list_code_definition_names":
 					await listCodeDefinitionNamesTool(
@@ -467,14 +551,6 @@ export async function presentAssistantMessage(cline: Task) {
 			break
 	}
 
-	const recentlyModifiedFiles = cline.fileContextTracker.getAndClearCheckpointPossibleFile()
-
-	if (recentlyModifiedFiles.length > 0) {
-		// TODO: We can track what file changes were made and only
-		// checkpoint those files, this will be save storage.
-		await checkpointSave(cline)
-	}
-
 	// Seeing out of bounds is fine, it means that the next too call is being
 	// built up and ready to add to assistantMessageContent to present.
 	// When you see the UI inactive during this, it means that a tool is
@@ -521,5 +597,22 @@ export async function presentAssistantMessage(cline: Task) {
 	// Block is partial, but the read stream may have finished.
 	if (cline.presentAssistantMessageHasPendingUpdates) {
 		presentAssistantMessage(cline)
+	}
+}
+
+/**
+ * save checkpoint and mark done in the current streaming task.
+ * @param task The Task instance to checkpoint save and mark.
+ * @returns
+ */
+async function checkpointSaveAndMark(task: Task) {
+	if (task.currentStreamingDidCheckpoint) {
+		return
+	}
+	try {
+		await task.checkpointSave(true)
+		task.currentStreamingDidCheckpoint = true
+	} catch (error) {
+		console.error(`[Task#presentAssistantMessage] Error saving checkpoint: ${error.message}`, error)
 	}
 }

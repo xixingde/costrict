@@ -1,60 +1,19 @@
-import React, { memo, useEffect } from "react"
-import { useRemark } from "react-remark"
+import React, { memo, useMemo } from "react"
+import ReactMarkdown from "react-markdown"
 import styled from "styled-components"
 import { visit } from "unist-util-visit"
+import rehypeKatex from "rehype-katex"
+import rehypeRaw from "rehype-raw"
+import remarkMath from "remark-math"
+import remarkGfm from "remark-gfm"
 
 import { vscode } from "@src/utils/vscode"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
 
 import CodeBlock from "./CodeBlock"
 import MermaidBlock from "./MermaidBlock"
-import rehypeRaw from "rehype-raw"
-import { MARK_TYPE_MAP } from "./const"
 
 interface MarkdownBlockProps {
 	markdown?: string
-}
-
-/**
- * Custom remark plugin that converts plain URLs in text into clickable links
- *
- * The original bug: We were converting text nodes into paragraph nodes,
- * which broke the markdown structure because text nodes should remain as text nodes
- * within their parent elements (like paragraphs, list items, etc.).
- * This caused the entire content to disappear because the structure became invalid.
- */
-const remarkUrlToLink = () => {
-	return (tree: any) => {
-		// Visit all "text" nodes in the markdown AST (Abstract Syntax Tree)
-		visit(tree, "text", (node: any, index, parent) => {
-			const urlRegex = /https?:\/\/[^\s<>)"]+/g
-			const matches = node.value.match(urlRegex)
-
-			if (!matches) {
-				return
-			}
-
-			const parts = node.value.split(urlRegex)
-			const children: any[] = []
-
-			parts.forEach((part: string, i: number) => {
-				if (part) {
-					children.push({ type: "text", value: part })
-				}
-
-				if (matches[i]) {
-					children.push({ type: "link", url: matches[i], children: [{ type: "text", value: matches[i] }] })
-				}
-			})
-
-			// Fix: Instead of converting the node to a paragraph (which broke things),
-			// we replace the original text node with our new nodes in the parent's children array.
-			// This preserves the document structure while adding our links.
-			if (parent) {
-				parent.children.splice(index, 1, ...children)
-			}
-		})
-	}
 }
 
 const StyledMarkdown = styled.div`
@@ -75,6 +34,31 @@ const StyledMarkdown = styled.div`
 			--vscode-editorInlayHint-foreground,
 			var(--vscode-symbolIcon-stringForeground, var(--vscode-charts-orange, #e9a700))
 		);
+	}
+
+	/* KaTeX styling */
+	.katex {
+		font-size: 1.1em;
+		color: var(--vscode-editor-foreground);
+		font-family: KaTeX_Main, "Times New Roman", serif;
+		line-height: 1.2;
+		white-space: normal;
+		text-indent: 0;
+	}
+
+	.katex-display {
+		display: block;
+		margin: 1em 0;
+		text-align: center;
+		padding: 0.5em;
+		overflow-x: auto;
+		overflow-y: hidden;
+		background-color: var(--vscode-textCodeBlock-background);
+		border-radius: 3px;
+	}
+
+	.katex-error {
+		color: var(--vscode-errorForeground);
 	}
 
 	font-family:
@@ -106,8 +90,46 @@ const StyledMarkdown = styled.div`
 		margin-left: 0;
 	}
 
+	ol {
+		list-style-type: decimal;
+	}
+
+	ul {
+		list-style-type: disc;
+	}
+
+	/* Nested list styles */
+	ul ul {
+		list-style-type: circle;
+	}
+
+	ul ul ul {
+		list-style-type: square;
+	}
+
+	ol ol {
+		list-style-type: lower-alpha;
+	}
+
+	ol ol ol {
+		list-style-type: lower-roman;
+	}
+
 	p {
 		white-space: pre-wrap;
+		margin: 0.5em 0;
+	}
+
+	/* Prevent layout shifts during streaming */
+	pre {
+		min-height: 3em;
+		transition: height 0.2s ease-out;
+	}
+
+	/* Code block container styling */
+	div:has(> pre) {
+		position: relative;
+		contain: layout style;
 	}
 
 	a {
@@ -121,138 +143,170 @@ const StyledMarkdown = styled.div`
 			text-decoration-color: var(--vscode-textLink-activeForeground);
 		}
 	}
+
+	/* Table styles for remark-gfm */
+	table {
+		border-collapse: collapse;
+		margin: 1em 0;
+		width: auto;
+		min-width: 50%;
+		max-width: 100%;
+		table-layout: fixed;
+	}
+
+	/* Table wrapper for horizontal scrolling */
+	.table-wrapper {
+		overflow-x: auto;
+		margin: 1em 0;
+	}
+
+	th,
+	td {
+		border: 1px solid var(--vscode-panel-border);
+		padding: 8px 12px;
+		text-align: left;
+		word-wrap: break-word;
+		overflow-wrap: break-word;
+	}
+
+	th {
+		background-color: var(--vscode-editor-background);
+		font-weight: 600;
+		color: var(--vscode-foreground);
+	}
+
+	tr:nth-child(even) {
+		background-color: var(--vscode-editor-inactiveSelectionBackground);
+	}
+
+	tr:hover {
+		background-color: var(--vscode-list-hoverBackground);
+	}
 `
 
 const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
-	const { theme, apiConfiguration } = useExtensionState()
-	const [reactContent, setMarkdown] = useRemark({
-		remarkPlugins: [
-			remarkUrlToLink,
-			() => {
-				return (tree) => {
-					visit(tree, "code", (node: any) => {
-						if (!node.lang) {
-							node.lang = "text"
-						} else if (node.lang.includes(".")) {
-							node.lang = node.lang.split(".").slice(-1)[0]
-						}
+	const components = useMemo(
+		() => ({
+			table: ({ children, ...props }: any) => {
+				return (
+					<div className="table-wrapper">
+						<table {...props}>{children}</table>
+					</div>
+				)
+			},
+			a: ({ href, children, ...props }: any) => {
+				const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+					// Only process file:// protocol or local file paths
+					const isLocalPath = href?.startsWith("file://") || href?.startsWith("/") || !href?.includes("://")
+
+					if (!isLocalPath) {
+						return
+					}
+
+					e.preventDefault()
+
+					// Handle absolute vs project-relative paths
+					let filePath = href.replace("file://", "")
+
+					// Extract line number if present
+					const match = filePath.match(/(.*):(\d+)(-\d+)?$/)
+					let values = undefined
+					if (match) {
+						filePath = match[1]
+						values = { line: parseInt(match[2]) }
+					}
+
+					// Add ./ prefix if needed
+					if (!filePath.startsWith("/") && !filePath.startsWith("./")) {
+						filePath = "./" + filePath
+					}
+
+					vscode.postMessage({
+						type: "openFile",
+						text: filePath,
+						values,
 					})
 				}
+
+				return (
+					<a {...props} href={href} onClick={handleClick}>
+						{children}
+					</a>
+				)
 			},
-		],
-		remarkToRehypeOptions: {
-			handlers: {
-				html: (h: unknown, node: any) => {
-					return { type: "raw", value: node.value }
-				},
-			},
-			passThrough: ["span", "div", "a", "p", "strong", "em", "img"],
-		},
-		rehypePlugins: [rehypeRaw as any],
-		rehypeReactOptions: {
-			components: {
-				a: ({ href, children }: any) => {
+			pre: ({ children, ..._props }: any) => {
+				// The structure from react-markdown v9 is: pre > code > text
+				const codeEl = children as React.ReactElement
+
+				if (!codeEl || !codeEl.props) {
+					return <pre>{children}</pre>
+				}
+
+				const { className = "", children: codeChildren } = codeEl.props
+
+				// Get the actual code text
+				let codeString = ""
+				if (typeof codeChildren === "string") {
+					codeString = codeChildren
+				} else if (Array.isArray(codeChildren)) {
+					codeString = codeChildren.filter((child) => typeof child === "string").join("")
+				}
+
+				// Handle mermaid diagrams
+				if (className.includes("language-mermaid")) {
 					return (
-						<a
-							href={href}
-							title={href}
-							onClick={(e) => {
-								// Only process file:// protocol or local file paths
-								const isLocalPath =
-									href.startsWith("file://") || href.startsWith("/") || !href.includes("://")
-
-								if (!isLocalPath) {
-									return
-								}
-
-								e.preventDefault()
-
-								// Handle absolute vs project-relative paths
-								let filePath = href.replace("file://", "")
-
-								// Extract line number if present
-								const match = filePath.match(/(.*):(\d+)(-\d+)?$/)
-								let values = undefined
-								if (match) {
-									filePath = match[1]
-									values = { line: parseInt(match[2]) }
-								}
-
-								// Add ./ prefix if needed
-								if (!filePath.startsWith("/") && !filePath.startsWith("./")) {
-									filePath = "./" + filePath
-								}
-
-								vscode.postMessage({
-									type: "openFile",
-									text: filePath,
-									values,
-								})
-							}}>
-							{children}
-						</a>
+						<div style={{ margin: "1em 0" }}>
+							<MermaidBlock code={codeString} />
+						</div>
 					)
-				},
-				pre: ({ node: _, children }: any) => {
-					// Check for Mermaid diagrams first
-					if (Array.isArray(children) && children.length === 1 && React.isValidElement(children[0])) {
-						const child = children[0] as React.ReactElement<{ className?: string }>
+				}
 
-						if (child.props?.className?.includes("language-mermaid")) {
-							return child
-						}
-					}
+				// Extract language from className
+				const match = /language-(\w+)/.exec(className)
+				const language = match ? match[1] : "text"
 
-					// For all other code blocks, use CodeBlock with copy button
-					const codeNode = children?.[0]
-
-					if (!codeNode?.props?.children) {
-						return null
-					}
-
-					const language =
-						(Array.isArray(codeNode.props?.className)
-							? codeNode.props.className
-							: [codeNode.props?.className]
-						).map((c: string) => c?.replace("language-", ""))[0] || "javascript"
-
-					const rawText = codeNode.props.children[0] || ""
-					return <CodeBlock source={rawText} language={language} />
-				},
-				code: (props: any) => {
-					const className = props.className || ""
-
-					if (className.includes("language-mermaid")) {
-						const codeText = String(props.children || "")
-						return <MermaidBlock code={codeText} />
-					}
-
-					return <code {...props} />
-				},
-				mark: ({ hash, type, children }: any) => {
-					if (!type) {
-						return null
-					}
-					const href = `${apiConfiguration?.zgsmBaseUrl || apiConfiguration?.zgsmDefaultBaseUrl}${MARK_TYPE_MAP[type]}${hash}`
-
-					return (
-						<a href={href} style={{ textDecoration: "none" }}>
-							{children}
-						</a>
-					)
-				},
+				// Wrap CodeBlock in a div to ensure proper separation
+				return (
+					<div style={{ margin: "1em 0" }}>
+						<CodeBlock source={codeString} language={language} />
+					</div>
+				)
 			},
-		},
-	})
-
-	useEffect(() => {
-		setMarkdown(markdown || "")
-	}, [markdown, setMarkdown, theme])
+			code: ({ children, className, ...props }: any) => {
+				// This handles inline code
+				return (
+					<code className={className} {...props}>
+						{children}
+					</code>
+				)
+			},
+		}),
+		[],
+	)
 
 	return (
-		<div style={{}}>
-			<StyledMarkdown>{reactContent}</StyledMarkdown>
-		</div>
+		<StyledMarkdown>
+			<ReactMarkdown
+				remarkPlugins={[
+					remarkGfm,
+					remarkMath,
+					() => {
+						return (tree: any) => {
+							visit(tree, "code", (node: any) => {
+								if (!node.lang) {
+									node.lang = "text"
+								} else if (node.lang.includes(".")) {
+									node.lang = node.lang.split(".").slice(-1)[0]
+								}
+							})
+						}
+					},
+				]}
+				rehypePlugins={[rehypeRaw, rehypeKatex as any]}
+				components={components}>
+				{markdown || ""}
+			</ReactMarkdown>
+		</StyledMarkdown>
 	)
 })
 

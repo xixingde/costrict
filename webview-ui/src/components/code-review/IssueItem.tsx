@@ -1,5 +1,5 @@
 import React from "react"
-import { ReviewIssue, IssueStatus } from "@roo/shared/codeReview"
+import { ReviewIssue, IssueStatus } from "@roo/codeReview"
 import { severityColor } from "./contants"
 
 interface IssueItemProps {
@@ -10,9 +10,11 @@ interface IssueItemProps {
 const IssueItem: React.FC<IssueItemProps> = ({ issue, onIssueClick }) => {
 	const colors = severityColor()
 	const isNotInitial = ![IssueStatus.INITIAL, IssueStatus.IGNORE].includes(issue.status)
-	const badges = (issue.issue_types ?? []).map((type) => {
+	const badges = (issue.issue_types ?? []).map((type, i) => {
 		return (
-			<div className="h-4 text-[#E6C000] truncate flex justify-center items-center px-4 py-3 rounded-[20px] bg-[rgba(230,192,0,0.1)]">
+			<div
+				key={i}
+				className="h-4 text-[#E6C000] truncate flex justify-center items-center px-4 py-3 rounded-[20px] bg-[rgba(230,192,0,0.1)]">
 				{type}
 			</div>
 		)

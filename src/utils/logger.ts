@@ -2,7 +2,7 @@ import * as vscode from "vscode"
 import { inspect } from "util"
 
 /**
- * 日志级别（数值越小表示优先级越低）
+ * Log levels (smaller value indicates lower priority)
  */
 export enum LogLevel {
 	Debug = 0,
@@ -13,18 +13,18 @@ export enum LogLevel {
 }
 
 export interface LoggerOptions {
-	/** 最小输出级别（默认 Debug）*/
+	/** Minimum output level (default: Debug) */
 	level?: LogLevel
-	/** 是否启用日志（默认 true）*/
+	/** Whether to enable logging (default: true) */
 	enabled?: boolean
-	/** 自定义时间戳函数（默认 ISO8601 字符串）*/
+	/** Custom timestamp function (default: ISO8601 string) */
 	timeFn?: () => string
-	/** 若外部已创建 OutputChannel，可注入复用 */
+	/** Inject and reuse if OutputChannel is already created externally */
 	channel?: vscode.OutputChannel
 }
 
 /**
- * 可注入 / 可替换的日志接口，方便单测 mock
+ * Injectable / replaceable logger interface for easy unit test mocking
  */
 export interface ILogger {
 	debug(message: unknown, ...args: unknown[]): void
@@ -35,13 +35,14 @@ export interface ILogger {
 }
 
 /**
- * 全局缓存，确保同名 Logger 复用同一个实例，防止多次创建导致状态分裂。
+ * Global cache to ensure loggers with the same name reuse the same instance,
+ * preventing state fragmentation caused by multiple creations.
  */
 const loggerRegistry = new Map<string, ChannelLogger>()
 
 /**
- * 工厂函数：获取（或创建）VS Code Logger 实例。
- * 同名 logger 总是返回同一实例。
+ * Factory function: Get (or create) VS Code Logger instance.
+ * Always returns the same instance for loggers with the same name.
  */
 export function createLogger(name: string, options: LoggerOptions = {}): ILogger {
 	const cached = loggerRegistry.get(name)
@@ -53,8 +54,8 @@ export function createLogger(name: string, options: LoggerOptions = {}): ILogger
 }
 
 /**
- * 统一销毁所有注册的 logger 实例
- * 通常在扩展 deactivate 时调用
+ * Destroy all registered logger instances uniformly
+ * Usually called when extension is deactivated
  */
 export function deactivate(): void {
 	for (const logger of loggerRegistry.values()) {
@@ -63,7 +64,7 @@ export function deactivate(): void {
 	loggerRegistry.clear()
 }
 
-/* ----------------------- VS Code 实现 ----------------------- */
+/* ----------------------- VS Code Implementation ----------------------- */
 
 class ChannelLogger implements ILogger {
 	private static readonly MAX_BUFFER_SIZE = 1000
@@ -78,14 +79,14 @@ class ChannelLogger implements ILogger {
 		private readonly name: string,
 		opts: LoggerOptions,
 	) {
-		// 复用外部注入的 OutputChannel；若未提供则自行创建
+		// Reuse externally injected OutputChannel; create one if not provided
 		this.channel = opts.channel ?? vscode.window.createOutputChannel(name)
 		this.level = opts.level ?? LogLevel.Debug
 		this.enabled = opts.enabled ?? true
 		this.timeFn = opts.timeFn ?? (() => new Date().toLocaleString())
 	}
 
-	// ---------- ILogger 实现 ----------
+	// ---------- ILogger Implementation ----------
 
 	debug(msg: unknown, ...args: unknown[]): void {
 		this.log(LogLevel.Debug, "DEBUG", msg, ...args)
@@ -101,24 +102,24 @@ class ChannelLogger implements ILogger {
 	}
 
 	dispose(): void {
-		this.flush() // 确保剩余日志写完
+		this.flush() // Ensure remaining logs are written
 		this.channel.dispose()
 		if (this.flushHandle) {
 			clearImmediate(this.flushHandle)
 		}
 
-		// 从缓存移除，防止内存泄漏
+		// Remove from cache to prevent memory leak
 		loggerRegistry.delete(this.name)
 	}
 
-	// ---------- 内部辅助 ----------
+	// ---------- Internal Helpers ----------
 
 	private log(level: LogLevel, tag: string, msg: unknown, ...args: unknown[]): void {
 		if (!this.enabled || level < this.level) return
 
-		// 缓冲区大小检查
+		// Buffer size check
 		if (this.buffer.length >= ChannelLogger.MAX_BUFFER_SIZE) {
-			this.flush() // 强制刷新
+			this.flush() // Force flush
 		}
 
 		const line = `[${this.timeFn()}] [${tag}] ` + [msg, ...args].map(this.safeToString).join(" ")
@@ -128,7 +129,7 @@ class ChannelLogger implements ILogger {
 	}
 
 	/**
-	 * 使用 setImmediate 在事件循环空闲时批量 flush，减少 UI 开销
+	 * Use setImmediate to batch flush during event loop idle time to reduce UI overhead
 	 */
 	private scheduleFlush(): void {
 		if (this.flushHandle) return
@@ -149,7 +150,7 @@ class ChannelLogger implements ILogger {
 	private safeToString(value: unknown): string {
 		if (typeof value === "string") return value
 		try {
-			// 使用 util.inspect 提供更友好的对象展示
+			// Use util.inspect to provide more friendly object display
 			return inspect(value, {
 				colors: false,
 				depth: 3,

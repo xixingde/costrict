@@ -39,12 +39,15 @@ export class ToolRepetitionDetector {
 		if (this.previousToolCallJson === currentToolCallJson) {
 			this.consecutiveIdenticalToolCallCount++
 		} else {
-			this.consecutiveIdenticalToolCallCount = 1 // Start with 1 for the first occurrence
+			this.consecutiveIdenticalToolCallCount = 0 // Reset to 0 for a new tool
 			this.previousToolCallJson = currentToolCallJson
 		}
 
-		// Check if limit is reached
-		if (this.consecutiveIdenticalToolCallCount >= this.consecutiveIdenticalToolCallLimit) {
+		// Check if limit is reached (0 means unlimited)
+		if (
+			this.consecutiveIdenticalToolCallLimit > 0 &&
+			this.consecutiveIdenticalToolCallCount >= this.consecutiveIdenticalToolCallLimit
+		) {
 			// Reset counters to allow recovery if user guides the AI past this point
 			this.consecutiveIdenticalToolCallCount = 0
 			this.previousToolCallJson = null

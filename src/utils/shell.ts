@@ -84,7 +84,6 @@ function getLinuxTerminalConfig() {
 /** Attempts to retrieve a shell path from VS Code config on Windows. */
 function getWindowsShellFromVSCode(): string | null {
 	const { defaultProfileName, profiles } = getWindowsTerminalConfig()
-
 	if (!defaultProfileName) {
 		return null
 	}
@@ -93,7 +92,7 @@ function getWindowsShellFromVSCode(): string | null {
 
 	// If the profile name indicates PowerShell, do version-based detection.
 	// In testing it was found these typically do not have a path, and this
-	// implementation manages to deductively get the corect version of PowerShell
+	// implementation manages to deductively get the correct version of PowerShell
 	if (defaultProfileName.toLowerCase().includes("powershell")) {
 		if (profile?.path) {
 			// If there's an explicit PowerShell path, return that
@@ -116,6 +115,7 @@ function getWindowsShellFromVSCode(): string | null {
 		return SHELL_PATHS.WSL_BASH
 	}
 
+	// If the profile indicates Git Bash
 	if (defaultProfileName.toLowerCase().includes("bash")) {
 		return SHELL_PATHS.GITBASH
 	}

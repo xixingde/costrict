@@ -1,12 +1,16 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import * as vscode from "vscode"
 
-import { SingleCompletionHandler } from "../"
-import { ApiStream } from "../transform/stream"
-import { convertToVsCodeLmMessages } from "../transform/vscode-lm-format"
+import { type ModelInfo, openAiModelInfoSaneDefaults } from "@roo-code/types"
+
+import type { ApiHandlerOptions } from "../../shared/api"
 import { SELECTOR_SEPARATOR, stringifyVsCodeLmModelSelector } from "../../shared/vsCodeSelectorUtils"
-import { ApiHandlerOptions, ModelInfo, openAiModelInfoSaneDefaults } from "../../shared/api"
+
+import { ApiStream } from "../transform/stream"
+import { convertToVsCodeLmMessages, extractTextCountFromMessage } from "../transform/vscode-lm-format"
+
 import { BaseProvider } from "./base-provider"
+import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 
 /**
  * Handles interaction with VS Code's Language Model API for chat-based operations.
@@ -148,6 +152,7 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 	 *
 	 * @param systemPrompt - The system prompt to initialize the conversation context
 	 * @param messages - An array of message parameters following the Anthropic message format
+	 * @param metadata - Optional metadata for the message
 	 *
 	 * @yields {ApiStream} An async generator that yields either text chunks or tool calls from the model response
 	 *
@@ -226,7 +231,8 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 					console.debug("Costrict <Language Model API>: Empty chat message content")
 					return 0
 				}
-				tokenCount = await this.client.countTokens(text, this.currentRequestCancellation.token)
+				const countMessage = extractTextCountFromMessage(text)
+				tokenCount = await this.client.countTokens(countMessage, this.currentRequestCancellation.token)
 			} else {
 				console.warn("Costrict <Language Model API>: Invalid input type for token counting")
 				return 0
@@ -263,15 +269,10 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 		}
 	}
 
-	private async calculateTotalInputTokens(
-		systemPrompt: string,
-		vsCodeLmMessages: vscode.LanguageModelChatMessage[],
-	): Promise<number> {
-		const systemTokens: number = await this.internalCountTokens(systemPrompt)
-
+	private async calculateTotalInputTokens(vsCodeLmMessages: vscode.LanguageModelChatMessage[]): Promise<number> {
 		const messageTokens: number[] = await Promise.all(vsCodeLmMessages.map((msg) => this.internalCountTokens(msg)))
 
-		return systemTokens + messageTokens.reduce((sum: number, tokens: number): number => sum + tokens, 0)
+		return messageTokens.reduce((sum: number, tokens: number): number => sum + tokens, 0)
 	}
 
 	private ensureCleanState(): void {
@@ -329,7 +330,11 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 		return content
 	}
 
-	override async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
+	override async *createMessage(
+		systemPrompt: string,
+		messages: Anthropic.Messages.MessageParam[],
+		metadata?: ApiHandlerCreateMessageMetadata,
+	): ApiStream {
 		// Ensure clean state before starting a new request
 		this.ensureCleanState()
 		const client: vscode.LanguageModelChat = await this.getClient()
@@ -350,7 +355,7 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 		this.currentRequestCancellation = new vscode.CancellationTokenSource()
 
 		// Calculate input tokens before starting the stream
-		const totalInputTokens: number = await this.calculateTotalInputTokens(systemPrompt, vsCodeLmMessages)
+		const totalInputTokens: number = await this.calculateTotalInputTokens(vsCodeLmMessages)
 
 		// Accumulate the text and count at the end of the stream to reduce token counting overhead.
 		let accumulatedText: string = ""
@@ -555,10 +560,13 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 	}
 }
 
+// Static blacklist of VS Code Language Model IDs that should be excluded from the model list e.g. because they will never work
+const VSCODE_LM_STATIC_BLACKLIST: string[] = ["claude-3.7-sonnet", "claude-3.7-sonnet-thought"]
+
 export async function getVsCodeLmModels() {
 	try {
-		const models = await vscode.lm.selectChatModels({})
-		return models || []
+		const models = (await vscode.lm.selectChatModels({})) || []
+		return models.filter((model) => !VSCODE_LM_STATIC_BLACKLIST.includes(model.id))
 	} catch (error) {
 		console.error(
 			`Error fetching VS Code LM models: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,

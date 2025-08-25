@@ -1,12 +1,23 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import { Mistral } from "@mistralai/mistralai"
-import { SingleCompletionHandler } from "../"
-import { ApiHandlerOptions, mistralDefaultModelId, MistralModelId, mistralModels, ModelInfo } from "../../shared/api"
+
+import { type MistralModelId, mistralDefaultModelId, mistralModels, MISTRAL_DEFAULT_TEMPERATURE } from "@roo-code/types"
+
+import { ApiHandlerOptions } from "../../shared/api"
+
 import { convertToMistralMessages } from "../transform/mistral-format"
 import { ApiStream } from "../transform/stream"
-import { BaseProvider } from "./base-provider"
 
-const MISTRAL_DEFAULT_TEMPERATURE = 0
+import { BaseProvider } from "./base-provider"
+import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
+
+// Type helper to handle thinking chunks from Mistral API
+// The SDK includes ThinkChunk but TypeScript has trouble with the discriminated union
+type ContentChunkWithThinking = {
+	type: string
+	text?: string
+	thinking?: Array<{ type: string; text?: string }>
+}
 
 export class MistralHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
@@ -14,95 +25,111 @@ export class MistralHandler extends BaseProvider implements SingleCompletionHand
 
 	constructor(options: ApiHandlerOptions) {
 		super()
+
 		if (!options.mistralApiKey) {
 			throw new Error("Mistral API key is required")
 		}
 
-		// Set default model ID if not provided
-		this.options = {
-			...options,
-			apiModelId: options.apiModelId || mistralDefaultModelId,
-		}
+		// Set default model ID if not provided.
+		const apiModelId = options.apiModelId || mistralDefaultModelId
+		this.options = { ...options, apiModelId }
 
-		const baseUrl = this.getBaseUrl()
-		console.debug(`[Costrict] MistralHandler using baseUrl: ${baseUrl}`)
 		this.client = new Mistral({
-			serverURL: baseUrl,
+			serverURL: apiModelId.startsWith("codestral-")
+				? this.options.mistralCodestralUrl || "https://codestral.mistral.ai"
+				: "https://api.mistral.ai",
 			apiKey: this.options.mistralApiKey,
 		})
 	}
 
-	private getBaseUrl(): string {
-		const modelId = this.options.apiModelId ?? mistralDefaultModelId
-		console.debug(`[Costrict] MistralHandler using modelId: ${modelId}`)
-		if (modelId?.startsWith("codestral-")) {
-			return this.options.mistralCodestralUrl || "https://codestral.mistral.ai"
-		}
-		return "https://api.mistral.ai"
-	}
+	override async *createMessage(
+		systemPrompt: string,
+		messages: Anthropic.Messages.MessageParam[],
+		metadata?: ApiHandlerCreateMessageMetadata,
+	): ApiStream {
+		const { id: model, maxTokens, temperature } = this.getModel()
 
-	override async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
 		const response = await this.client.chat.stream({
-			model: this.options.apiModelId || mistralDefaultModelId,
+			model,
 			messages: [{ role: "system", content: systemPrompt }, ...convertToMistralMessages(messages)],
-			maxTokens: this.options.includeMaxTokens ? this.getModel().info.maxTokens : undefined,
-			temperature: this.options.modelTemperature ?? MISTRAL_DEFAULT_TEMPERATURE,
+			maxTokens,
+			temperature,
 		})
 
-		for await (const chunk of response) {
-			const delta = chunk.data.choices[0]?.delta
+		for await (const event of response) {
+			const delta = event.data.choices[0]?.delta
+
 			if (delta?.content) {
-				let content: string = ""
 				if (typeof delta.content === "string") {
-					content = delta.content
+					// Handle string content as text
+					yield { type: "text", text: delta.content }
 				} else if (Array.isArray(delta.content)) {
-					content = delta.content.map((c) => (c.type === "text" ? c.text : "")).join("")
-				}
-				yield {
-					type: "text",
-					text: content,
+					// Handle array of content chunks
+					// The SDK v1.9.18 supports ThinkChunk with type "thinking"
+					for (const chunk of delta.content as ContentChunkWithThinking[]) {
+						if (chunk.type === "thinking" && chunk.thinking) {
+							// Handle thinking content as reasoning chunks
+							// ThinkChunk has a 'thinking' property that contains an array of text/reference chunks
+							for (const thinkingPart of chunk.thinking) {
+								if (thinkingPart.type === "text" && thinkingPart.text) {
+									yield { type: "reasoning", text: thinkingPart.text }
+								}
+							}
+						} else if (chunk.type === "text" && chunk.text) {
+							// Handle text content normally
+							yield { type: "text", text: chunk.text }
+						}
+					}
 				}
 			}
 
-			if (chunk.data.usage) {
+			if (event.data.usage) {
 				yield {
 					type: "usage",
-					inputTokens: chunk.data.usage.promptTokens || 0,
-					outputTokens: chunk.data.usage.completionTokens || 0,
+					inputTokens: event.data.usage.promptTokens || 0,
+					outputTokens: event.data.usage.completionTokens || 0,
 				}
 			}
 		}
 	}
 
-	override getModel(): { id: MistralModelId; info: ModelInfo } {
-		const modelId = this.options.apiModelId
-		if (modelId && modelId in mistralModels) {
-			const id = modelId as MistralModelId
-			return { id, info: mistralModels[id] }
-		}
-		return {
-			id: mistralDefaultModelId,
-			info: mistralModels[mistralDefaultModelId],
-		}
+	override getModel() {
+		const id = this.options.apiModelId ?? mistralDefaultModelId
+		const info = mistralModels[id as MistralModelId] ?? mistralModels[mistralDefaultModelId]
+
+		// @TODO: Move this to the `getModelParams` function.
+		const maxTokens = this.options.includeMaxTokens ? info.maxTokens : undefined
+		const temperature = this.options.modelTemperature ?? MISTRAL_DEFAULT_TEMPERATURE
+
+		return { id, info, maxTokens, temperature }
 	}
 
 	async completePrompt(prompt: string): Promise<string> {
 		try {
+			const { id: model, temperature } = this.getModel()
+
 			const response = await this.client.chat.complete({
-				model: this.options.apiModelId || mistralDefaultModelId,
+				model,
 				messages: [{ role: "user", content: prompt }],
-				temperature: this.options.modelTemperature ?? MISTRAL_DEFAULT_TEMPERATURE,
+				temperature,
 			})
 
 			const content = response.choices?.[0]?.message.content
+
 			if (Array.isArray(content)) {
-				return content.map((c) => (c.type === "text" ? c.text : "")).join("")
+				// Only return text content, filter out thinking content for non-streaming
+				return (content as ContentChunkWithThinking[])
+					.filter((c) => c.type === "text" && c.text)
+					.map((c) => c.text || "")
+					.join("")
 			}
+
 			return content || ""
 		} catch (error) {
 			if (error instanceof Error) {
 				throw new Error(`Mistral completion error: ${error.message}`)
 			}
+
 			throw error
 		}
 	}

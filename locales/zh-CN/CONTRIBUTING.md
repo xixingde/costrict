@@ -1,6 +1,15 @@
-[English](../../CONTRIBUTING.md) • [Català](../ca/CONTRIBUTING.md) • [Deutsch](../de/CONTRIBUTING.md) • [Español](../es/CONTRIBUTING.md) • [Français](../fr/CONTRIBUTING.md) • [हिंदी](../hi/CONTRIBUTING.md) • [Italiano](../it/CONTRIBUTING.md) • [Nederlands](../nl/CONTRIBUTING.md) • [Русский](../ru/CONTRIBUTING.md)
+<div align="center">
+<sub>
 
-[日本語](../ja/CONTRIBUTING.md) • [한국어](../ko/CONTRIBUTING.md) • [Polski](../pl/CONTRIBUTING.md) • [Português (BR)](../pt-BR/CONTRIBUTING.md) • [Türkçe](../tr/CONTRIBUTING.md) • [Tiếng Việt](../vi/CONTRIBUTING.md) • <b>简体中文</b> • [繁體中文](../zh-TW/CONTRIBUTING.md)
+[English](../../CONTRIBUTING.md) • [Català](../ca/CONTRIBUTING.md) • [Deutsch](../de/CONTRIBUTING.md) • [Español](../es/CONTRIBUTING.md) • [Français](../fr/CONTRIBUTING.md) • [हिंदी](../hi/CONTRIBUTING.md) • [Bahasa Indonesia](../id/CONTRIBUTING.md) • [Italiano](../it/CONTRIBUTING.md) • [日本語](../ja/CONTRIBUTING.md)
+
+</sub>
+<sub>
+
+[한국어](../ko/CONTRIBUTING.md) • [Nederlands](../nl/CONTRIBUTING.md) • [Polski](../pl/CONTRIBUTING.md) • [Português (BR)](../pt-BR/CONTRIBUTING.md) • [Русский](../ru/CONTRIBUTING.md) • [Türkçe](../tr/CONTRIBUTING.md) • [Tiếng Việt](../vi/CONTRIBUTING.md) • <b>简体中文</b> • [繁體中文](../zh-TW/CONTRIBUTING.md)
+
+</sub>
+</div>
 
 # 参与 Roo Code 贡献
 
@@ -60,7 +69,7 @@ Roo Code 是一个由社区驱动的项目，我们高度重视每一份贡献�
 
 所有贡献必须从 GitHub Issue 开始。
 
-- **检查现有 issue：** 搜索 [GitHub Issues](https://github.com/RooCodeInc/Roo-Code/issues)。
+- **检查现有 issue：** 搜索 [GitHub Issues](https://github.com/zgsm-ai/costrict/issues)。
 - **创建 issue：** 使用适当模板：
     - **Bug：** "Bug Report" 模板。
     - **功能：** "Detailed Feature Proposal" 模板。开始前需获得批准。
@@ -71,13 +80,13 @@ Roo Code 是一个由社区驱动的项目，我们高度重视每一份贡献�
 ### 决定要做什么
 
 - 查看 [GitHub 项目](https://github.com/orgs/RooCodeInc/projects/1) 中未分配的 "Good First Issues"。
-- 文档相关，请访问 [Roo Code Docs](https://github.com/RooCodeInc/Roo-Code-Docs)。
+- 文档相关，请访问 [Roo Code Docs](https://github.com/zgsm-ai/costrict-Docs)。
 
 ### 报告 Bug
 
 - 先检查是否已有相关报告。
-- 使用 ["Bug Report" 模板](https://github.com/RooCodeInc/Roo-Code/issues/new/choose) 创建新 bug 报告。
-- **安全问题：** 通过 [security advisories](https://github.com/RooCodeInc/Roo-Code/security/advisories/new) 私下报告。
+- 使用 ["Bug Report" 模板](https://github.com/zgsm-ai/costrict/issues/new/choose) 创建新 bug 报告。
+- **安全问题：** 通过 [security advisories](https://github.com/zgsm-ai/costrict/security/advisories/new) 私下报告。
 
 ## 开发与提交流程
 

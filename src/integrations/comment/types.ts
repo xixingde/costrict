@@ -1,15 +1,15 @@
 import * as vscode from "vscode"
 
 /**
- * 评论线程信息接口
+ * Comment thread information interface
  */
 export interface CommentThreadInfo {
-	/** 问题唯一标识 */
+	/** Unique issue identifier */
 	issueId: string
-	/** 文件URI */
+	/** File URI */
 	fileUri: vscode.Uri
-	/** 代码范围 */
+	/** Code range */
 	range: vscode.Range
-	/** 评论对象（由外部传入） */
+	/** Comment object (provided externally) */
 	comment: vscode.Comment
 }

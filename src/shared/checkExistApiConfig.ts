@@ -1,14 +1,18 @@
-import { SECRET_STATE_KEYS, ProviderSettings } from "../schemas"
+import { SECRET_STATE_KEYS, ProviderSettings } from "@roo-code/types"
 
 export function checkExistKey(config: ProviderSettings | undefined) {
 	if (!config) {
 		return false
 	}
 
-	// Special case for human-relay and fake-ai and Costrict providers which don't need any configuration.
-	if (config.apiProvider && ["human-relay", "fake-ai", "gemini-cli"].includes(config.apiProvider)) {
+	// Special case for human-relay, fake-ai, claude-code, and roo providers which don't need any configuration.
+	if (
+		config.apiProvider &&
+		["human-relay", "fake-ai", "claude-code", "roo", "gemini-cli"].includes(config.apiProvider)
+	) {
 		return true
 	}
+
 	// Check all secret keys from the centralized SECRET_STATE_KEYS array.
 	const hasSecretKey = SECRET_STATE_KEYS.some((key) => config[key] !== undefined)
 

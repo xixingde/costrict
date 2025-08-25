@@ -4,13 +4,14 @@ import { CommentThreadInfo } from "../types"
 
 // Mock VS Code API
 const mockCommentController = {
-	createCommentThread: jest.fn(),
-	dispose: jest.fn(),
-	commentingRangeProvider: null,
+	id: "costrict-code-review",
+	label: "costrict Code Review",
+	createCommentThread: vi.fn(),
+	dispose: vi.fn(),
 }
 
 const mockCommentThread = {
-	dispose: jest.fn(),
+	dispose: vi.fn(),
 	contextValue: "",
 	collapsibleState: 0,
 	canReply: true,
@@ -24,36 +25,52 @@ mockCommentController.createCommentThread.mockReturnValue(mockCommentThread)
 
 const mockDocument = { lineCount: 100 }
 const mockEditor = {
-	revealRange: jest.fn(),
+	revealRange: vi.fn(),
 	selection: null,
 }
 
-jest.mock("vscode", () => ({
-	comments: {
-		createCommentController: jest.fn(() => mockCommentController),
-	},
-	CommentThreadCollapsibleState: {
-		Expanded: 1,
-		Collapsed: 0,
-	},
-	Range: jest.fn().mockImplementation((startLine, startChar, endLine, endChar) => ({
-		start: { line: startLine, character: startChar },
-		end: { line: endLine, character: endChar },
-	})),
-	Uri: {
-		file: jest.fn().mockImplementation((path) => ({ fsPath: path })),
-	},
-	workspace: {
-		openTextDocument: jest.fn(() => Promise.resolve(mockDocument)),
-	},
-	window: {
-		showTextDocument: jest.fn(() => Promise.resolve(mockEditor)),
-	},
-	TextEditorRevealType: {
-		InCenter: 1,
-	},
-	Selection: jest.fn(),
-}))
+// Configure mocks before tests run
+beforeAll(() => {
+	// Override the global vscode mock with our test-specific mocks
+	vscode.comments.createCommentController = vi.fn().mockReturnValue(mockCommentController)
+	vscode.workspace.openTextDocument = vi.fn().mockResolvedValue(mockDocument)
+	vscode.window.showTextDocument = vi.fn().mockResolvedValue(mockEditor)
+	Object.defineProperty(vscode, "Range", {
+		value: vi.fn().mockImplementation((startLine, startChar, endLine, endChar) => ({
+			start: { line: startLine, character: startChar },
+			end: { line: endLine, character: endChar },
+		})),
+		writable: true,
+		configurable: true,
+	})
+
+	Object.defineProperty(vscode, "Selection", {
+		value: vi.fn().mockImplementation((...args) => {
+			const [start, end] = args
+			if (typeof start === "number") {
+				// Handle (startLine, startChar, endLine, endChar) signature
+				const startPos = { line: start, character: args[1] }
+				const endPos = { line: args[2], character: args[3] }
+				return {
+					start: startPos,
+					end: endPos,
+					anchor: startPos,
+					active: endPos,
+				}
+			} else {
+				// Handle (Position, Position) signature
+				return {
+					start: start,
+					end: end,
+					anchor: start,
+					active: end,
+				}
+			}
+		}),
+		writable: true,
+		configurable: true,
+	})
+})
 
 describe("CommentService - Step 5.1: Basic Architecture", () => {
 	let commentService: CommentService
@@ -116,7 +133,6 @@ describe("CommentService - Step 5.1: Basic Architecture", () => {
 			expect(typeof commentService.initialize).toBe("function")
 			expect(typeof commentService.dispose).toBe("function")
 			expect(typeof commentService.focusOrCreateCommentThread).toBe("function")
-			expect(typeof commentService.disposeCommentThread).toBe("function")
 			expect(typeof commentService.clearAllCommentThreads).toBe("function")
 			expect(typeof commentService.getCommentThread).toBe("function")
 		})
@@ -137,9 +153,6 @@ describe("CommentService - Step 5.1: Basic Architecture", () => {
 			}
 			const focusResult = commentService.focusOrCreateCommentThread(mockCommentThreadInfo)
 			expect(focusResult).toBeInstanceOf(Promise)
-
-			const disposeThreadResult = commentService.disposeCommentThread("test")
-			expect(disposeThreadResult).toBeInstanceOf(Promise)
 
 			const clearResult = commentService.clearAllCommentThreads()
 			expect(clearResult).toBeInstanceOf(Promise)
@@ -198,7 +211,7 @@ describe("CommentService - Step 5.2: CommentController and Basic Comment Feature
 		commentService = CommentService.getInstance()
 
 		// Reset mocks
-		jest.clearAllMocks()
+		vi.clearAllMocks()
 		mockCommentController.createCommentThread.mockReturnValue(mockCommentThread)
 	})
 
@@ -223,21 +236,6 @@ describe("CommentService - Step 5.2: CommentController and Basic Comment Feature
 			await commentService.initialize()
 
 			expect(vscode.comments.createCommentController).toHaveBeenCalledTimes(1)
-		})
-
-		it("should configure commentingRangeProvider correctly", async () => {
-			await commentService.initialize()
-
-			const commentController = (commentService as any).commentController
-			expect(commentController.commentingRangeProvider).toBeDefined()
-
-			// Test commentingRangeProvider function
-			const ranges = commentController.commentingRangeProvider.provideCommentingRanges(mockDocument)
-			expect(ranges).toHaveLength(1)
-			expect(ranges[0].start.line).toBe(0)
-			expect(ranges[0].start.character).toBe(0)
-			expect(ranges[0].end.line).toBe(99) // document.lineCount - 1
-			expect(ranges[0].end.character).toBe(0)
 		})
 	})
 
@@ -356,10 +354,9 @@ describe("CommentService - Step 5.2: CommentController and Basic Comment Feature
 	})
 
 	describe("Error Handling Tests", () => {
-		const vscode = require("vscode")
 		it("should handle CommentController creation failure", async () => {
 			const error = new Error("Failed to create controller")
-			vscode.comments.createCommentController.mockImplementationOnce(() => {
+			;(vscode.comments.createCommentController as any).mockImplementationOnce(() => {
 				throw error
 			})
 
@@ -367,9 +364,8 @@ describe("CommentService - Step 5.2: CommentController and Basic Comment Feature
 		})
 
 		it("should handle file opening failure", async () => {
-			const vscode = require("vscode")
 			const error = new Error("File not found")
-			vscode.workspace.openTextDocument.mockRejectedValueOnce(error)
+			;(vscode.workspace.openTextDocument as any).mockRejectedValueOnce(error)
 
 			const mockComment: vscode.Comment = {
 				body: "Test comment",
@@ -398,7 +394,7 @@ describe("CommentService - Step 5.3: Comment Thread Management System", () => {
 		commentService = CommentService.getInstance()
 
 		// Reset mocks
-		jest.clearAllMocks()
+		vi.clearAllMocks()
 		mockCommentController.createCommentThread.mockReturnValue(mockCommentThread)
 	})
 
@@ -439,7 +435,7 @@ describe("CommentService - Step 5.3: Comment Thread Management System", () => {
 			// Manually add a WeakRef that will return null
 			const threadMap = (commentService as any).threadMap
 			const mockWeakRef = {
-				deref: jest.fn().mockReturnValue(null),
+				deref: vi.fn().mockReturnValue(null),
 			}
 			threadMap.set("test-issue", mockWeakRef)
 
@@ -453,81 +449,18 @@ describe("CommentService - Step 5.3: Comment Thread Management System", () => {
 			const disposedThread = {
 				uri: null,
 				range: null,
-				dispose: jest.fn(),
+				dispose: vi.fn(),
 			}
 
 			const threadMap = (commentService as any).threadMap
 			const mockWeakRef = {
-				deref: jest.fn().mockReturnValue(disposedThread),
+				deref: vi.fn().mockReturnValue(disposedThread),
 			}
 			threadMap.set("disposed-issue", mockWeakRef)
 
 			const result = commentService.getCommentThread("disposed-issue")
 			expect(result).toBeNull()
 			expect(threadMap.has("disposed-issue")).toBe(false) // Should be cleaned up
-		})
-	})
-
-	describe("Thread Disposal Tests", () => {
-		it("should dispose existing thread correctly", async () => {
-			const mockComment: vscode.Comment = {
-				body: "Test comment",
-				mode: 1,
-				author: { name: "Test User" },
-			}
-
-			const commentThreadInfo: CommentThreadInfo = {
-				issueId: "test-issue-1",
-				fileUri: vscode.Uri.file("/test/file.ts"),
-				range: new vscode.Range(0, 0, 5, 0),
-				comment: mockComment,
-			}
-
-			// Create a thread first
-			await commentService.focusOrCreateCommentThread(commentThreadInfo)
-
-			// Dispose it
-			await commentService.disposeCommentThread("test-issue-1")
-
-			expect(mockCommentThread.dispose).toHaveBeenCalled()
-
-			// Should be removed from map
-			const threadMap = (commentService as any).threadMap
-			expect(threadMap.has("test-issue-1")).toBe(false)
-		})
-
-		it("should handle disposing non-existent thread gracefully", async () => {
-			await expect(commentService.disposeCommentThread("non-existent")).resolves.toBeUndefined()
-		})
-
-		it("should handle thread dispose error gracefully", async () => {
-			const mockComment: vscode.Comment = {
-				body: "Test comment",
-				mode: 1,
-				author: { name: "Test User" },
-			}
-
-			const commentThreadInfo: CommentThreadInfo = {
-				issueId: "test-issue-1",
-				fileUri: vscode.Uri.file("/test/file.ts"),
-				range: new vscode.Range(0, 0, 5, 0),
-				comment: mockComment,
-			}
-
-			// Create a thread first
-			await commentService.focusOrCreateCommentThread(commentThreadInfo)
-
-			// Make dispose throw an error
-			mockCommentThread.dispose.mockImplementationOnce(() => {
-				throw new Error("Dispose failed")
-			})
-
-			// Should not throw, but handle gracefully
-			await expect(commentService.disposeCommentThread("test-issue-1")).resolves.toBeUndefined()
-
-			// Should still be removed from map
-			const threadMap = (commentService as any).threadMap
-			expect(threadMap.has("test-issue-1")).toBe(false)
 		})
 	})
 
@@ -689,7 +622,7 @@ describe("CommentService - Step 5.3: Comment Thread Management System", () => {
 
 			// Simulate a WeakRef that has been garbage collected
 			const mockWeakRef = {
-				deref: jest.fn().mockReturnValue(null),
+				deref: vi.fn().mockReturnValue(null),
 			}
 			threadMap.set("gc-test", mockWeakRef)
 
@@ -699,6 +632,175 @@ describe("CommentService - Step 5.3: Comment Thread Management System", () => {
 			expect(result).toBeNull()
 			expect(threadMap.has("gc-test")).toBe(false) // Should be cleaned up
 			expect(mockWeakRef.deref).toHaveBeenCalled()
+		})
+	})
+
+	describe("Comment Thread State Management Tests", () => {
+		beforeEach(async () => {
+			// Initialize service and create a test thread
+			await commentService.initialize()
+
+			// Reset mockCommentThread collapsibleState to be settable
+			Object.defineProperty(mockCommentThread, "collapsibleState", {
+				value: 1, // Default to expanded
+				writable: true,
+				configurable: true,
+			})
+		})
+
+		describe("expandCommentThread", () => {
+			it("should expand existing comment thread and return true", async () => {
+				const mockComment: vscode.Comment = {
+					body: "Test comment",
+					mode: 1,
+					author: { name: "Test User" },
+				}
+
+				const commentThreadInfo: CommentThreadInfo = {
+					issueId: "test-expand-issue",
+					fileUri: vscode.Uri.file("/test/file.ts"),
+					range: new vscode.Range(0, 0, 5, 0),
+					comment: mockComment,
+				}
+
+				// Create a thread first
+				await commentService.focusOrCreateCommentThread(commentThreadInfo)
+
+				// Test expand
+				const result = await commentService.expandCommentThread("test-expand-issue")
+
+				expect(result).toBe(true)
+				expect(mockCommentThread.collapsibleState).toBe(1) // Expanded = 1
+			})
+
+			it("should return false for non-existent thread", async () => {
+				const result = await commentService.expandCommentThread("non-existent-issue")
+
+				expect(result).toBe(false)
+			})
+
+			it("should handle errors gracefully", async () => {
+				const mockComment: vscode.Comment = {
+					body: "Test comment",
+					mode: 1,
+					author: { name: "Test User" },
+				}
+
+				const commentThreadInfo: CommentThreadInfo = {
+					issueId: "test-error-issue",
+					fileUri: vscode.Uri.file("/test/file.ts"),
+					range: new vscode.Range(0, 0, 5, 0),
+					comment: mockComment,
+				}
+
+				// Create a thread first
+				await commentService.focusOrCreateCommentThread(commentThreadInfo)
+
+				// Mock an error when setting collapsibleState
+				Object.defineProperty(mockCommentThread, "collapsibleState", {
+					set: vi.fn(() => {
+						throw new Error("Failed to set state")
+					}),
+					configurable: true,
+				})
+
+				const result = await commentService.expandCommentThread("test-error-issue")
+
+				expect(result).toBe(false)
+			})
+		})
+
+		describe("collapseCommentThread", () => {
+			it("should collapse existing comment thread and return true", async () => {
+				const mockComment: vscode.Comment = {
+					body: "Test comment",
+					mode: 1,
+					author: { name: "Test User" },
+				}
+
+				const commentThreadInfo: CommentThreadInfo = {
+					issueId: "test-collapse-issue",
+					fileUri: vscode.Uri.file("/test/file.ts"),
+					range: new vscode.Range(0, 0, 5, 0),
+					comment: mockComment,
+				}
+
+				// Create a thread first
+				await commentService.focusOrCreateCommentThread(commentThreadInfo)
+
+				// Test collapse
+				const result = await commentService.collapseCommentThread("test-collapse-issue")
+
+				expect(result).toBe(true)
+				expect(mockCommentThread.collapsibleState).toBe(0) // Collapsed = 0
+			})
+
+			it("should return false for non-existent thread", async () => {
+				const result = await commentService.collapseCommentThread("non-existent-issue")
+
+				expect(result).toBe(false)
+			})
+
+			it("should handle errors gracefully", async () => {
+				const mockComment: vscode.Comment = {
+					body: "Test comment",
+					mode: 1,
+					author: { name: "Test User" },
+				}
+
+				const commentThreadInfo: CommentThreadInfo = {
+					issueId: "test-error-collapse-issue",
+					fileUri: vscode.Uri.file("/test/file.ts"),
+					range: new vscode.Range(0, 0, 5, 0),
+					comment: mockComment,
+				}
+
+				// Create a thread first
+				await commentService.focusOrCreateCommentThread(commentThreadInfo)
+
+				// Mock an error when setting collapsibleState
+				Object.defineProperty(mockCommentThread, "collapsibleState", {
+					set: vi.fn(() => {
+						throw new Error("Failed to set state")
+					}),
+					configurable: true,
+				})
+
+				const result = await commentService.collapseCommentThread("test-error-collapse-issue")
+
+				expect(result).toBe(false)
+			})
+		})
+
+		describe("State Management Integration", () => {
+			it("should toggle between expanded and collapsed states", async () => {
+				const mockComment: vscode.Comment = {
+					body: "Test comment",
+					mode: 1,
+					author: { name: "Test User" },
+				}
+
+				const commentThreadInfo: CommentThreadInfo = {
+					issueId: "test-toggle-issue",
+					fileUri: vscode.Uri.file("/test/file.ts"),
+					range: new vscode.Range(0, 0, 5, 0),
+					comment: mockComment,
+				}
+
+				// Create a thread first (should be expanded by default)
+				await commentService.focusOrCreateCommentThread(commentThreadInfo)
+				expect(mockCommentThread.collapsibleState).toBe(1) // Expanded
+
+				// Collapse it
+				const collapseResult = await commentService.collapseCommentThread("test-toggle-issue")
+				expect(collapseResult).toBe(true)
+				expect(mockCommentThread.collapsibleState).toBe(0) // Collapsed
+
+				// Expand it again
+				const expandResult = await commentService.expandCommentThread("test-toggle-issue")
+				expect(expandResult).toBe(true)
+				expect(mockCommentThread.collapsibleState).toBe(1) // Expanded
+			})
 		})
 	})
 })

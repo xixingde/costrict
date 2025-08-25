@@ -1,6 +1,6 @@
 import axios from "axios"
 
-import { ModelInfo } from "../../../shared/api"
+import type { ModelInfo } from "@roo-code/types"
 
 export async function getUnboundModels(apiKey?: string | null): Promise<Record<string, ModelInfo>> {
 	const models: Record<string, ModelInfo> = {}
@@ -46,6 +46,7 @@ export async function getUnboundModels(apiKey?: string | null): Promise<Record<s
 		}
 	} catch (error) {
 		console.error(`Error fetching Unbound models: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`)
+		// throw new Error(`Failed to fetch Unbound models: ${error instanceof Error ? error.message : "Unknown error"}`)
 	}
 
 	return models

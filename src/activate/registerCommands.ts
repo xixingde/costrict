@@ -1,26 +1,33 @@
 import * as vscode from "vscode"
 import delay from "delay"
 
-import { CommandId, Package, ProviderSettings } from "../schemas"
+import type { CommandId } from "@roo-code/types"
+import { TelemetryService } from "@roo-code/telemetry"
+
+import { Package } from "../shared/package"
 import { getCommand } from "../utils/commands"
 import { ClineProvider } from "../core/webview/ClineProvider"
 import { ContextProxy } from "../core/config/ContextProxy"
-import { telemetryService } from "../services/telemetry/TelemetryService"
-import { CodeReviewService } from "../services/codeReview/codeReviewService"
+import { focusPanel } from "../utils/focusPanel"
 
 import { registerHumanRelayCallback, unregisterHumanRelayCallback, handleHumanRelayResponse } from "./humanRelay"
 import { handleNewTask } from "./handleTask"
-import { ReviewTarget, ReviewTargetType } from "../services/codeReview/types"
-import { ReviewComment } from "../services/codeReview/reviewComment"
-import { IssueStatus } from "../shared/codeReview"
-import { toRelativePath } from "../utils/path"
+import { CodeIndexManager } from "../services/code-index/manager"
+import { importSettingsWithFeedback } from "../core/config/importExport"
+import { MdmService } from "../services/mdm/MdmService"
+import { t } from "../i18n"
 import { EditorContext, EditorUtils } from "../integrations/editor/EditorUtils"
-import path from "node:path"
+import * as path from "path"
 
 interface UriSource {
 	path: string
 	external: string
 	fsPath: string
+}
+
+interface ProcessedResource {
+	type: "path" | "image"
+	content: string
 }
 
 /**
@@ -80,6 +87,17 @@ export const registerCommands = (options: RegisterCommandOptions) => {
 
 const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOptions): Record<CommandId, any> => ({
 	activationCompleted: () => {},
+	accountButtonClicked: () => {
+		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+
+		if (!visibleProvider) {
+			return
+		}
+
+		TelemetryService.instance.captureTitleButtonClicked("account")
+
+		visibleProvider.postMessageToWebview({ type: "action", action: "accountButtonClicked" })
+	},
 	plusButtonClicked: async () => {
 		const visibleProvider = getVisibleProviderOrLog(outputChannel)
 
@@ -87,11 +105,14 @@ const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOpt
 			return
 		}
 
-		telemetryService.captureTitleButtonClicked("plus")
+		TelemetryService.instance.captureTitleButtonClicked("plus")
 
 		await visibleProvider.removeClineFromStack()
 		await visibleProvider.postStateToWebview()
 		await visibleProvider.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
+		// Send focusInput action immediately after chatButtonClicked
+		// This ensures the focus happens after the view has switched
+		await visibleProvider.postMessageToWebview({ type: "action", action: "focusInput" })
 	},
 	mcpButtonClicked: () => {
 		const visibleProvider = getVisibleProviderOrLog(outputChannel)
@@ -100,7 +121,7 @@ const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOpt
 			return
 		}
 
-		telemetryService.captureTitleButtonClicked("mcp")
+		TelemetryService.instance.captureTitleButtonClicked("mcp")
 
 		visibleProvider.postMessageToWebview({ type: "action", action: "mcpButtonClicked" })
 	},
@@ -111,12 +132,12 @@ const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOpt
 			return
 		}
 
-		telemetryService.captureTitleButtonClicked("prompts")
+		TelemetryService.instance.captureTitleButtonClicked("prompts")
 
 		visibleProvider.postMessageToWebview({ type: "action", action: "promptsButtonClicked" })
 	},
 	popoutButtonClicked: () => {
-		telemetryService.captureTitleButtonClicked("popout")
+		TelemetryService.instance.captureTitleButtonClicked("popout")
 
 		return openClineInNewTab({ context, outputChannel })
 	},
@@ -128,7 +149,7 @@ const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOpt
 			return
 		}
 
-		telemetryService.captureTitleButtonClicked("settings")
+		TelemetryService.instance.captureTitleButtonClicked("settings")
 
 		visibleProvider.postMessageToWebview({ type: "action", action: "settingsButtonClicked" })
 		// Also explicitly post the visibility message to trigger scroll reliably
@@ -141,12 +162,14 @@ const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOpt
 			return
 		}
 
-		telemetryService.captureTitleButtonClicked("history")
+		TelemetryService.instance.captureTitleButtonClicked("history")
 
 		visibleProvider.postMessageToWebview({ type: "action", action: "historyButtonClicked" })
 	},
-	helpButtonClicked: () => {
-		vscode.env.openExternal(vscode.Uri.parse("https://costrict.ai"))
+	marketplaceButtonClicked: () => {
+		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+		if (!visibleProvider) return
+		visibleProvider.postMessageToWebview({ type: "action", action: "marketplaceButtonClicked" })
 	},
 	showHumanRelayDialog: (params: { requestId: string; promptText: string }) => {
 		const panel = getPanel()
@@ -167,20 +190,39 @@ const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOpt
 		const { promptForCustomStoragePath } = await import("../utils/storage")
 		await promptForCustomStoragePath()
 	},
+	importSettings: async (filePath?: string) => {
+		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+		if (!visibleProvider) {
+			return
+		}
+
+		await importSettingsWithFeedback(
+			{
+				providerSettingsManager: visibleProvider.providerSettingsManager,
+				contextProxy: visibleProvider.contextProxy,
+				customModesManager: visibleProvider.customModesManager,
+				provider: visibleProvider,
+			},
+			filePath,
+		)
+	},
 	focusInput: async () => {
 		try {
-			const panel = getPanel()
+			await focusPanel(tabPanel, sidebarPanel)
 
-			if (!panel) {
-				await vscode.commands.executeCommand(`workbench.view.extension.${Package.name}-ActivityBar`)
-			} else if (panel === tabPanel) {
-				panel.reveal(vscode.ViewColumn.Active, false)
-			} else if (panel === sidebarPanel) {
-				await vscode.commands.executeCommand(`${ClineProvider.sideBarId}.focus`)
+			// Send focus input message only for sidebar panels
+			if (sidebarPanel && getPanel() === sidebarPanel) {
 				provider.postMessageToWebview({ type: "action", action: "focusInput" })
 			}
 		} catch (error) {
 			outputChannel.appendLine(`Error focusing input: ${error}`)
+		}
+	},
+	focusPanel: async () => {
+		try {
+			await focusPanel(tabPanel, sidebarPanel)
+		} catch (error) {
+			outputChannel.appendLine(`Error focusing panel: ${error}`)
 		}
 	},
 	acceptInput: () => {
@@ -192,119 +234,22 @@ const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOpt
 
 		visibleProvider.postMessageToWebview({ type: "acceptInput" })
 	},
-	moreButtonClicked: () => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
-
-		if (!visibleProvider) return
-
-		telemetryService.captureTitleButtonClicked("more")
-	},
-	codeReviewButtonClicked: async () => {
-		let visibleProvider = getVisibleProviderOrLog(outputChannel)
-
-		if (!visibleProvider) {
-			visibleProvider = await ClineProvider.getInstance()
-		}
-
-		visibleProvider?.postMessageToWebview({ type: "action", action: "codeReviewButtonClicked" })
-	},
-	codeReview: () => {
-		const codeReviewService = CodeReviewService.getInstance()
-		const provider = codeReviewService.getProvider()
-		const editor = vscode.window.activeTextEditor
-		if (!provider || !editor) {
-			return
-		}
-		const fileUri = editor.document.uri
-		const range = editor.selection
-		const cwd = provider.cwd
-		provider.startReviewTask([
-			{
-				type: ReviewTargetType.CODE,
-				file_path: toRelativePath(fileUri.fsPath, cwd),
-				line_range: [range.start.line, range.end.line],
-			},
-		])
-	},
-	reviewFilesAndFolders: async (_: vscode.Uri, selectedUris: vscode.Uri[]) => {
-		const codeReviewService = CodeReviewService.getInstance()
-		const provider = codeReviewService.getProvider()
-
-		if (!provider) {
-			return
-		}
-		const cwd = provider.cwd
-		const targets: ReviewTarget[] = await Promise.all(
-			selectedUris.map(async (uri) => {
-				const stat = await vscode.workspace.fs.stat(uri)
-				return {
-					type: stat.type === vscode.FileType.Directory ? ReviewTargetType.FOLDER : ReviewTargetType.FILE,
-					file_path: toRelativePath(uri.fsPath, cwd),
-				}
-			}),
-		)
-		provider.startReviewTask(targets)
-	},
-	reviewRepo: async () => {
-		const codeReviewService = CodeReviewService.getInstance()
-		const provider = codeReviewService.getProvider()
-
-		if (!provider) {
-			return
-		}
-		provider.startReviewTask(
-			[
-				{
-					type: ReviewTargetType.FOLDER,
-					file_path: "",
-				},
-			],
-			true,
-		)
-	},
-	acceptIssue: async (thread: vscode.CommentThread) => {
-		const codeReviewService = CodeReviewService.getInstance()
-		const provider = codeReviewService.getProvider()
-
-		if (!provider) {
-			return
-		}
-		const comments = thread.comments as ReviewComment[]
-		provider.updateIssueStatus(comments, IssueStatus.ACCEPT)
-	},
-	rejectIssue: async (thread: vscode.CommentThread) => {
-		const codeReviewService = CodeReviewService.getInstance()
-		const provider = codeReviewService.getProvider()
-
-		if (!provider) {
-			return
-		}
-		const comments = thread.comments as ReviewComment[]
-		provider.updateIssueStatus(comments, IssueStatus.REJECT)
-	},
 	addFileToContext: async (...args: [UriSource] | [unknown, UriSource[]]) => {
 		const visibleProvider = await ClineProvider.getInstance()
 		if (!visibleProvider) {
 			return
 		}
 
-		// --- Logic to determine target resources ---
 		let sources: (UriSource | EditorContext)[] = []
-
-		// Check if args[1] is a valid UriSource array
 		if (args.length > 1 && Array.isArray(args[1]) && args[1].length > 0) {
 			sources = args[1]
 		} else {
-			// Handle a single file (from the old context menu or command palette)
 			let singleSource: UriSource | EditorContext | undefined | null
 			if (args.length > 0) {
-				// Get a single file from the context menu
 				;[singleSource] = args as [UriSource]
 			} else {
-				// Called from the command palette, get the file from the active editor
 				singleSource = EditorUtils.getEditorContext()
 			}
-
 			if (singleSource) {
 				sources = [singleSource]
 			}
@@ -313,43 +258,73 @@ const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOpt
 		if (sources.length === 0) {
 			return
 		}
-		// --- End of resource determination logic ---
 
-		// Return early if no valid file sources were found.
-		const aliasedPathPromises = sources.map(async (source) => {
-			// The 'path' property should be common to both UriSource and EditorContext.
+		const processedResourcePromises = sources.map(async (source): Promise<ProcessedResource | null> => {
 			if (!(source as UriSource).path && !(source as EditorContext).filePath) {
 				return null
 			}
 			const resourceUri = vscode.Uri.parse(
 				(source as UriSource).path || path.join(visibleProvider.cwd, (source as EditorContext).filePath),
 			)
-			// Await the dedicated function to get the aliased path.
 			return createAliasedPath(resourceUri)
 		})
 
-		// Wait for all promises to resolve, then filter out any failed path generations (which return null).
-		const validAliasedPaths = (await Promise.all(aliasedPathPromises)).filter((p): p is string => !!p)
+		const processedResources = (await Promise.all(processedResourcePromises)).filter(
+			(p): p is ProcessedResource => !!p,
+		)
 
-		if (validAliasedPaths.length === 0) {
+		if (processedResources.length === 0) {
 			return
 		}
 
-		// Join all valid paths with a space and add a trailing space at the end.
-		const chatMessage = validAliasedPaths.join(" ") + " "
+		const textPaths: string[] = []
+		const imageSources: string[] = []
+
+		for (const resource of processedResources) {
+			if (resource.type === "path") {
+				textPaths.push(resource.content)
+			} else if (resource.type === "image") {
+				imageSources.push(resource.content)
+			}
+		}
+
+		const chatMessage = textPaths.length > 0 ? textPaths.join(" ") + " " : ""
+
+		const payload: { text: string; images?: string[] } = {
+			text: chatMessage,
+		}
+		if (imageSources.length > 0) {
+			payload.images = imageSources
+		}
 
 		await Promise.all([
 			visibleProvider.postMessageToWebview({ type: "action", action: "chatButtonClicked" }),
 			visibleProvider.postMessageToWebview({
 				type: "invoke",
 				invoke: "setChatBoxMessageByContext",
-				text: chatMessage,
+				...payload,
 			}),
 		])
 	},
 })
 
-async function createAliasedPath(resourceUri: vscode.Uri): Promise<string | null> {
+async function createAliasedPath(resourceUri: vscode.Uri): Promise<ProcessedResource | null> {
+	const imageExtensions = new Set([".png", ".jpeg", ".webp"])
+	const fileExtension = path.extname(resourceUri.fsPath).toLowerCase()
+	if (imageExtensions.has(fileExtension)) {
+		try {
+			const fileData = await vscode.workspace.fs.readFile(resourceUri)
+			const base64Data = Buffer.from(fileData).toString("base64")
+			const mimeType = `image/${fileExtension.slice(1)}`
+			const dataUrl = `data:${mimeType};base64,${base64Data}`
+
+			return { type: "image", content: dataUrl }
+		} catch (error) {
+			console.error(`Error reading or converting image file ${resourceUri.fsPath}:`, error)
+			return null
+		}
+	}
+
 	const workspaceFolder = vscode.workspace.getWorkspaceFolder(resourceUri)
 	if (!workspaceFolder) {
 		console.warn(`Resource ${resourceUri.fsPath} is not in an open workspace folder.`)
@@ -360,22 +335,19 @@ async function createAliasedPath(resourceUri: vscode.Uri): Promise<string | null
 	try {
 		stat = await vscode.workspace.fs.stat(resourceUri)
 	} catch (error) {
-		// This can happen if the file is deleted after the command is invoked.
 		return null
 	}
 
 	const rootPath = workspaceFolder.uri.path
 	const fullPath = resourceUri.path
 
-	// Using substring is slightly more performant and direct than replace for prefixes.
 	let relativePath = fullPath.startsWith(rootPath) ? fullPath.substring(rootPath.length) : fullPath
 
-	// Ensure folder paths end with a slash.
 	if (stat.type === vscode.FileType.Directory && !relativePath.endsWith("/")) {
 		relativePath += "/"
 	}
 
-	return `@${relativePath}`
+	return { type: "path", content: `@${relativePath}` }
 }
 
 export const openClineInNewTab = async ({ context, outputChannel }: Omit<RegisterCommandOptions, "provider">) => {
@@ -384,23 +356,18 @@ export const openClineInNewTab = async ({ context, outputChannel }: Omit<Registe
 	// don't need to use that event).
 	// https://github.com/microsoft/vscode-extension-samples/blob/main/webview-sample/src/extension.ts
 	const contextProxy = await ContextProxy.getInstance(context)
-	const tabProvider = new ClineProvider(
-		context,
-		outputChannel,
-		"editor",
-		contextProxy,
-		async (providerSettings: ProviderSettings): Promise<ProviderSettings> => {
-			if (typeof providerSettings.zgsmApiKeyUpdatedAt !== "string") {
-				providerSettings.zgsmApiKeyUpdatedAt = `${providerSettings.zgsmApiKeyUpdatedAt ?? ""}`
-			}
+	const codeIndexManager = CodeIndexManager.getInstance(context)
 
-			if (typeof providerSettings.zgsmApiKeyExpiredAt !== "string") {
-				providerSettings.zgsmApiKeyExpiredAt = `${providerSettings.zgsmApiKeyExpiredAt ?? ""}`
-			}
+	// Get the existing MDM service instance to ensure consistent policy enforcement
+	let mdmService: MdmService | undefined
+	try {
+		mdmService = MdmService.getInstance()
+	} catch (error) {
+		// MDM service not initialized, which is fine - extension can work without it
+		mdmService = undefined
+	}
 
-			return providerSettings
-		},
-	)
+	const tabProvider = new ClineProvider(context, outputChannel, "editor", contextProxy, mdmService)
 	const lastCol = Math.max(...vscode.window.visibleTextEditors.map((editor) => editor.viewColumn || 0))
 
 	// Check if there are any visible text editors, otherwise open a new group
@@ -413,7 +380,7 @@ export const openClineInNewTab = async ({ context, outputChannel }: Omit<Registe
 
 	const targetCol = hasVisibleEditors ? Math.max(lastCol + 1, 1) : vscode.ViewColumn.Two
 
-	const newPanel = vscode.window.createWebviewPanel(ClineProvider.tabPanelId, "COSTRICT", targetCol, {
+	const newPanel = vscode.window.createWebviewPanel(ClineProvider.tabPanelId, "Costrict", targetCol, {
 		enableScripts: true,
 		retainContextWhenHidden: true,
 		localResourceRoots: [context.extensionUri],
@@ -424,17 +391,10 @@ export const openClineInNewTab = async ({ context, outputChannel }: Omit<Registe
 
 	// TODO: Use better svg icon with light and dark variants (see
 	// https://stackoverflow.com/questions/58365687/vscode-extension-iconpath).
-	newPanel.iconPath = vscode.Uri.joinPath(
-		context.extensionUri,
-		"zgsm",
-		"assets",
-		"images",
-		"shenma_robot_logo_big.png",
-	)
-	// newPanel.iconPath = {
-	// 	light: vscode.Uri.joinPath(context.extensionUri, "assets", "icons", "panel_light.png"),
-	// 	dark: vscode.Uri.joinPath(context.extensionUri, "assets", "icons", "panel_dark.png"),
-	// }
+	newPanel.iconPath = {
+		light: vscode.Uri.joinPath(context.extensionUri, "assets", "costrict", "logo.svg"),
+		dark: vscode.Uri.joinPath(context.extensionUri, "assets", "costrict", "logo.svg"),
+	}
 
 	await tabProvider.resolveWebviewView(newPanel)
 

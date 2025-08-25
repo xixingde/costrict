@@ -59,6 +59,7 @@ export class TerminalRegistry {
 
 					if (terminal) {
 						terminal.setActiveStream(stream)
+						terminal.busy = true // Mark terminal as busy when shell execution starts
 					} else {
 						console.error(
 							"[onDidStartTerminalShellExecution] Shell execution started, but not from a Costrict-registered terminal:",
@@ -99,6 +100,7 @@ export class TerminalRegistry {
 							{ terminalId: terminal?.id, command: process?.command, exitCode: e.exitCode },
 						)
 
+						terminal.busy = false
 						return
 					}
 
@@ -113,6 +115,7 @@ export class TerminalRegistry {
 
 					// Signal completion to any waiting processes.
 					terminal.shellExecutionComplete(exitDetails)
+					terminal.busy = false // Mark terminal as not busy when shell execution ends
 				},
 			)
 
@@ -143,13 +146,11 @@ export class TerminalRegistry {
 	 * directory.
 	 *
 	 * @param cwd The working directory path
-	 * @param requiredCwd Whether the working directory is required (if false, may reuse any non-busy terminal)
 	 * @param taskId Optional task ID to associate with the terminal
 	 * @returns A Terminal instance
 	 */
 	public static async getOrCreateTerminal(
 		cwd: string,
-		requiredCwd: boolean = false,
 		taskId?: string,
 		provider: RooTerminalProvider = "vscode",
 	): Promise<RooTerminal> {
@@ -189,12 +190,6 @@ export class TerminalRegistry {
 
 				return arePathsEqual(vscode.Uri.file(cwd).fsPath, terminalCwd)
 			})
-		}
-
-		// Third priority: Find any non-busy terminal (only if directory is not
-		// required).
-		if (!terminal && !requiredCwd) {
-			terminal = terminals.find((t) => !t.busy && t.provider === provider)
 		}
 
 		// If no suitable terminal found, create a new one.

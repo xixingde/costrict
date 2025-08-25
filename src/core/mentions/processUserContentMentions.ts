@@ -12,13 +12,23 @@ export async function processUserContentMentions({
 	cwd,
 	urlContentFetcher,
 	fileContextTracker,
+	rooIgnoreController,
+	showRooIgnoredFiles = true,
 	cline,
+	includeDiagnosticMessages = true,
+	maxDiagnosticMessages = 50,
+	maxReadFileLine,
 }: {
 	userContent: Anthropic.Messages.ContentBlockParam[]
 	cwd: string
 	urlContentFetcher: UrlContentFetcher
 	fileContextTracker: FileContextTracker
+	rooIgnoreController?: any
+	showRooIgnoredFiles?: boolean
 	cline?: Task
+	includeDiagnosticMessages?: boolean
+	maxDiagnosticMessages?: number
+	maxReadFileLine?: number
 }) {
 	// Process userContent array, which contains various block types:
 	// TextBlockParam, ImageBlockParam, ToolUseBlockParam, and ToolResultBlockParam.
@@ -32,13 +42,27 @@ export async function processUserContentMentions({
 	// should parse mentions).
 	return Promise.all(
 		userContent.map(async (block) => {
-			const shouldProcessMentions = (text: string) => text.includes("<task>") || text.includes("<feedback>")
+			const shouldProcessMentions = (text: string) =>
+				text.includes("<task>") ||
+				text.includes("<feedback>") ||
+				text.includes("<answer>") ||
+				text.includes("<user_message>")
 
 			if (block.type === "text") {
 				if (shouldProcessMentions(block.text)) {
 					return {
 						...block,
-						text: await parseMentions(block.text, cwd, urlContentFetcher, fileContextTracker, cline),
+						text: await parseMentions(
+							block.text,
+							cwd,
+							urlContentFetcher,
+							fileContextTracker,
+							rooIgnoreController,
+							showRooIgnoredFiles,
+							includeDiagnosticMessages,
+							maxDiagnosticMessages,
+							maxReadFileLine,
+						),
 					}
 				}
 
@@ -53,7 +77,11 @@ export async function processUserContentMentions({
 								cwd,
 								urlContentFetcher,
 								fileContextTracker,
-								cline,
+								rooIgnoreController,
+								showRooIgnoredFiles,
+								includeDiagnosticMessages,
+								maxDiagnosticMessages,
+								maxReadFileLine,
 							),
 						}
 					}
@@ -70,7 +98,11 @@ export async function processUserContentMentions({
 										cwd,
 										urlContentFetcher,
 										fileContextTracker,
-										cline,
+										rooIgnoreController,
+										showRooIgnoredFiles,
+										includeDiagnosticMessages,
+										maxDiagnosticMessages,
+										maxReadFileLine,
 									),
 								}
 							}

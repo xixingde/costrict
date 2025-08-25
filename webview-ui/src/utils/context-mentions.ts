@@ -1,8 +1,19 @@
-import { mentionRegex } from "@roo/shared/context-mentions"
 import { Fzf } from "fzf"
-import { ModeConfig } from "@roo/shared/modes"
+
+import type { ModeConfig } from "@roo-code/types"
+import type { Command } from "@roo/ExtensionMessage"
+
+import { mentionRegex } from "@roo/context-mentions"
 
 import { escapeSpaces } from "./path-mentions"
+
+/**
+ * Gets the description for a mode, prioritizing description > whenToUse > roleDefinition
+ * and taking only the first line
+ */
+function getModeDescription(mode: ModeConfig): string {
+	return (mode.description || mode.whenToUse || mode.roleDefinition).split("\n")[0]
+}
 
 export interface SearchResult {
 	path: string
@@ -18,9 +29,10 @@ export function insertMention(
 	text: string,
 	position: number,
 	value: string,
+	isSlashCommand: boolean = false,
 ): { newValue: string; mentionIndex: number } {
-	// Handle slash command
-	if (text.startsWith("/")) {
+	// Handle slash command selection (only when explicitly selecting a slash command)
+	if (isSlashCommand) {
 		return {
 			newValue: value,
 			mentionIndex: 0,
@@ -95,7 +107,8 @@ export enum ContextMenuOptionType {
 	Git = "git",
 	NoResults = "noResults",
 	Mode = "mode", // Add mode type
-	base64 = "base64",
+	Command = "command", // Add command type
+	SectionHeader = "sectionHeader", // Add section header type
 }
 
 export interface ContextMenuQueryItem {
@@ -104,48 +117,102 @@ export interface ContextMenuQueryItem {
 	label?: string
 	description?: string
 	icon?: string
+	slashCommand?: string
+	secondaryText?: string
+	argumentHint?: string
 }
 
 export function getContextMenuOptions(
 	query: string,
-	inputValue: string,
 	selectedType: ContextMenuOptionType | null = null,
 	queryItems: ContextMenuQueryItem[],
 	dynamicSearchResults: SearchResult[] = [],
 	modes?: ModeConfig[],
+	commands?: Command[],
 ): ContextMenuQueryItem[] {
-	// Handle slash commands for modes
-	if (query.startsWith("/") && inputValue.startsWith("/")) {
-		const modeQuery = query.slice(1)
-		if (!modes?.length) return [{ type: ContextMenuOptionType.NoResults }]
+	// Handle slash commands for modes and commands
+	// Only process as slash command if the query itself starts with "/" (meaning we're typing a slash command)
+	if (query.startsWith("/")) {
+		const slashQuery = query.slice(1)
+		const results: ContextMenuQueryItem[] = []
 
-		// Create searchable strings array for fzf
-		const searchableItems = modes.map((mode) => ({
-			original: mode,
-			searchStr: mode.name,
-		}))
+		// Add command suggestions first (prioritize commands at the top)
+		if (commands?.length) {
+			// Create searchable strings array for fzf
+			const searchableCommands = commands.map((command) => ({
+				original: command,
+				searchStr: command.name,
+			}))
 
-		// Initialize fzf instance for fuzzy search
-		const fzf = new Fzf(searchableItems, {
-			selector: (item) => item.searchStr,
-		})
+			// Initialize fzf instance for fuzzy search
+			const fzf = new Fzf(searchableCommands, {
+				selector: (item) => item.searchStr,
+			})
 
-		// Get fuzzy matching items
-		const matchingModes = modeQuery
-			? fzf.find(modeQuery).map((result) => ({
-					type: ContextMenuOptionType.Mode,
-					value: result.item.original.slug,
-					label: result.item.original.name,
-					description: (result.item.original.whenToUse || result.item.original.roleDefinition).split("\n")[0],
-				}))
-			: modes.map((mode) => ({
-					type: ContextMenuOptionType.Mode,
-					value: mode.slug,
-					label: mode.name,
-					description: (mode.whenToUse || mode.roleDefinition).split("\n")[0],
-				}))
+			// Get fuzzy matching commands
+			const matchingCommands = slashQuery
+				? fzf.find(slashQuery).map((result) => ({
+						type: ContextMenuOptionType.Command,
+						value: result.item.original.name,
+						slashCommand: `/${result.item.original.name}`,
+						description: result.item.original.description,
+						argumentHint: result.item.original.argumentHint,
+					}))
+				: commands.map((command) => ({
+						type: ContextMenuOptionType.Command,
+						value: command.name,
+						slashCommand: `/${command.name}`,
+						description: command.description,
+						argumentHint: command.argumentHint,
+					}))
 
-		return matchingModes.length > 0 ? matchingModes : [{ type: ContextMenuOptionType.NoResults }]
+			if (matchingCommands.length > 0) {
+				results.push({
+					type: ContextMenuOptionType.SectionHeader,
+					label: "Custom Commands",
+				})
+				results.push(...matchingCommands)
+			}
+		}
+
+		// Add mode suggestions second
+		if (modes?.length) {
+			// Create searchable strings array for fzf
+			const searchableItems = modes.map((mode) => ({
+				original: mode,
+				searchStr: mode.name,
+			}))
+
+			// Initialize fzf instance for fuzzy search
+			const fzf = new Fzf(searchableItems, {
+				selector: (item) => item.searchStr,
+			})
+
+			// Get fuzzy matching items
+			const matchingModes = slashQuery
+				? fzf.find(slashQuery).map((result) => ({
+						type: ContextMenuOptionType.Mode,
+						value: result.item.original.slug,
+						slashCommand: `/${result.item.original.slug}`,
+						description: getModeDescription(result.item.original),
+					}))
+				: modes.map((mode) => ({
+						type: ContextMenuOptionType.Mode,
+						value: mode.slug,
+						slashCommand: `/${mode.slug}`,
+						description: getModeDescription(mode),
+					}))
+
+			if (matchingModes.length > 0) {
+				results.push({
+					type: ContextMenuOptionType.SectionHeader,
+					label: "Modes",
+				})
+				results.push(...matchingModes)
+			}
+		}
+
+		return results.length > 0 ? results : [{ type: ContextMenuOptionType.NoResults }]
 	}
 
 	const workingChanges: ContextMenuQueryItem = {
@@ -256,7 +323,7 @@ export function getContextMenuOptions(
 	// Convert search results to queryItems format
 	const searchResultItems = dynamicSearchResults.map((result) => {
 		// Ensure paths start with / for consistency
-		let formattedPath = result.path.startsWith("/") ? result.path : `/${result.path}`
+		const formattedPath = result.path.startsWith("/") ? result.path : `/${result.path}`
 
 		// For display purposes, we don't escape spaces in the label or description
 		const displayPath = formattedPath
@@ -299,11 +366,14 @@ export function getContextMenuOptions(
 }
 
 export function shouldShowContextMenu(text: string, position: number): boolean {
-	// Handle slash command
-	if (text.startsWith("/")) {
-		return position <= text.length && !text.includes(" ")
-	}
 	const beforeCursor = text.slice(0, position)
+
+	// Check if we're in a slash command context (at the beginning and no space yet)
+	if (text.startsWith("/") && !text.includes(" ") && position <= text.length) {
+		return true
+	}
+
+	// Check for @ mention context
 	const atIndex = beforeCursor.lastIndexOf("@")
 
 	if (atIndex === -1) {

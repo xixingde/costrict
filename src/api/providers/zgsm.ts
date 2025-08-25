@@ -1,8 +1,17 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI, { AzureOpenAI } from "openai"
-import axios, { AxiosError } from "axios"
+import axios from "axios"
+import { v7 as uuidv7 } from "uuid"
 
-import { azureOpenAiDefaultApiVersion, ModelInfo, type ApiHandlerOptions } from "../../shared/api"
+import {
+	type ModelInfo,
+	azureOpenAiDefaultApiVersion,
+	DEEP_SEEK_DEFAULT_TEMPERATURE,
+	OPENAI_AZURE_AI_INFERENCE_PATH,
+	zgsmDefaultModelId,
+} from "@roo-code/types"
+
+import type { ApiHandlerOptions } from "../../shared/api"
 
 import { XmlMatcher } from "../../utils/xml-matcher"
 
@@ -12,43 +21,47 @@ import { convertToSimpleMessages } from "../transform/simple-format"
 import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"
 
-import { DEEP_SEEK_DEFAULT_TEMPERATURE, DEFAULT_HEADERS } from "./constants"
 import { BaseProvider } from "./base-provider"
 import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
-import { getZgsmSelectedModelInfo } from "../../shared/getZgsmSelectedModelInfo"
+import { ZgsmAuthConfig, ZgsmAuthService } from "../../core/costrict/auth"
+import { getZgsmSelectedModelInfo, setZgsmFullResponseData } from "../../shared/getZgsmSelectedModelInfo"
 import { getClientId } from "../../utils/getClientId"
 import { getWorkspacePath } from "../../utils/path"
-import { defaultZgsmAuthConfig } from "../../zgsmAuth/config"
+import { getApiRequestTimeout } from "./utils/timeout-config"
+import { createLogger, ILogger } from "../../utils/logger"
+import { Package } from "../../shared/package"
+import { COSTRICT_DEFAULT_HEADERS } from "../../shared/headers"
+
 let modelsCache = new WeakRef<string[]>([])
-let defaultModelCache: string | undefined = "glm45-fp8"
-const OPENAI_AZURE_AI_INFERENCE_PATH = "/models/chat/completions"
-export class ZgsmHandler extends BaseProvider implements SingleCompletionHandler {
+const autoModeModelId = "Auto"
+export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
 	private client: OpenAI
 	private baseURL: string
 	private chatType?: "user" | "system"
 	private headers = {}
-
+	private logger: ILogger
 	constructor(options: ApiHandlerOptions) {
 		super()
 		this.options = options
-
-		this.baseURL = `${this.options.zgsmBaseUrl || this.options.zgsmDefaultBaseUrl || defaultZgsmAuthConfig.baseUrl}/chat-rag/api/v1`
-		const apiKey = options.zgsmApiKey ?? "not-provided"
+		this.logger = createLogger(Package.outputChannel)
+		this.baseURL = `${this.options.zgsmBaseUrl?.trim() || ZgsmAuthConfig.getInstance().getDefaultApiBaseUrl()}/chat-rag/api/v1`
+		const apiKey = options.zgsmAccessToken || "not-provided"
 		const isAzureAiInference = this._isAzureAiInference(this.baseURL)
 		const urlHost = this._getUrlHost(this.baseURL)
 		const isAzureOpenAi = urlHost === "azure.com" || urlHost.endsWith(".azure.com") || options.openAiUseAzure
 
 		this.headers = {
-			...DEFAULT_HEADERS,
+			...COSTRICT_DEFAULT_HEADERS,
 			...(this.options.openAiHeaders || {}),
 		}
-
+		const timeout = getApiRequestTimeout()
 		if (isAzureAiInference) {
 			// Azure AI Inference Service (e.g., for DeepSeek) uses a different path structure
 			this.client = new OpenAI({
 				baseURL: this.baseURL,
 				apiKey,
+				timeout,
 				defaultHeaders: this.headers,
 				defaultQuery: { "api-version": this.options.azureApiVersion || "2024-05-01-preview" },
 			})
@@ -58,6 +71,7 @@ export class ZgsmHandler extends BaseProvider implements SingleCompletionHandler
 			this.client = new AzureOpenAI({
 				baseURL: this.baseURL,
 				apiKey,
+				timeout,
 				apiVersion: this.options.azureApiVersion || azureOpenAiDefaultApiVersion,
 				defaultHeaders: this.headers,
 			})
@@ -65,6 +79,7 @@ export class ZgsmHandler extends BaseProvider implements SingleCompletionHandler
 			this.client = new OpenAI({
 				baseURL: this.baseURL,
 				apiKey,
+				timeout,
 				defaultHeaders: this.headers,
 			})
 		}
@@ -76,12 +91,12 @@ export class ZgsmHandler extends BaseProvider implements SingleCompletionHandler
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
 		// Performance monitoring log
-		const requestId = `${metadata?.instanceId}-${Date.now().toString()}`
+		const requestId = uuidv7()
 
 		// 1. Cache calculation results and configuration
 		const { info: modelInfo, reasoning } = this.getModel()
-		const modelUrl = `${this.options.zgsmBaseUrl || this.options.zgsmDefaultBaseUrl}/chat-rag/api/v1`
-		const modelId = `${this.options.zgsmModelId || this.options.zgsmDefaultModelId || defaultModelCache}`
+		const modelUrl = this.baseURL || ZgsmAuthConfig.getInstance().getDefaultApiBaseUrl()
+		const modelId = this.options.zgsmModelId || zgsmDefaultModelId
 		const enabledR1Format = this.options.openAiR1FormatEnabled ?? false
 		const enabledLegacyFormat = this.options.openAiLegacyFormat ?? false
 
@@ -107,6 +122,15 @@ export class ZgsmHandler extends BaseProvider implements SingleCompletionHandler
 			return
 		}
 
+		try {
+			const tokens = await ZgsmAuthService.getInstance().getTokens()
+			this.client.apiKey = tokens?.access_token || "not-provided"
+		} catch (error) {
+			console.warn(
+				`[createMessage] getting new tokens failed \n\nuse old tokens: ${this.client.apiKey} \n\n${error.message}`,
+			)
+		}
+
 		// 5. Handle streaming and non-streaming requests
 		if (this.options.openAiStreamingEnabled ?? true) {
 			const convertedMessages = this.convertMessages(
@@ -127,12 +151,22 @@ export class ZgsmHandler extends BaseProvider implements SingleCompletionHandler
 				modelInfo,
 			)
 
-			const stream = await this.client.chat.completions.create(
-				requestOptions,
-				Object.assign(isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}, {
-					headers: _headers,
-				}),
-			)
+			const { data: stream, response } = await this.client.chat.completions
+				.create(
+					requestOptions,
+					Object.assign(isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}, {
+						headers: _headers,
+					}),
+				)
+				.withResponse()
+
+			if (this.options.zgsmModelId === autoModeModelId) {
+				const userInputHeader = response.headers.get("x-user-input")
+				if (userInputHeader) {
+					const decodedUserInput = decodeURIComponent(userInputHeader)
+					this.logger.info(`[x-user-input]: ${decodedUserInput}`)
+				}
+			}
 
 			// 6. Optimize stream processing - use batch processing and buffer
 			yield* this.handleOptimizedStream(stream, modelInfo)
@@ -159,8 +193,17 @@ export class ZgsmHandler extends BaseProvider implements SingleCompletionHandler
 				text: response.choices[0]?.message.content || "",
 			}
 
-			const _usageProcessingStart = performance.now()
 			yield this.processUsageMetrics(response.usage, modelInfo)
+		}
+	}
+
+	protected processUsageMetrics(usage: any, _modelInfo?: ModelInfo): ApiStreamUsageChunk {
+		return {
+			type: "usage",
+			inputTokens: usage?.prompt_tokens || 0,
+			outputTokens: usage?.completion_tokens || 0,
+			cacheWriteTokens: usage?.cache_creation_input_tokens || undefined,
+			cacheReadTokens: usage?.cache_read_input_tokens || undefined,
 		}
 	}
 
@@ -177,6 +220,7 @@ export class ZgsmHandler extends BaseProvider implements SingleCompletionHandler
 			...this.headers,
 			"Accept-Language": metadata?.language || "en",
 			"x-quota-identity": this.chatType || "system",
+			"X-Request-ID": requestId,
 			"zgsm-task-id": metadata?.taskId || "",
 			"zgsm-request-id": requestId,
 			"zgsm-client-id": clientId,
@@ -326,22 +370,29 @@ export class ZgsmHandler extends BaseProvider implements SingleCompletionHandler
 
 		// Use content buffer to reduce matcher.update() calls
 		const contentBuffer: string[] = []
-		let time = Date.now() + 50
+		let time = Date.now()
+		let isPrinted = false
+
+		// chunk
 		for await (const chunk of stream) {
 			const delta = chunk.choices[0]?.delta ?? {}
 
 			// Cache content for batch processing
 			if (delta.content) {
 				contentBuffer.push(delta.content)
-
+				if (!isPrinted && chunk.model && this.options.zgsmModelId === autoModeModelId) {
+					this.logger.info(`[Current Model]: ${chunk.model}`)
+					isPrinted = true
+				}
+				const now = Date.now()
 				// Process in batch when threshold is reached
-				if (contentBuffer.length >= 3 && Date.now() >= time) {
+				if (contentBuffer.length >= 5 && time + 100 <= now) {
 					const batchedContent = contentBuffer.join("")
 					for (const processedChunk of matcher.update(batchedContent)) {
 						yield processedChunk
 					}
 					contentBuffer.length = 0 // Clear buffer
-					time = Date.now() + 50
+					time = now
 				}
 			}
 
@@ -378,18 +429,8 @@ export class ZgsmHandler extends BaseProvider implements SingleCompletionHandler
 		}
 	}
 
-	protected processUsageMetrics(usage: any, _modelInfo?: ModelInfo): ApiStreamUsageChunk {
-		return {
-			type: "usage",
-			inputTokens: usage?.prompt_tokens || 0,
-			outputTokens: usage?.completion_tokens || 0,
-			cacheWriteTokens: usage?.cache_creation_input_tokens || undefined,
-			cacheReadTokens: usage?.cache_read_input_tokens || undefined,
-		}
-	}
-
 	override getModel() {
-		const id = `${this.options.zgsmModelId || this.options.zgsmDefaultModelId || defaultModelCache}`
+		const id = this.options.zgsmModelId ?? zgsmDefaultModelId
 		const defaultInfo = getZgsmSelectedModelInfo(id)
 		const info = this.options.useZgsmCustomConfig
 			? (this.options.openAiCustomModelInfo ?? defaultInfo)
@@ -515,6 +556,7 @@ export class ZgsmHandler extends BaseProvider implements SingleCompletionHandler
 			}
 		}
 	}
+
 	private _getUrlHost(baseUrl?: string): string {
 		try {
 			return new URL(baseUrl ?? "").host
@@ -561,35 +603,24 @@ export class ZgsmHandler extends BaseProvider implements SingleCompletionHandler
 	}
 }
 
-export const canParseURL = (url: string): boolean => {
-	// if the URL constructor is available, use it to check if the URL is valid
-	if (typeof URL.canParse === "function") {
-		return URL.canParse(url)
-	}
+export async function getZgsmModels(baseUrl?: string, apiKey?: string, openAiHeaders?: Record<string, string>) {
+	try {
+		if (!baseUrl) {
+			return []
+		}
 
-	try {
-		new URL(url)
-		return true
-	} catch {
-		return false
-	}
-}
-export async function getZgsmModels(
-	baseUrl?: string,
-	apiKey?: string,
-	openAiHeaders?: Record<string, string>,
-): Promise<[string[], string | undefined, (AxiosError | undefined)?]> {
-	baseUrl = baseUrl ? baseUrl.trim() || defaultZgsmAuthConfig.baseUrl : defaultZgsmAuthConfig.baseUrl
-	const modelsUrl = `${baseUrl}/ai-gateway/api/v1/models`
-	try {
-		if (!canParseURL(modelsUrl)) {
-			throw new Error(`Invalid Costrict base URL: ${modelsUrl}`)
+		// Trim whitespace from baseUrl to handle cases where users accidentally include spaces
+		const trimmedBaseUrl = baseUrl.trim()
+
+		if (!URL.canParse(trimmedBaseUrl)) {
+			return []
 		}
 
 		const config: Record<string, any> = {}
 		const headers: Record<string, string> = {
-			...DEFAULT_HEADERS,
+			...COSTRICT_DEFAULT_HEADERS,
 			...(openAiHeaders || {}),
+			"X-Request-ID": uuidv7(),
 		}
 
 		if (apiKey) {
@@ -599,15 +630,18 @@ export async function getZgsmModels(
 		if (Object.keys(headers).length > 0) {
 			config["headers"] = headers
 		}
-		config.timeout = 3000
-		const response = await axios.get(modelsUrl, config)
-		const modelsArray = response.data?.data?.map((model: any) => model.id) || []
 
-		modelsCache = new WeakRef([...new Set<string>(modelsArray)])
-		defaultModelCache = modelsArray[0]
+		const response = await axios.get(`${baseUrl}/ai-gateway/api/v1/models`, config)
+		const fullResponseData = response.data?.data || []
+		const modelsArray = fullResponseData?.map((model: any) => model.id) || []
+		const result = [...new Set<string>(modelsArray)]
+
+		modelsCache = new WeakRef(result)
+		setZgsmFullResponseData(fullResponseData)
+
+		return result
 	} catch (error) {
-		console.error(`[${new Date().toLocaleString()}] Error fetching Costrict models`, modelsUrl, error)
-	} finally {
-		return [modelsCache.deref() || [], defaultModelCache]
+		console.log(`Error fetching zgsmModels from [${baseUrl}/ai-gateway/api/v1/models]:`, error.message)
+		return modelsCache.deref() || []
 	}
 }

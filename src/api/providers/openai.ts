@@ -3,29 +3,36 @@ import OpenAI, { AzureOpenAI } from "openai"
 import axios from "axios"
 
 import {
-	ApiHandlerOptions,
+	type ModelInfo,
 	azureOpenAiDefaultApiVersion,
-	ModelInfo,
 	openAiModelInfoSaneDefaults,
-} from "../../shared/api"
-import { SingleCompletionHandler } from "../index"
+	DEEP_SEEK_DEFAULT_TEMPERATURE,
+	OPENAI_AZURE_AI_INFERENCE_PATH,
+} from "@roo-code/types"
+
+import type { ApiHandlerOptions } from "../../shared/api"
+
+import { XmlMatcher } from "../../utils/xml-matcher"
+
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { convertToR1Format } from "../transform/r1-format"
 import { convertToSimpleMessages } from "../transform/simple-format"
 import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
+import { getModelParams } from "../transform/model-params"
+
+import { DEFAULT_HEADERS } from "./constants"
 import { BaseProvider } from "./base-provider"
-import { XmlMatcher } from "../../utils/xml-matcher"
-import { DEFAULT_HEADERS, DEEP_SEEK_DEFAULT_TEMPERATURE } from "./constants"
+import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
+import { getApiRequestTimeout } from "./utils/timeout-config"
 
-export const AZURE_AI_INFERENCE_PATH = "/models/chat/completions"
-
-export interface OpenAiHandlerOptions extends ApiHandlerOptions {}
-
+// TODO: Rename this to OpenAICompatibleHandler. Also, I think the
+// `OpenAINativeHandler` can subclass from this, since it's obviously
+// compatible with the OpenAI API. We can also rename it to `OpenAIHandler`.
 export class OpenAiHandler extends BaseProvider implements SingleCompletionHandler {
-	protected options: OpenAiHandlerOptions
+	protected options: ApiHandlerOptions
 	private client: OpenAI
 
-	constructor(options: OpenAiHandlerOptions) {
+	constructor(options: ApiHandlerOptions) {
 		super()
 		this.options = options
 
@@ -40,6 +47,8 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			...(this.options.openAiHeaders || {}),
 		}
 
+		const timeout = getApiRequestTimeout()
+
 		if (isAzureAiInference) {
 			// Azure AI Inference Service (e.g., for DeepSeek) uses a different path structure
 			this.client = new OpenAI({
@@ -47,6 +56,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				apiKey,
 				defaultHeaders: headers,
 				defaultQuery: { "api-version": this.options.azureApiVersion || "2024-05-01-preview" },
+				timeout,
 			})
 		} else if (isAzureOpenAi) {
 			// Azure API shape slightly differs from the core API shape:
@@ -56,18 +66,24 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				apiKey,
 				apiVersion: this.options.azureApiVersion || azureOpenAiDefaultApiVersion,
 				defaultHeaders: headers,
+				timeout,
 			})
 		} else {
 			this.client = new OpenAI({
 				baseURL,
 				apiKey,
 				defaultHeaders: headers,
+				timeout,
 			})
 		}
 	}
 
-	override async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
-		const modelInfo = this.getModel().info
+	override async *createMessage(
+		systemPrompt: string,
+		messages: Anthropic.Messages.MessageParam[],
+		metadata?: ApiHandlerCreateMessageMetadata,
+	): ApiStream {
+		const { info: modelInfo, reasoning } = this.getModel()
 		const modelUrl = this.options.openAiBaseUrl ?? ""
 		const modelId = this.options.openAiModelId ?? ""
 		const enabledR1Format = this.options.openAiR1FormatEnabled ?? false
@@ -76,7 +92,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		const deepseekReasoner = modelId.includes("deepseek-reasoner") || enabledR1Format
 		const ark = modelUrl.includes(".volces.com")
 
-		if (modelId.startsWith("o3-mini")) {
+		if (modelId.includes("o1") || modelId.includes("o3") || modelId.includes("o4")) {
 			yield* this.handleO3FamilyMessage(modelId, systemPrompt, messages)
 			return
 		}
@@ -141,20 +157,26 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 
 			const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
 				model: modelId,
-				temperature: this.options.modelTemperature ?? (deepseekReasoner ? DEEP_SEEK_DEFAULT_TEMPERATURE : 0),
 				messages: convertedMessages,
 				stream: true as const,
 				...(isGrokXAI ? {} : { stream_options: { include_usage: true } }),
-				reasoning_effort: this.getModel().info.reasoningEffort,
+				...(reasoning && reasoning),
 			}
 
-			if (this.options.includeMaxTokens) {
-				requestOptions.max_tokens = modelInfo.maxTokens
+			// Only include temperature if explicitly set
+			if (this.options.modelTemperature !== undefined) {
+				requestOptions.temperature = this.options.modelTemperature
+			} else if (deepseekReasoner) {
+				// DeepSeek Reasoner has a specific default temperature
+				requestOptions.temperature = DEEP_SEEK_DEFAULT_TEMPERATURE
 			}
+
+			// Add max_tokens if needed
+			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
 
 			const stream = await this.client.chat.completions.create(
 				requestOptions,
-				isAzureAiInference ? { path: AZURE_AI_INFERENCE_PATH } : {},
+				isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {},
 			)
 
 			const matcher = new XmlMatcher(
@@ -211,9 +233,12 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 						: [systemMessage, ...convertToOpenAiMessages(messages)],
 			}
 
+			// Add max_tokens if needed
+			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
+
 			const response = await this.client.chat.completions.create(
 				requestOptions,
-				this._isAzureAiInference(modelUrl) ? { path: AZURE_AI_INFERENCE_PATH } : {},
+				this._isAzureAiInference(modelUrl) ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {},
 			)
 
 			yield {
@@ -235,25 +260,30 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		}
 	}
 
-	override getModel(): { id: string; info: ModelInfo } {
-		return {
-			id: this.options.openAiModelId ?? "",
-			info: this.options.openAiCustomModelInfo ?? openAiModelInfoSaneDefaults,
-		}
+	override getModel() {
+		const id = this.options.openAiModelId ?? ""
+		const info = this.options.openAiCustomModelInfo ?? openAiModelInfoSaneDefaults
+		const params = getModelParams({ format: "openai", modelId: id, model: info, settings: this.options })
+		return { id, info, ...params }
 	}
 
 	async completePrompt(prompt: string): Promise<string> {
 		try {
 			const isAzureAiInference = this._isAzureAiInference(this.options.openAiBaseUrl)
+			const model = this.getModel()
+			const modelInfo = model.info
 
 			const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
-				model: this.getModel().id,
+				model: model.id,
 				messages: [{ role: "user", content: prompt }],
 			}
 
+			// Add max_tokens if needed
+			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
+
 			const response = await this.client.chat.completions.create(
 				requestOptions,
-				isAzureAiInference ? { path: AZURE_AI_INFERENCE_PATH } : {},
+				isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {},
 			)
 
 			return response.choices[0]?.message.content || ""
@@ -271,26 +301,35 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		systemPrompt: string,
 		messages: Anthropic.Messages.MessageParam[],
 	): ApiStream {
-		if (this.options.openAiStreamingEnabled ?? true) {
-			const methodIsAzureAiInference = this._isAzureAiInference(this.options.openAiBaseUrl)
+		const modelInfo = this.getModel().info
+		const methodIsAzureAiInference = this._isAzureAiInference(this.options.openAiBaseUrl)
 
+		if (this.options.openAiStreamingEnabled ?? true) {
 			const isGrokXAI = this._isGrokXAI(this.options.openAiBaseUrl)
 
+			const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
+				model: modelId,
+				messages: [
+					{
+						role: "developer",
+						content: `Formatting re-enabled\n${systemPrompt}`,
+					},
+					...convertToOpenAiMessages(messages),
+				],
+				stream: true,
+				...(isGrokXAI ? {} : { stream_options: { include_usage: true } }),
+				reasoning_effort: modelInfo.reasoningEffort as "low" | "medium" | "high" | undefined,
+				temperature: undefined,
+			}
+
+			// O3 family models do not support the deprecated max_tokens parameter
+			// but they do support max_completion_tokens (the modern OpenAI parameter)
+			// This allows O3 models to limit response length when includeMaxTokens is enabled
+			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
+
 			const stream = await this.client.chat.completions.create(
-				{
-					model: modelId,
-					messages: [
-						{
-							role: "developer",
-							content: `Formatting re-enabled\n${systemPrompt}`,
-						},
-						...convertToOpenAiMessages(messages),
-					],
-					stream: true,
-					...(isGrokXAI ? {} : { stream_options: { include_usage: true } }),
-					reasoning_effort: this.getModel().info.reasoningEffort,
-				},
-				methodIsAzureAiInference ? { path: AZURE_AI_INFERENCE_PATH } : {},
+				requestOptions,
+				methodIsAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {},
 			)
 
 			yield* this.handleStreamResponse(stream)
@@ -304,13 +343,18 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 					},
 					...convertToOpenAiMessages(messages),
 				],
+				reasoning_effort: modelInfo.reasoningEffort as "low" | "medium" | "high" | undefined,
+				temperature: undefined,
 			}
 
-			const methodIsAzureAiInference = this._isAzureAiInference(this.options.openAiBaseUrl)
+			// O3 family models do not support the deprecated max_tokens parameter
+			// but they do support max_completion_tokens (the modern OpenAI parameter)
+			// This allows O3 models to limit response length when includeMaxTokens is enabled
+			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
 
 			const response = await this.client.chat.completions.create(
 				requestOptions,
-				methodIsAzureAiInference ? { path: AZURE_AI_INFERENCE_PATH } : {},
+				methodIsAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {},
 			)
 
 			yield {
@@ -358,6 +402,25 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		const urlHost = this._getUrlHost(baseUrl)
 		return urlHost.endsWith(".services.ai.azure.com")
 	}
+
+	/**
+	 * Adds max_completion_tokens to the request body if needed based on provider configuration
+	 * Note: max_tokens is deprecated in favor of max_completion_tokens as per OpenAI documentation
+	 * O3 family models handle max_tokens separately in handleO3FamilyMessage
+	 */
+	private addMaxTokensIfNeeded(
+		requestOptions:
+			| OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming
+			| OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming,
+		modelInfo: ModelInfo,
+	): void {
+		// Only add max_completion_tokens if includeMaxTokens is true
+		if (this.options.includeMaxTokens === true) {
+			// Use user-configured modelMaxTokens if available, otherwise fall back to model's default maxTokens
+			// Using max_completion_tokens as max_tokens is deprecated
+			requestOptions.max_completion_tokens = this.options.modelMaxTokens || modelInfo.maxTokens
+		}
+	}
 }
 
 export async function getOpenAiModels(baseUrl?: string, apiKey?: string, openAiHeaders?: Record<string, string>) {
@@ -366,7 +429,10 @@ export async function getOpenAiModels(baseUrl?: string, apiKey?: string, openAiH
 			return []
 		}
 
-		if (!URL.canParse(baseUrl)) {
+		// Trim whitespace from baseUrl to handle cases where users accidentally include spaces
+		const trimmedBaseUrl = baseUrl.trim()
+
+		if (!URL.canParse(trimmedBaseUrl)) {
 			return []
 		}
 
@@ -384,7 +450,7 @@ export async function getOpenAiModels(baseUrl?: string, apiKey?: string, openAiH
 			config["headers"] = headers
 		}
 
-		const response = await axios.get(`${baseUrl}/models`, config)
+		const response = await axios.get(`${trimmedBaseUrl}/models`, config)
 		const modelsArray = response.data?.data?.map((model: any) => model.id) || []
 		return [...new Set<string>(modelsArray)]
 	} catch (error) {

@@ -1,24 +1,32 @@
 import { z } from "zod"
 
-import { ProviderSettings } from "./api"
-import { Mode, PromptComponent, ModeConfig } from "./modes"
+import {
+	type ProviderSettings,
+	type PromptComponent,
+	type ModeConfig,
+	type InstallMarketplaceItemOptions,
+	type MarketplaceItem,
+	marketplaceItemSchema,
+} from "@roo-code/types"
+import type { IndexStatusResponse } from "../core/costrict/codebase-index/types"
+import type { ShareVisibility } from "@roo-code/cloud"
 
-export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse"
+import { Mode } from "./modes"
+
+export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse" | "objectResponse"
 
 export type PromptMode = Mode | "enhance"
 
 export type AudioType = "notification" | "celebration" | "progress_loop"
 
+export interface UpdateTodoListPayload {
+	todos: any[]
+}
+
 export interface WebviewMessage {
 	type:
-		| "cancelReviewTask"
-		| "checkReviewSuggestion"
-		| "zgsmLogin"
-		| "docslink"
-		| "requestZgsmModels"
-		| "apiConfiguration"
+		| "updateTodoList"
 		| "deleteMultipleTasksWithIds"
-		| "setHistoryPreviewCollapsed"
 		| "currentApiConfigName"
 		| "saveApiConfiguration"
 		| "upsertApiConfiguration"
@@ -29,11 +37,17 @@ export interface WebviewMessage {
 		| "getListApiConfiguration"
 		| "customInstructions"
 		| "allowedCommands"
+		| "deniedCommands"
+		| "showAutoApproveSettingsAtChat"
 		| "alwaysAllowReadOnly"
 		| "alwaysAllowReadOnlyOutsideWorkspace"
 		| "alwaysAllowWrite"
 		| "alwaysAllowWriteOutsideWorkspace"
+		| "alwaysAllowWriteProtected"
 		| "alwaysAllowExecute"
+		| "alwaysAllowFollowupQuestions"
+		| "alwaysAllowUpdateTodoList"
+		| "followupAutoApproveTimeoutMs"
 		| "webviewDidLaunch"
 		| "newTask"
 		| "askResponse"
@@ -42,6 +56,7 @@ export interface WebviewMessage {
 		| "didShowAnnouncement"
 		| "selectImages"
 		| "exportCurrentTask"
+		| "shareCurrentTask"
 		| "showTaskWithId"
 		| "deleteTaskWithId"
 		| "exportTaskWithId"
@@ -54,7 +69,9 @@ export interface WebviewMessage {
 		| "requestOllamaModels"
 		| "requestLmStudioModels"
 		| "requestVsCodeLmModels"
+		| "requestHuggingFaceModels"
 		| "openImage"
+		| "saveImage"
 		| "openFile"
 		| "openMention"
 		| "cancelTask"
@@ -65,8 +82,13 @@ export interface WebviewMessage {
 		| "alwaysAllowMcp"
 		| "alwaysAllowModeSwitch"
 		| "allowedMaxRequests"
+		| "allowedMaxCost"
 		| "alwaysAllowSubtasks"
+		| "alwaysAllowUpdateTodoList"
+		| "autoCondenseContext"
 		| "autoCondenseContextPercent"
+		| "condensingApiConfigId"
+		| "updateCondensingPrompt"
 		| "playSound"
 		| "playTts"
 		| "stopTts"
@@ -82,16 +104,23 @@ export interface WebviewMessage {
 		| "openMcpSettings"
 		| "openProjectMcpSettings"
 		| "restartMcpServer"
+		| "refreshAllMcpServers"
 		| "toggleToolAlwaysAllow"
+		| "toggleToolEnabledForPrompt"
 		| "toggleMcpServer"
 		| "updateMcpTimeout"
 		| "fuzzyMatchThreshold"
 		| "writeDelayMs"
+		| "diagnosticsEnabled"
 		| "enhancePrompt"
 		| "enhancedPrompt"
 		| "draggedImages"
 		| "deleteMessage"
+		| "deleteMessageConfirm"
+		| "submitEditedMessage"
+		| "editMessageConfirm"
 		| "terminalOutputLineLimit"
+		| "terminalOutputCharacterLimit"
 		| "terminalShellIntegrationTimeout"
 		| "terminalShellIntegrationDisabled"
 		| "terminalCommandDelay"
@@ -103,6 +132,7 @@ export interface WebviewMessage {
 		| "terminalCompressProgressBar"
 		| "mcpEnabled"
 		| "enableMcpServerCreation"
+		| "remoteControlEnabled"
 		| "searchCommits"
 		| "alwaysApproveResubmit"
 		| "requestDelaySeconds"
@@ -110,11 +140,11 @@ export interface WebviewMessage {
 		| "mode"
 		| "updatePrompt"
 		| "updateSupportPrompt"
-		| "resetSupportPrompt"
 		| "getSystemPrompt"
 		| "copySystemPrompt"
 		| "systemPrompt"
 		| "enhancementApiConfigId"
+		| "includeTaskHistoryInEnhance"
 		| "updateExperimental"
 		| "autoApprovalEnabled"
 		| "updateCustomMode"
@@ -129,6 +159,7 @@ export interface WebviewMessage {
 		| "humanRelayResponse"
 		| "humanRelayCancel"
 		| "browserToolEnabled"
+		| "codebaseIndexEnabled"
 		| "telemetrySetting"
 		| "showRooIgnoredFiles"
 		| "testBrowserConnection"
@@ -136,12 +167,77 @@ export interface WebviewMessage {
 		| "remoteBrowserEnabled"
 		| "language"
 		| "maxReadFileLine"
+		| "maxImageFileSize"
+		| "maxTotalImageSize"
+		| "maxConcurrentFileReads"
+		| "includeDiagnosticMessages"
+		| "maxDiagnosticMessages"
 		| "searchFiles"
 		| "toggleApiConfigPin"
 		| "setHistoryPreviewCollapsed"
+		| "hasOpenedModeSelector"
+		| "accountButtonClicked"
+		| "rooCloudSignIn"
+		| "rooCloudSignOut"
 		| "condenseTaskContextRequest"
+		| "requestIndexingStatus"
+		| "startIndexing"
+		| "clearIndexData"
+		| "indexingStatusUpdate"
+		| "indexCleared"
+		| "codebaseIndexStatusResponse"
+		| "zgsmRebuildCodebaseIndex"
+		| "focusPanelRequest"
+		| "profileThresholds"
+		| "setHistoryPreviewCollapsed"
+		| "openExternal"
+		| "filterMarketplaceItems"
+		| "marketplaceButtonClicked"
+		| "installMarketplaceItem"
+		| "installMarketplaceItemWithParameters"
+		| "cancelMarketplaceInstall"
+		| "removeInstalledMarketplaceItem"
+		| "marketplaceInstallResult"
+		| "fetchMarketplaceData"
+		| "switchTab"
+		// zgsm
+		| "zgsmDeleteProfile"
+		| "zgsmPollCodebaseIndexStatus"
+		| "zgsmCodebaseIndexEnabled"
+		| "zgsmLogin"
+		| "zgsmLogout"
+		| "zgsmAbort"
+		| "requestZgsmModels"
+		| "useZgsmCustomConfig"
+		| "zgsmCodebaseIndexEnabled"
+		// zgsm
+		| "profileThresholds"
+		| "shareTaskSuccess"
+		| "exportMode"
+		| "exportModeResult"
+		| "importMode"
+		| "importModeResult"
+		| "checkRulesDirectory"
+		| "checkRulesDirectoryResult"
+		| "saveCodeIndexSettingsAtomic"
+		| "requestCodeIndexSecretStatus"
+		| "cancelReviewTask"
+		| "checkReviewSuggestion"
+		| "requestCommands"
+		| "openCommandFile"
+		| "deleteCommand"
+		| "createCommand"
+		| "insertTextIntoTextarea"
+		| "startCodereview"
+		| "settingsButtonclicked"
+		| "copyError"
+		| "showMdmAuthRequiredNotification"
 	text?: string
+	editedMessageContent?: string
+	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "account" | "zgsm-account"
 	disabled?: boolean
+	context?: string
+	dataUri?: string
 	askResponse?: ClineAskResponse
 	apiConfiguration?: ProviderSettings
 	images?: string[]
@@ -152,6 +248,7 @@ export interface WebviewMessage {
 	serverName?: string
 	toolName?: string
 	alwaysAllow?: boolean
+	isEnabled?: boolean
 	mode?: Mode
 	promptMode?: PromptMode
 	customPrompt?: PromptComponent
@@ -168,9 +265,36 @@ export interface WebviewMessage {
 	ids?: string[]
 	hasSystemPromptOverride?: boolean
 	terminalOperation?: "continue" | "abort"
+	messageTs?: number
 	historyPreviewCollapsed?: boolean
-	authUrl?: string
-	url?: string
+	filters?: { type?: string; search?: string; tags?: string[] }
+	url?: string // For openExternal
+	mpItem?: MarketplaceItem
+	mpInstallOptions?: InstallMarketplaceItemOptions
+	config?: Record<string, any> // Add config to the payload
+	visibility?: ShareVisibility // For share visibility
+	hasContent?: boolean // For checkRulesDirectoryResult
+	checkOnly?: boolean // For deleteCustomMode check
+	codeIndexSettings?: {
+		// Global state settings
+		zgsmCodebaseIndexEnabled: boolean
+		codebaseIndexEnabled: boolean
+		codebaseIndexQdrantUrl: string
+		codebaseIndexEmbedderProvider: "openai" | "ollama" | "openai-compatible" | "gemini" | "mistral"
+		codebaseIndexEmbedderBaseUrl?: string
+		codebaseIndexEmbedderModelId: string
+		codebaseIndexEmbedderModelDimension?: number // Generic dimension for all providers
+		codebaseIndexOpenAiCompatibleBaseUrl?: string
+		codebaseIndexSearchMaxResults?: number
+		codebaseIndexSearchMinScore?: number
+
+		// Secret settings
+		codeIndexOpenAiKey?: string
+		codeIndexQdrantApiKey?: string
+		codebaseIndexOpenAiCompatibleApiKey?: string
+		codebaseIndexGeminiApiKey?: string
+		codebaseIndexMistralApiKey?: string
+	}
 	issueId?: string
 }
 
@@ -191,4 +315,42 @@ export const checkoutRestorePayloadSchema = z.object({
 
 export type CheckpointRestorePayload = z.infer<typeof checkoutRestorePayloadSchema>
 
-export type WebViewMessagePayload = CheckpointDiffPayload | CheckpointRestorePayload
+export interface IndexingStatusPayload {
+	state: "Standby" | "Indexing" | "Indexed" | "Error"
+	message: string
+}
+
+export interface IndexClearedPayload {
+	success: boolean
+	error?: string
+}
+
+export interface CodebaseIndexStatusPayload {
+	workspace: string
+	status: IndexStatusResponse
+}
+
+export interface RebuildCodebaseIndexPayload {
+	type: "embedding" | "codegraph" | "all"
+	workspace?: string
+	path?: string
+}
+
+export const installMarketplaceItemWithParametersPayloadSchema = z.object({
+	item: marketplaceItemSchema,
+	parameters: z.record(z.string(), z.any()),
+})
+
+export type InstallMarketplaceItemWithParametersPayload = z.infer<
+	typeof installMarketplaceItemWithParametersPayloadSchema
+>
+
+export type WebViewMessagePayload =
+	| CheckpointDiffPayload
+	| CheckpointRestorePayload
+	| IndexingStatusPayload
+	| IndexClearedPayload
+	| CodebaseIndexStatusPayload
+	| RebuildCodebaseIndexPayload
+	| InstallMarketplaceItemWithParametersPayload
+	| UpdateTodoListPayload

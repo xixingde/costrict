@@ -1,6 +1,15 @@
-[English](../../CONTRIBUTING.md) • [Català](../ca/CONTRIBUTING.md) • [Deutsch](../de/CONTRIBUTING.md) • <b>Español</b> • [Français](../fr/CONTRIBUTING.md) • [हिंदी](../hi/CONTRIBUTING.md) • [Italiano](../it/CONTRIBUTING.md) • [Nederlands](../nl/CONTRIBUTING.md) • [Русский](../ru/CONTRIBUTING.md)
+<div align="center">
+<sub>
 
-[日本語](../ja/CONTRIBUTING.md) • [한국어](../ko/CONTRIBUTING.md) • [Polski](../pl/CONTRIBUTING.md) • [Português (BR)](../pt-BR/CONTRIBUTING.md) • [Türkçe](../tr/CONTRIBUTING.md) • [Tiếng Việt](../vi/CONTRIBUTING.md) • [简体中文](../zh-CN/CONTRIBUTING.md) • [繁體中文](../zh-TW/CONTRIBUTING.md)
+[English](../../CONTRIBUTING.md) • [Català](../ca/CONTRIBUTING.md) • [Deutsch](../de/CONTRIBUTING.md) • <b>Español</b> • [Français](../fr/CONTRIBUTING.md) • [हिंदी](../hi/CONTRIBUTING.md) • [Bahasa Indonesia](../id/CONTRIBUTING.md) • [Italiano](../it/CONTRIBUTING.md) • [日本語](../ja/CONTRIBUTING.md)
+
+</sub>
+<sub>
+
+[한국어](../ko/CONTRIBUTING.md) • [Nederlands](../nl/CONTRIBUTING.md) • [Polski](../pl/CONTRIBUTING.md) • [Português (BR)](../pt-BR/CONTRIBUTING.md) • [Русский](../ru/CONTRIBUTING.md) • [Türkçe](../tr/CONTRIBUTING.md) • [Tiếng Việt](../vi/CONTRIBUTING.md) • [简体中文](../zh-CN/CONTRIBUTING.md) • [繁體中文](../zh-TW/CONTRIBUTING.md)
+
+</sub>
+</div>
 
 # Contribuir a Roo Code
 
@@ -60,7 +69,7 @@ Menciona la alineación con estas áreas en tus PRs.
 
 Todas las contribuciones deben comenzar con un Issue de GitHub.
 
-- **Revisar issues existentes**: Busca en [GitHub Issues](https://github.com/RooCodeInc/Roo-Code/issues).
+- **Revisar issues existentes**: Busca en [GitHub Issues](https://github.com/zgsm-ai/costrict/issues).
 - **Crear un issue**: Usa las plantillas apropiadas:
     - **Errores:** Plantilla "Bug Report".
     - **Funciones:** Plantilla "Detailed Feature Proposal". Se requiere aprobación antes de comenzar.
@@ -71,13 +80,13 @@ Todas las contribuciones deben comenzar con un Issue de GitHub.
 ### Decidir en Qué Trabajar
 
 - Revisa el [Proyecto GitHub](https://github.com/orgs/RooCodeInc/projects/1) para "Good First Issues" no asignados.
-- Para documentación, visita [Roo Code Docs](https://github.com/RooCodeInc/Roo-Code-Docs).
+- Para documentación, visita [Roo Code Docs](https://github.com/zgsm-ai/costrict-Docs).
 
 ### Reportar Errores
 
 - Primero verifica si ya existen reportes.
-- Crea nuevos reportes de errores usando la [plantilla "Bug Report"](https://github.com/RooCodeInc/Roo-Code/issues/new/choose).
-- **Problemas de seguridad**: Reporta de forma privada a través de [security advisories](https://github.com/RooCodeInc/Roo-Code/security/advisories/new).
+- Crea nuevos reportes de errores usando la [plantilla "Bug Report"](https://github.com/zgsm-ai/costrict/issues/new/choose).
+- **Problemas de seguridad**: Reporta de forma privada a través de [security advisories](https://github.com/zgsm-ai/costrict/security/advisories/new).
 
 ## Proceso de Desarrollo y Envío
 

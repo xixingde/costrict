@@ -1,6 +1,15 @@
-**English** • [Català](locales/ca/CONTRIBUTING.md) • [Deutsch](locales/de/CONTRIBUTING.md) • [Español](locales/es/CONTRIBUTING.md) • [Français](locales/fr/CONTRIBUTING.md) • [हिंदी](locales/hi/CONTRIBUTING.md) • [Italiano](locales/it/CONTRIBUTING.md) • [Nederlands](locales/nl/CONTRIBUTING.md) • [Русский](locales/ru/CONTRIBUTING.md)
+<div align="center">
+<sub>
 
-[日本語](locales/ja/CONTRIBUTING.md) • [한국어](locales/ko/CONTRIBUTING.md) • [Polski](locales/pl/CONTRIBUTING.md) • [Português (BR)](locales/pt-BR/CONTRIBUTING.md) • [Türkçe](locales/tr/CONTRIBUTING.md) • [Tiếng Việt](locales/vi/CONTRIBUTING.md) • [简体中文](locales/zh-CN/CONTRIBUTING.md) • [繁體中文](locales/zh-TW/CONTRIBUTING.md)
+<b>English</b> • [Català](locales/ca/CONTRIBUTING.md) • [Deutsch](locales/de/CONTRIBUTING.md) • [Español](locales/es/CONTRIBUTING.md) • [Français](locales/fr/CONTRIBUTING.md) • [हिंदी](locales/hi/CONTRIBUTING.md) • [Bahasa Indonesia](locales/id/CONTRIBUTING.md) • [Italiano](locales/it/CONTRIBUTING.md) • [日本語](locales/ja/CONTRIBUTING.md)
+
+</sub>
+<sub>
+
+[한국어](locales/ko/CONTRIBUTING.md) • [Nederlands](locales/nl/CONTRIBUTING.md) • [Polski](locales/pl/CONTRIBUTING.md) • [Português (BR)](locales/pt-BR/CONTRIBUTING.md) • [Русский](locales/ru/CONTRIBUTING.md) • [Türkçe](locales/tr/CONTRIBUTING.md) • [Tiếng Việt](locales/vi/CONTRIBUTING.md) • [简体中文](locales/zh-CN/CONTRIBUTING.md) • [繁體中文](locales/zh-TW/CONTRIBUTING.md)
+
+</sub>
+</div>
 
 # Contributing to Roo Code
 
@@ -60,7 +69,7 @@ Mention alignment with these areas in your PRs.
 
 All contributions must begin with a GitHub Issue.
 
-- **Check existing issues**: Search [GitHub Issues](https://github.com/RooCodeInc/Roo-Code/issues).
+- **Check existing issues**: Search [GitHub Issues](https://github.com/zgsm-ai/costrict/issues).
 - **Create an issue**: Use appropriate templates:
     - **Bugs:** "Bug Report" template.
     - **Features:** "Detailed Feature Proposal" template. Approval required before starting.
@@ -71,13 +80,13 @@ All contributions must begin with a GitHub Issue.
 ### Deciding What to Work On
 
 - Check the [GitHub Project](https://github.com/orgs/RooCodeInc/projects/1) for unassigned "Good First Issues."
-- For docs, visit [Roo Code Docs](https://github.com/RooCodeInc/Roo-Code-Docs).
+- For docs, visit [Roo Code Docs](https://github.com/zgsm-ai/costrict-Docs).
 
 ### Reporting Bugs
 
 - Check for existing reports first.
-- Create new bugs using the ["Bug Report" template](https://github.com/RooCodeInc/Roo-Code/issues/new/choose).
-- **Security issues**: Report privately via [security advisories](https://github.com/RooCodeInc/Roo-Code/security/advisories/new).
+- Create new bugs using the ["Bug Report" template](https://github.com/zgsm-ai/costrict/issues/new/choose).
+- **Security issues**: Report privately via [security advisories](https://github.com/zgsm-ai/costrict/security/advisories/new).
 
 ## Development & Submission Process
 
@@ -92,7 +101,7 @@ git clone https://github.com/YOUR_USERNAME/Roo-Code.git
 2. **Install Dependencies:**
 
 ```
-npm run install:all
+pnpm install
 ```
 
 3. **Debugging:** Open with VS Code (`F5`).

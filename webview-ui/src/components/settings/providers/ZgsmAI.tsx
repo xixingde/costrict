@@ -1,45 +1,56 @@
 import { useState, useCallback, useEffect } from "react"
 import { useEvent } from "react-use"
 import { Checkbox } from "vscrui"
-import { VSCodeButton, VSCodeCheckbox, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
-import { convertHeadersToObject } from "../utils/headers"
+import { VSCodeButton, VSCodeCheckbox, VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
-import { ModelInfo, ReasoningEffort as ReasoningEffortType } from "@roo/schemas"
-import { ProviderSettings, azureOpenAiDefaultApiVersion, zgsmModelInfos } from "@roo/shared/api"
-import { ExtensionMessage } from "@roo/shared/ExtensionMessage"
+import {
+	type ProviderSettings,
+	type ModelInfo,
+	type ReasoningEffort,
+	azureOpenAiDefaultApiVersion,
+	zgsmModels,
+	zgsmDefaultModelId,
+} from "@roo-code/types"
+
+import { ExtensionMessage } from "@roo/ExtensionMessage"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Button } from "@src/components/ui"
+import { Button, StandardTooltip } from "@src/components/ui"
 
+import { convertHeadersToObject } from "../utils/headers"
 import { inputEventTransform, noTransform } from "../transforms"
 import { ModelPicker } from "../ModelPicker"
 import { R1FormatSetting } from "../R1FormatSetting"
-import { ReasoningEffort } from "../ReasoningEffort"
-import { initiateZgsmLogin } from "@/utils/zgsmAuth"
+import { ThinkingBudget } from "../ThinkingBudget"
+import { SetCachedStateField } from "../types"
+import type { OrganizationAllowList } from "@roo/cloud"
 import { isValidUrl } from "@/utils/validate"
 
 type OpenAICompatibleProps = {
+	fromWelcomeView?: boolean
 	apiConfiguration: ProviderSettings
 	setApiConfigurationField: (field: keyof ProviderSettings, value: ProviderSettings[keyof ProviderSettings]) => void
-	fromWelcomeView?: boolean
-	uriScheme?: string
+	organizationAllowList: OrganizationAllowList
+	modelValidationError?: string
+	useZgsmCustomConfig?: boolean
+	setCachedStateField: SetCachedStateField<"useZgsmCustomConfig">
 }
 
 export const ZgsmAI = ({
 	apiConfiguration,
-	setApiConfigurationField,
 	fromWelcomeView,
-	uriScheme,
+	setApiConfigurationField,
+	setCachedStateField,
+	organizationAllowList,
+	modelValidationError,
+	useZgsmCustomConfig,
 }: OpenAICompatibleProps) => {
 	const { t } = useAppTranslation()
-	const [zgsmCustomConfig, setZgsmCustomConfig] = useState(!!apiConfiguration?.useZgsmCustomConfig)
 
 	const [azureApiVersionSelected, setAzureApiVersionSelected] = useState(!!apiConfiguration?.azureApiVersion)
 	const [openAiLegacyFormatSelected, setOpenAiLegacyFormatSelected] = useState(!!apiConfiguration?.openAiLegacyFormat)
 
-	const [openAiModels, setOpenAiModels] = useState<Record<string, ModelInfo> | null>(
-		Object.fromEntries((apiConfiguration.zgsmModels || []).map((item) => [item, zgsmModelInfos.default])),
-	)
+	const [openAiModels, setOpenAiModels] = useState<Record<string, ModelInfo> | null>(null)
 
 	const [customHeaders, setCustomHeaders] = useState<[string, string][]>(() => {
 		const headers = apiConfiguration?.openAiHeaders || {}
@@ -85,17 +96,12 @@ export const ZgsmAI = ({
 	// Add effect to update the parent component's state when local headers change
 	useEffect(() => {
 		const timer = setTimeout(() => {
-			const currentConfigHeaders = apiConfiguration?.openAiHeaders || {}
-			const newHeadersObject = convertHeadersToObject(customHeaders)
-
-			// Only update if the processed object is different from the current config.
-			if (JSON.stringify(currentConfigHeaders) !== JSON.stringify(newHeadersObject)) {
-				setApiConfigurationField("openAiHeaders", newHeadersObject)
-			}
+			const headerObject = convertHeadersToObject(customHeaders)
+			setApiConfigurationField("openAiHeaders", headerObject)
 		}, 300)
 
 		return () => clearTimeout(timer)
-	}, [apiConfiguration?.openAiHeaders, customHeaders, setApiConfigurationField])
+	}, [customHeaders, setApiConfigurationField])
 
 	const handleInputChange = useCallback(
 		<K extends keyof ProviderSettings, E>(
@@ -105,7 +111,7 @@ export const ZgsmAI = ({
 			(event: E | Event) => {
 				const val = transform(event as E)
 				if (field === "zgsmBaseUrl" && isValidUrl(val as string)) {
-					setApiConfigurationField(field, (val as string).replace(/\/$/, ""))
+					setApiConfigurationField(field, (val as string).trim().replace(/\/$/, ""))
 				} else {
 					setApiConfigurationField(field, val)
 				}
@@ -118,122 +124,68 @@ export const ZgsmAI = ({
 
 		switch (message.type) {
 			case "zgsmModels": {
-				const updatedModels = message.zgsmModels ?? []
-				setOpenAiModels(Object.fromEntries(updatedModels.map((item) => [item, zgsmModelInfos.default])))
+				const updatedModels = message.openAiModels ?? []
+				setOpenAiModels(Object.fromEntries(updatedModels.map((item) => [item, zgsmModels.default])))
 				break
 			}
 		}
 	}, [])
 
-	const handleRelogin = useCallback(() => {
-		initiateZgsmLogin(apiConfiguration, uriScheme)
-	}, [apiConfiguration, uriScheme])
-
 	useEvent("message", onMessage)
 
 	return (
 		<>
-			<div className="mb-4">
-				<div className="flex justify-between items-center mb-2">
-					<label className="block font-medium">{t("settings:providers.zgsmBaseUrl")}</label>
-				</div>
-				<div className="flex items-center mb-2">
-					<VSCodeTextField
-						className={fromWelcomeView ? "w-full" : "flex-1 mr-2"}
-						value={apiConfiguration?.zgsmBaseUrl || ""}
-						type="url"
-						onInput={handleInputChange("zgsmBaseUrl")}
-						placeholder={t("settings:providers.zgsmDefaultBaseUrl", {
-							zgsmBaseUrl: apiConfiguration?.zgsmBaseUrl || apiConfiguration?.zgsmDefaultBaseUrl,
-						})}></VSCodeTextField>
-					{!fromWelcomeView && (
-						<Button variant="secondary" onClick={handleRelogin}>
-							<div className="flex">
-								<span>
-									{t(
-										!apiConfiguration?.zgsmApiKey
-											? "settings:providers.getZgsmApiKey"
-											: "settings:providers.getZgsmApiKeyAgain",
-									)}
-								</span>
-							</div>
-						</Button>
-					)}
-				</div>
-			</div>
+			<VSCodeTextField
+				value={apiConfiguration?.zgsmBaseUrl?.trim() || ""}
+				type="url"
+				onInput={handleInputChange("zgsmBaseUrl")}
+				placeholder={t("settings:providers.zgsmDefaultBaseUrl", { zgsmBaseUrl: "https://zgsm.sangfor.com" })}
+				className="w-full">
+				<label className="block font-medium mb-1">{t("settings:providers.zgsmBaseUrl")}</label>
+			</VSCodeTextField>
 			{!fromWelcomeView && (
 				<>
+					<VSCodeLink
+						className={`forced-color-adjust-none ${apiConfiguration.zgsmAccessToken ? "hidden" : ""}`}
+						href="#"
+						onClick={(e) => {
+							e.preventDefault()
+
+							window.postMessage({
+								type: "action",
+								action: "accountButtonClicked",
+							})
+						}}>
+						{t("account:loginForFullFeatures")}
+					</VSCodeLink>
 					<ModelPicker
 						apiConfiguration={apiConfiguration}
 						setApiConfigurationField={setApiConfigurationField}
-						defaultModelId={apiConfiguration?.zgsmDefaultModelId || ""}
+						defaultModelId={zgsmDefaultModelId}
 						models={openAiModels}
 						modelIdKey="zgsmModelId"
-						serviceName="OpenAI"
-						serviceUrl={apiConfiguration?.zgsmBaseUrl || ""}
+						serviceName="zgsm"
+						serviceUrl={apiConfiguration.zgsmBaseUrl?.trim() || ""}
+						organizationAllowList={organizationAllowList}
+						errorMessage={modelValidationError}
 					/>
 					<div>
 						<VSCodeCheckbox
-							checked={zgsmCustomConfig}
+							checked={useZgsmCustomConfig}
 							onChange={(e: any) => {
-								const isChecked = e.target.checked
-								setApiConfigurationField("useZgsmCustomConfig", isChecked)
-								setZgsmCustomConfig(isChecked)
+								setCachedStateField("useZgsmCustomConfig", e.target.checked)
 							}}>
-							<label className="block font-medium mb-1">
-								{t("settings:providers.useZgsmCustomConfig")}
-							</label>
+							<label className="block font-medium mb-1">{t("settings:providers.showCustomConfig")}</label>
 						</VSCodeCheckbox>
 					</div>
 				</>
 			)}
-
-			{!fromWelcomeView && zgsmCustomConfig && (
+			{!fromWelcomeView && useZgsmCustomConfig && (
 				<>
 					<R1FormatSetting
 						onChange={handleInputChange("openAiR1FormatEnabled", noTransform)}
 						openAiR1FormatEnabled={apiConfiguration?.openAiR1FormatEnabled ?? false}
 					/>
-					{/* Custom Headers UI */}
-					<div className="mb-4">
-						<div className="flex justify-between items-center mb-2">
-							<label className="block font-medium">{t("settings:providers.customHeaders")}</label>
-							<VSCodeButton
-								appearance="icon"
-								title={t("settings:common.add")}
-								onClick={handleAddCustomHeader}>
-								<span className="codicon codicon-add"></span>
-							</VSCodeButton>
-						</div>
-						{!customHeaders.length ? (
-							<div className="text-sm text-vscode-descriptionForeground">
-								{t("settings:providers.noCustomHeaders")}
-							</div>
-						) : (
-							customHeaders.map(([key, value], index) => (
-								<div key={index} className="flex items-center mb-2">
-									<VSCodeTextField
-										value={key}
-										className="flex-1 mr-2"
-										placeholder={t("settings:providers.headerName")}
-										onInput={(e: any) => handleUpdateHeaderKey(index, e.target.value)}
-									/>
-									<VSCodeTextField
-										value={value}
-										className="flex-1 mr-2"
-										placeholder={t("settings:providers.headerValue")}
-										onInput={(e: any) => handleUpdateHeaderValue(index, e.target.value)}
-									/>
-									<VSCodeButton
-										appearance="icon"
-										title={t("settings:common.remove")}
-										onClick={() => handleRemoveCustomHeader(index)}>
-										<span className="codicon codicon-trash"></span>
-									</VSCodeButton>
-								</div>
-							))
-						)}
-					</div>
 					<div>
 						<Checkbox
 							checked={openAiLegacyFormatSelected}
@@ -249,6 +201,16 @@ export const ZgsmAI = ({
 						onChange={handleInputChange("openAiStreamingEnabled", noTransform)}>
 						{t("settings:modelInfo.enableStreaming")}
 					</Checkbox>
+					<div>
+						<Checkbox
+							checked={apiConfiguration?.includeMaxTokens ?? true}
+							onChange={handleInputChange("includeMaxTokens", noTransform)}>
+							{t("settings:includeMaxOutputTokens")}
+						</Checkbox>
+						<div className="text-sm text-vscode-descriptionForeground ml-6">
+							{t("settings:includeMaxOutputTokensDescription")}
+						</div>
+					</div>
 					<Checkbox
 						checked={apiConfiguration?.openAiUseAzure ?? false}
 						onChange={handleInputChange("openAiUseAzure", noTransform)}>
@@ -276,6 +238,45 @@ export const ZgsmAI = ({
 						)}
 					</div>
 
+					{/* Custom Headers UI */}
+					<div className="mb-4">
+						<div className="flex justify-between items-center mb-2">
+							<label className="block font-medium">{t("settings:providers.customHeaders")}</label>
+							<StandardTooltip content={t("settings:common.add")}>
+								<VSCodeButton appearance="icon" onClick={handleAddCustomHeader}>
+									<span className="codicon codicon-add"></span>
+								</VSCodeButton>
+							</StandardTooltip>
+						</div>
+						{!customHeaders.length ? (
+							<div className="text-sm text-vscode-descriptionForeground">
+								{t("settings:providers.noCustomHeaders")}
+							</div>
+						) : (
+							customHeaders.map(([key, value], index) => (
+								<div key={index} className="flex items-center mb-2">
+									<VSCodeTextField
+										value={key}
+										className="flex-1 mr-2"
+										placeholder={t("settings:providers.headerName")}
+										onInput={(e: any) => handleUpdateHeaderKey(index, e.target.value)}
+									/>
+									<VSCodeTextField
+										value={value}
+										className="flex-1 mr-2"
+										placeholder={t("settings:providers.headerValue")}
+										onInput={(e: any) => handleUpdateHeaderValue(index, e.target.value)}
+									/>
+									<StandardTooltip content={t("settings:common.remove")}>
+										<VSCodeButton appearance="icon" onClick={() => handleRemoveCustomHeader(index)}>
+											<span className="codicon codicon-trash"></span>
+										</VSCodeButton>
+									</StandardTooltip>
+								</div>
+							))
+						)}
+					</div>
+
 					<div className="flex flex-col gap-1">
 						<Checkbox
 							checked={apiConfiguration.enableReasoningEffort ?? false}
@@ -284,7 +285,7 @@ export const ZgsmAI = ({
 
 								if (!checked) {
 									const { reasoningEffort: _, ...openAiCustomModelInfo } =
-										apiConfiguration.openAiCustomModelInfo || zgsmModelInfos.default
+										apiConfiguration.openAiCustomModelInfo || zgsmModels.default
 
 									setApiConfigurationField("openAiCustomModelInfo", openAiCustomModelInfo)
 								}
@@ -292,7 +293,7 @@ export const ZgsmAI = ({
 							{t("settings:providers.setReasoningLevel")}
 						</Checkbox>
 						{!!apiConfiguration.enableReasoningEffort && (
-							<ReasoningEffort
+							<ThinkingBudget
 								apiConfiguration={{
 									...apiConfiguration,
 									reasoningEffort: apiConfiguration.openAiCustomModelInfo?.reasoningEffort,
@@ -300,13 +301,17 @@ export const ZgsmAI = ({
 								setApiConfigurationField={(field, value) => {
 									if (field === "reasoningEffort") {
 										const openAiCustomModelInfo =
-											apiConfiguration.openAiCustomModelInfo || zgsmModelInfos.default
+											apiConfiguration.openAiCustomModelInfo || zgsmModels.default
 
 										setApiConfigurationField("openAiCustomModelInfo", {
 											...openAiCustomModelInfo,
-											reasoningEffort: value as ReasoningEffortType,
+											reasoningEffort: value as ReasoningEffort,
 										})
 									}
+								}}
+								modelInfo={{
+									...(apiConfiguration.openAiCustomModelInfo || zgsmModels.default),
+									supportsReasoningEffort: true,
 								}}
 							/>
 						)}
@@ -320,7 +325,7 @@ export const ZgsmAI = ({
 							<VSCodeTextField
 								value={
 									apiConfiguration?.openAiCustomModelInfo?.maxTokens?.toString() ||
-									zgsmModelInfos.default.maxTokens?.toString() ||
+									zgsmModels.default.maxTokens?.toString() ||
 									""
 								}
 								type="text"
@@ -337,12 +342,11 @@ export const ZgsmAI = ({
 											: "var(--vscode-errorForeground)"
 									})(),
 								}}
-								title={t("settings:providers.customModel.maxTokens.description")}
 								onInput={handleInputChange("openAiCustomModelInfo", (e) => {
 									const value = parseInt((e.target as HTMLInputElement).value)
 
 									return {
-										...(apiConfiguration?.openAiCustomModelInfo || zgsmModelInfos.default),
+										...(apiConfiguration?.openAiCustomModelInfo || zgsmModels.default),
 										maxTokens: isNaN(value) ? undefined : value,
 									}
 								})}
@@ -361,7 +365,7 @@ export const ZgsmAI = ({
 							<VSCodeTextField
 								value={
 									apiConfiguration?.openAiCustomModelInfo?.contextWindow?.toString() ||
-									zgsmModelInfos.default.contextWindow?.toString() ||
+									zgsmModels.default.contextWindow?.toString() ||
 									""
 								}
 								type="text"
@@ -378,14 +382,13 @@ export const ZgsmAI = ({
 											: "var(--vscode-errorForeground)"
 									})(),
 								}}
-								title={t("settings:providers.customModel.contextWindow.description")}
 								onInput={handleInputChange("openAiCustomModelInfo", (e) => {
 									const value = (e.target as HTMLInputElement).value
 									const parsed = parseInt(value)
 
 									return {
-										...(apiConfiguration?.openAiCustomModelInfo || zgsmModelInfos.default),
-										contextWindow: isNaN(parsed) ? zgsmModelInfos.default.contextWindow : parsed,
+										...(apiConfiguration?.openAiCustomModelInfo || zgsmModels.default),
+										contextWindow: isNaN(parsed) ? zgsmModels.default.contextWindow : parsed,
 									}
 								})}
 								placeholder={t("settings:placeholders.numbers.contextWindow")}
@@ -404,11 +407,11 @@ export const ZgsmAI = ({
 								<Checkbox
 									checked={
 										apiConfiguration?.openAiCustomModelInfo?.supportsImages ??
-										zgsmModelInfos.default.supportsImages
+										zgsmModels.default.supportsImages
 									}
 									onChange={handleInputChange("openAiCustomModelInfo", (checked) => {
 										return {
-											...(apiConfiguration?.openAiCustomModelInfo || zgsmModelInfos.default),
+											...(apiConfiguration?.openAiCustomModelInfo || zgsmModels.default),
 											supportsImages: checked,
 										}
 									})}>
@@ -416,11 +419,12 @@ export const ZgsmAI = ({
 										{t("settings:providers.customModel.imageSupport.label")}
 									</span>
 								</Checkbox>
-								<i
-									className="codicon codicon-info text-vscode-descriptionForeground"
-									title={t("settings:providers.customModel.imageSupport.description")}
-									style={{ fontSize: "12px" }}
-								/>
+								<StandardTooltip content={t("settings:providers.customModel.imageSupport.description")}>
+									<i
+										className="codicon codicon-info text-vscode-descriptionForeground"
+										style={{ fontSize: "12px" }}
+									/>
+								</StandardTooltip>
 							</div>
 							<div className="text-sm text-vscode-descriptionForeground pt-1">
 								{t("settings:providers.customModel.imageSupport.description")}
@@ -433,7 +437,7 @@ export const ZgsmAI = ({
 									checked={apiConfiguration?.openAiCustomModelInfo?.supportsComputerUse ?? false}
 									onChange={handleInputChange("openAiCustomModelInfo", (checked) => {
 										return {
-											...(apiConfiguration?.openAiCustomModelInfo || zgsmModelInfos.default),
+											...(apiConfiguration?.openAiCustomModelInfo || zgsmModels.default),
 											supportsComputerUse: checked,
 										}
 									})}>
@@ -441,11 +445,12 @@ export const ZgsmAI = ({
 										{t("settings:providers.customModel.computerUse.label")}
 									</span>
 								</Checkbox>
-								<i
-									className="codicon codicon-info text-vscode-descriptionForeground"
-									title={t("settings:providers.customModel.computerUse.description")}
-									style={{ fontSize: "12px" }}
-								/>
+								<StandardTooltip content={t("settings:providers.customModel.computerUse.description")}>
+									<i
+										className="codicon codicon-info text-vscode-descriptionForeground"
+										style={{ fontSize: "12px" }}
+									/>
+								</StandardTooltip>
 							</div>
 							<div className="text-sm text-vscode-descriptionForeground pt-1">
 								{t("settings:providers.customModel.computerUse.description")}
@@ -458,7 +463,7 @@ export const ZgsmAI = ({
 									checked={apiConfiguration?.openAiCustomModelInfo?.supportsPromptCache ?? false}
 									onChange={handleInputChange("openAiCustomModelInfo", (checked) => {
 										return {
-											...(apiConfiguration?.openAiCustomModelInfo || zgsmModelInfos.default),
+											...(apiConfiguration?.openAiCustomModelInfo || zgsmModels.default),
 											supportsPromptCache: checked,
 										}
 									})}>
@@ -466,11 +471,12 @@ export const ZgsmAI = ({
 										{t("settings:providers.customModel.promptCache.label")}
 									</span>
 								</Checkbox>
-								<i
-									className="codicon codicon-info text-vscode-descriptionForeground"
-									title={t("settings:providers.customModel.promptCache.description")}
-									style={{ fontSize: "12px" }}
-								/>
+								<StandardTooltip content={t("settings:providers.customModel.promptCache.description")}>
+									<i
+										className="codicon codicon-info text-vscode-descriptionForeground"
+										style={{ fontSize: "12px" }}
+									/>
+								</StandardTooltip>
 							</div>
 							<div className="text-sm text-vscode-descriptionForeground pt-1">
 								{t("settings:providers.customModel.promptCache.description")}
@@ -481,7 +487,7 @@ export const ZgsmAI = ({
 							<VSCodeTextField
 								value={
 									apiConfiguration?.openAiCustomModelInfo?.inputPrice?.toString() ??
-									zgsmModelInfos.default.inputPrice?.toString() ??
+									zgsmModels.default.inputPrice?.toString() ??
 									""
 								}
 								type="text"
@@ -503,8 +509,8 @@ export const ZgsmAI = ({
 									const parsed = parseFloat(value)
 
 									return {
-										...(apiConfiguration?.openAiCustomModelInfo ?? zgsmModelInfos.default),
-										inputPrice: isNaN(parsed) ? zgsmModelInfos.default.inputPrice : parsed,
+										...(apiConfiguration?.openAiCustomModelInfo ?? zgsmModels.default),
+										inputPrice: isNaN(parsed) ? zgsmModels.default.inputPrice : parsed,
 									}
 								})}
 								placeholder={t("settings:placeholders.numbers.inputPrice")}
@@ -513,11 +519,13 @@ export const ZgsmAI = ({
 									<label className="block font-medium mb-1">
 										{t("settings:providers.customModel.pricing.input.label")}
 									</label>
-									<i
-										className="codicon codicon-info text-vscode-descriptionForeground"
-										title={t("settings:providers.customModel.pricing.input.description")}
-										style={{ fontSize: "12px" }}
-									/>
+									<StandardTooltip
+										content={t("settings:providers.customModel.pricing.input.description")}>
+										<i
+											className="codicon codicon-info text-vscode-descriptionForeground"
+											style={{ fontSize: "12px" }}
+										/>
+									</StandardTooltip>
 								</div>
 							</VSCodeTextField>
 						</div>
@@ -526,7 +534,7 @@ export const ZgsmAI = ({
 							<VSCodeTextField
 								value={
 									apiConfiguration?.openAiCustomModelInfo?.outputPrice?.toString() ||
-									zgsmModelInfos.default.outputPrice?.toString() ||
+									zgsmModels.default.outputPrice?.toString() ||
 									""
 								}
 								type="text"
@@ -548,8 +556,8 @@ export const ZgsmAI = ({
 									const parsed = parseFloat(value)
 
 									return {
-										...(apiConfiguration?.openAiCustomModelInfo || zgsmModelInfos.default),
-										outputPrice: isNaN(parsed) ? zgsmModelInfos.default.outputPrice : parsed,
+										...(apiConfiguration?.openAiCustomModelInfo || zgsmModels.default),
+										outputPrice: isNaN(parsed) ? zgsmModels.default.outputPrice : parsed,
 									}
 								})}
 								placeholder={t("settings:placeholders.numbers.outputPrice")}
@@ -558,11 +566,13 @@ export const ZgsmAI = ({
 									<label className="block font-medium mb-1">
 										{t("settings:providers.customModel.pricing.output.label")}
 									</label>
-									<i
-										className="codicon codicon-info text-vscode-descriptionForeground"
-										title={t("settings:providers.customModel.pricing.output.description")}
-										style={{ fontSize: "12px" }}
-									/>
+									<StandardTooltip
+										content={t("settings:providers.customModel.pricing.output.description")}>
+										<i
+											className="codicon codicon-info text-vscode-descriptionForeground"
+											style={{ fontSize: "12px" }}
+										/>
+									</StandardTooltip>
 								</div>
 							</VSCodeTextField>
 						</div>
@@ -593,7 +603,7 @@ export const ZgsmAI = ({
 											const parsed = parseFloat(value)
 
 											return {
-												...(apiConfiguration?.openAiCustomModelInfo ?? zgsmModelInfos.default),
+												...(apiConfiguration?.openAiCustomModelInfo ?? zgsmModels.default),
 												cacheReadsPrice: isNaN(parsed) ? 0 : parsed,
 											}
 										})}
@@ -603,13 +613,15 @@ export const ZgsmAI = ({
 											<span className="font-medium">
 												{t("settings:providers.customModel.pricing.cacheReads.label")}
 											</span>
-											<i
-												className="codicon codicon-info text-vscode-descriptionForeground"
-												title={t(
+											<StandardTooltip
+												content={t(
 													"settings:providers.customModel.pricing.cacheReads.description",
-												)}
-												style={{ fontSize: "12px" }}
-											/>
+												)}>
+												<i
+													className="codicon codicon-info text-vscode-descriptionForeground"
+													style={{ fontSize: "12px" }}
+												/>
+											</StandardTooltip>
 										</div>
 									</VSCodeTextField>
 								</div>
@@ -637,7 +649,7 @@ export const ZgsmAI = ({
 											const parsed = parseFloat(value)
 
 											return {
-												...(apiConfiguration?.openAiCustomModelInfo ?? zgsmModelInfos.default),
+												...(apiConfiguration?.openAiCustomModelInfo ?? zgsmModels.default),
 												cacheWritesPrice: isNaN(parsed) ? 0 : parsed,
 											}
 										})}
@@ -647,13 +659,15 @@ export const ZgsmAI = ({
 											<label className="block font-medium mb-1">
 												{t("settings:providers.customModel.pricing.cacheWrites.label")}
 											</label>
-											<i
-												className="codicon codicon-info text-vscode-descriptionForeground"
-												title={t(
+											<StandardTooltip
+												content={t(
 													"settings:providers.customModel.pricing.cacheWrites.description",
-												)}
-												style={{ fontSize: "12px" }}
-											/>
+												)}>
+												<i
+													className="codicon codicon-info text-vscode-descriptionForeground"
+													style={{ fontSize: "12px" }}
+												/>
+											</StandardTooltip>
 										</div>
 									</VSCodeTextField>
 								</div>
@@ -662,7 +676,7 @@ export const ZgsmAI = ({
 
 						<Button
 							variant="secondary"
-							onClick={() => setApiConfigurationField("openAiCustomModelInfo", zgsmModelInfos.default)}>
+							onClick={() => setApiConfigurationField("openAiCustomModelInfo", zgsmModels.default)}>
 							{t("settings:providers.customModel.resetDefaults")}
 						</Button>
 					</div>

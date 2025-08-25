@@ -2,26 +2,67 @@ name: Bug Report
 description: Clearly report a bug with detailed repro steps
 labels: ["bug"]
 body:
-  - type: input
-    id: version
-    attributes:
-      label: App Version
-      description: Specify exactly which version you're using (e.g., v3.3.1)
-    validations:
-      required: true
+	- type: input
+		id: version
+		attributes:
+			label: App Version
+			description: Specify exactly which version you're using (e.g., v3.3.1)
+		validations:
+			required: true
 
+	- type: dropdown
+		id: provider
+		attributes:
+			label: API Provider
+			description: Choose the API provider involved
+			multiple: false
+			options:
+				- Zgsm
+				- Anthropic
+				- AWS Bedrock
+				- Chutes AI
+				- DeepSeek
+				- Fireworks AI
+				- Glama
+				- Google Gemini
+				- Google Vertex AI
+				- Groq
+				- Human Relay Provider
+				- LiteLLM
+				- LM Studio
+				- Mistral AI
+				- Ollama
+				- OpenAI
+				- OpenAI Compatible
+				- OpenRouter
+				- Requesty
+				- SambaNova
+				- Unbound
+				- VS Code Language Model API
+				- xAI (Grok)
+				- Not Applicable / Other
+		validations:
+			required: true
+
+	- type: input
+		id: model
+		attributes:
+			label: Model Used
+			description: Exact model name (e.g., Claude 3.7 Sonnet). Use N/A if irrelevant.
+		validations:
+			required: true
   - type: dropdown
     id: provider
     attributes:
       label: API Provider
-      description: Choose the API provider involved
-      multiple: false
       options:
-        - Zgsm
+				- Costrict
         - Anthropic
         - AWS Bedrock
         - Chutes AI
         - DeepSeek
+        - Featherless AI
+        - Fireworks AI
         - Glama
         - Google Gemini
         - Google Vertex AI
@@ -35,6 +76,7 @@ body:
         - OpenAI Compatible
         - OpenRouter
         - Requesty
+        - SambaNova
         - Unbound
         - VS Code Language Model API
         - xAI (Grok)
@@ -42,47 +84,33 @@ body:
     validations:
       required: true
 
-  - type: input
-    id: model
-    attributes:
-      label: Model Used
-      description: Clearly specify the exact model (e.g., Claude 3.7 Sonnet), if you think the issue is related to the model you are using, be sure to fill in this field.
+	- type: textarea
+		id: steps
+		attributes:
+			label: Detailed Steps to Reproduce
+			description: |
+				List the exact steps someone must follow to reproduce this bug:
+				1. Starting conditions (software state, settings, environment)
+				2. Precise actions taken (every click, selection, input)
+				3. Clearly observe and report outcomes
+			value: |
+				1.
+				2.
+				3.
+		validations:
+			required: true
 
+	- type: textarea
+		id: logs
+		attributes:
+			label: Relevant API Request Output
+			description: Paste relevant API logs or outputs here (formatted automatically as code)
+			render: shell
+		validations:
+			required: true
 
-  - type: textarea
-    id: what-happened
-    attributes:
-      label: Actual vs. Expected Behavior
-      description: Clearly state what actually happened and what you expected instead.
-      placeholder: Provide precise details of the issue here.
-    validations:
-      required: true
-
-  - type: textarea
-    id: steps
-    attributes:
-      label: Detailed Steps to Reproduce
-      description: |
-        List the exact steps someone must follow to reproduce this bug:
-        1. Starting conditions (software state, settings, environment)
-        2. Precise actions taken (every click, selection, input)
-        3. Clearly observe and report outcomes
-      value: |
-        1.
-        2.
-        3.
-    validations:
-      required: true
-
-  - type: textarea
-    id: logs
-    attributes:
-      label: Relevant API Request Output
-      description: Paste relevant API logs or outputs here (formatted automatically as code)
-      render: shell
-
-  - type: textarea
-    id: additional-context
-    attributes:
-      label: Additional Context
-      description: Include extra details, screenshots, or related issues.
+	- type: textarea
+		id: additional-context
+		attributes:
+			label: Additional Context
+			description: Include extra details, screenshots, or related issues.

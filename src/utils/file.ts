@@ -1,6 +1,6 @@
 import path from "path"
 
-// 文件扩展名到编程语言的映射表
+// Mapping table for file extensions to programming languages
 const LANGUAGE_MAP: Record<string, string> = {
 	// JavaScript/TypeScript
 	".js": "JavaScript",
@@ -10,7 +10,7 @@ const LANGUAGE_MAP: Record<string, string> = {
 	".mjs": "JavaScript",
 	".cjs": "JavaScript",
 
-	// Web 前端
+	// Web Frontend
 	".html": "HTML",
 	".htm": "HTML",
 	".css": "CSS",
@@ -26,7 +26,7 @@ const LANGUAGE_MAP: Record<string, string> = {
 	".pyi": "Python",
 	".ipynb": "Jupyter Notebook",
 
-	// Java 系列
+	// Java Family
 	".java": "Java",
 	".kt": "Kotlin",
 	".kts": "Kotlin",
@@ -67,7 +67,7 @@ const LANGUAGE_MAP: Record<string, string> = {
 	".m": "Objective-C",
 	".mm": "Objective-C",
 
-	// Shell 脚本
+	// Shell Scripts
 	".sh": "Shell",
 	".bash": "Shell",
 	".zsh": "Shell",
@@ -76,7 +76,7 @@ const LANGUAGE_MAP: Record<string, string> = {
 	".bat": "Batch",
 	".cmd": "Batch",
 
-	// 数据格式
+	// Data Formats
 	".json": "JSON",
 	".xml": "XML",
 	".yaml": "YAML",
@@ -86,7 +86,7 @@ const LANGUAGE_MAP: Record<string, string> = {
 	".cfg": "Config",
 	".conf": "Config",
 
-	// 标记语言
+	// Markup Languages
 	".md": "Markdown",
 	".mdx": "Markdown",
 	".tex": "LaTeX",
@@ -109,7 +109,7 @@ const LANGUAGE_MAP: Record<string, string> = {
 	".pl": "Perl",
 	".pm": "Perl",
 
-	// 其他
+	// Others
 	".dockerfile": "Dockerfile",
 	".Dockerfile": "Dockerfile",
 	".makefile": "Makefile",
@@ -121,13 +121,13 @@ const LANGUAGE_MAP: Record<string, string> = {
 }
 
 export async function getLanguage(filePath: string): Promise<string> {
-	// 获取文件扩展名
+	// Get file extension
 	const ext = path.extname(filePath).toLowerCase()
 
-	// 处理特殊文件名（没有扩展名但可以识别语言的文件）
+	// Handle special filenames (files without extensions but can be identified by language)
 	const fileName = path.basename(filePath).toLowerCase()
 
-	// 特殊文件名映射
+	// Special filename mapping
 	const specialFiles: Record<string, string> = {
 		dockerfile: "Dockerfile",
 		makefile: "Makefile",
@@ -142,16 +142,16 @@ export async function getLanguage(filePath: string): Promise<string> {
 		".prettierrc": "JSON",
 	}
 
-	// 优先检查特殊文件名
+	// Check special filenames first
 	if (specialFiles[fileName]) {
 		return specialFiles[fileName]
 	}
 
-	// 根据扩展名查找语言
+	// Find language by extension
 	if (ext && LANGUAGE_MAP[ext]) {
 		return LANGUAGE_MAP[ext]
 	}
 
-	// 如果找不到对应的语言，返回未知
+	// If no corresponding language is found, return Unknown
 	return "Unknown"
 }

@@ -1,33 +1,46 @@
 import { Anthropic } from "@anthropic-ai/sdk"
-import { BetaThinkingConfigParam } from "@anthropic-ai/sdk/resources/beta/messages/index.mjs"
 
-import { ProviderSettings, ModelInfo, ApiHandlerOptions, zgsmProviderKey } from "../shared/api"
-import { ANTHROPIC_DEFAULT_MAX_TOKENS } from "./providers/constants"
-import { GlamaHandler } from "./providers/glama"
-import { AnthropicHandler } from "./providers/anthropic"
-import { AwsBedrockHandler } from "./providers/bedrock"
-import { OpenRouterHandler } from "./providers/openrouter"
-import { VertexHandler } from "./providers/vertex"
-import { AnthropicVertexHandler } from "./providers/anthropic-vertex"
-import { OpenAiHandler } from "./providers/openai"
-import { OllamaHandler } from "./providers/ollama"
-import { LmStudioHandler } from "./providers/lmstudio"
-import { GeminiHandler } from "./providers/gemini"
-import { GeminiCliHandler } from "./providers/gemini-cli"
-import { OpenAiNativeHandler } from "./providers/openai-native"
-import { DeepSeekHandler } from "./providers/deepseek"
-import { ZgsmHandler } from "./providers/zgsm"
-import { MistralHandler } from "./providers/mistral"
-import { VsCodeLmHandler } from "./providers/vscode-lm"
+import type { ProviderSettings, ModelInfo } from "@roo-code/types"
+
 import { ApiStream } from "./transform/stream"
-import { UnboundHandler } from "./providers/unbound"
-import { RequestyHandler } from "./providers/requesty"
-import { HumanRelayHandler } from "./providers/human-relay"
-import { FakeAIHandler } from "./providers/fake-ai"
-import { XAIHandler } from "./providers/xai"
-import { GroqHandler } from "./providers/groq"
-import { ChutesHandler } from "./providers/chutes"
-import { LiteLLMHandler } from "./providers/litellm"
+
+import {
+	GlamaHandler,
+	AnthropicHandler,
+	AwsBedrockHandler,
+	CerebrasHandler,
+	OpenRouterHandler,
+	VertexHandler,
+	AnthropicVertexHandler,
+	OpenAiHandler,
+	LmStudioHandler,
+	GeminiHandler,
+	GeminiCliHandler,
+	OpenAiNativeHandler,
+	DeepSeekHandler,
+	MoonshotHandler,
+	MistralHandler,
+	VsCodeLmHandler,
+	UnboundHandler,
+	RequestyHandler,
+	HumanRelayHandler,
+	FakeAIHandler,
+	XAIHandler,
+	GroqHandler,
+	HuggingFaceHandler,
+	ChutesHandler,
+	LiteLLMHandler,
+	ClaudeCodeHandler,
+	ZgsmAiHandler,
+	SambaNovaHandler,
+	IOIntelligenceHandler,
+	DoubaoHandler,
+	ZAiHandler,
+	FireworksHandler,
+	RooHandler,
+	FeatherlessHandler,
+} from "./providers"
+import { NativeOllamaHandler } from "./providers/native-ollama"
 
 export interface SingleCompletionHandler {
 	completePrompt(prompt: string): Promise<string>
@@ -37,10 +50,21 @@ export interface ApiHandlerCreateMessageMetadata {
 	mode?: string
 	taskId: string
 	[key: string]: any
+	previousResponseId?: string
+	/**
+	 * When true, the provider must NOT fall back to internal continuity state
+	 * (e.g., lastResponseId) if previousResponseId is absent.
+	 * Used to enforce "skip once" after a condense operation.
+	 */
+	suppressPreviousResponseId?: boolean
 }
 
 export interface ApiHandler {
-	createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[], opt?: any): ApiStream
+	createMessage(
+		systemPrompt: string,
+		messages: Anthropic.Messages.MessageParam[],
+		metadata?: ApiHandlerCreateMessageMetadata,
+	): ApiStream
 
 	getModel(): { id: string; info: ModelInfo }
 
@@ -59,10 +83,12 @@ export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
 	const { apiProvider, ...options } = configuration
 
 	switch (apiProvider) {
-		case zgsmProviderKey:
-			return new ZgsmHandler(options)
+		case "zgsm":
+			return new ZgsmAiHandler(options)
 		case "anthropic":
 			return new AnthropicHandler(options)
+		case "claude-code":
+			return new ClaudeCodeHandler(options)
 		case "glama":
 			return new GlamaHandler(options)
 		case "openrouter":
@@ -70,15 +96,13 @@ export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
 		case "bedrock":
 			return new AwsBedrockHandler(options)
 		case "vertex":
-			if (options.apiModelId?.startsWith("claude")) {
-				return new AnthropicVertexHandler(options)
-			} else {
-				return new VertexHandler(options)
-			}
+			return options.apiModelId?.startsWith("claude")
+				? new AnthropicVertexHandler(options)
+				: new VertexHandler(options)
 		case "openai":
 			return new OpenAiHandler(options)
 		case "ollama":
-			return new OllamaHandler(options)
+			return new NativeOllamaHandler(options)
 		case "lmstudio":
 			return new LmStudioHandler(options)
 		case "gemini":
@@ -89,6 +113,10 @@ export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
 			return new OpenAiNativeHandler(options)
 		case "deepseek":
 			return new DeepSeekHandler(options)
+		case "doubao":
+			return new DoubaoHandler(options)
+		case "moonshot":
+			return new MoonshotHandler(options)
 		case "vscode-lm":
 			return new VsCodeLmHandler(options)
 		case "mistral":
@@ -105,53 +133,30 @@ export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
 			return new XAIHandler(options)
 		case "groq":
 			return new GroqHandler(options)
+		case "huggingface":
+			return new HuggingFaceHandler(options)
 		case "chutes":
 			return new ChutesHandler(options)
 		case "litellm":
 			return new LiteLLMHandler(options)
+		case "cerebras":
+			return new CerebrasHandler(options)
+		case "sambanova":
+			return new SambaNovaHandler(options)
+		case "zai":
+			return new ZAiHandler(options)
+		case "fireworks":
+			return new FireworksHandler(options)
+		case "io-intelligence":
+			return new IOIntelligenceHandler(options)
+		case "roo":
+			// Never throw exceptions from provider constructors
+			// The provider-proxy server will handle authentication and return appropriate error codes
+			return new RooHandler(options)
+		case "featherless":
+			return new FeatherlessHandler(options)
 		default:
+			apiProvider satisfies "gemini-cli" | undefined
 			return new AnthropicHandler(options)
 	}
-}
-
-export function getModelParams({
-	options,
-	model,
-	defaultMaxTokens,
-	defaultTemperature = 0,
-	defaultReasoningEffort,
-}: {
-	options: ApiHandlerOptions
-	model: ModelInfo
-	defaultMaxTokens?: number
-	defaultTemperature?: number
-	defaultReasoningEffort?: "low" | "medium" | "high"
-}) {
-	const {
-		modelMaxTokens: customMaxTokens,
-		modelMaxThinkingTokens: customMaxThinkingTokens,
-		modelTemperature: customTemperature,
-		reasoningEffort: customReasoningEffort,
-	} = options
-
-	let maxTokens = model.maxTokens ?? defaultMaxTokens
-	let thinking: BetaThinkingConfigParam | undefined = undefined
-	let temperature = customTemperature ?? defaultTemperature
-	const reasoningEffort = customReasoningEffort ?? defaultReasoningEffort
-
-	if (model.thinking) {
-		// Only honor `customMaxTokens` for thinking models.
-		maxTokens = customMaxTokens ?? maxTokens
-
-		// Clamp the thinking budget to be at most 80% of max tokens and at
-		// least 1024 tokens.
-		const maxBudgetTokens = Math.floor((maxTokens || ANTHROPIC_DEFAULT_MAX_TOKENS) * 0.8)
-		const budgetTokens = Math.max(Math.min(customMaxThinkingTokens ?? maxBudgetTokens, maxBudgetTokens), 1024)
-		thinking = { type: "enabled", budget_tokens: budgetTokens }
-
-		// Anthropic "Thinking" models require a temperature of 1.0.
-		temperature = 1.0
-	}
-
-	return { maxTokens, thinking, temperature, reasoningEffort }
 }

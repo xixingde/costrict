@@ -1,13 +1,17 @@
-import { useCallback } from "react"
+import { useCallback, useState, useEffect } from "react"
 import { Checkbox } from "vscrui"
-import { VSCodeTextField, VSCodeRadio, VSCodeRadioGroup } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
-import { ProviderSettings, ModelInfo } from "@roo/shared/api"
+import {
+	type ProviderSettings,
+	type ModelInfo,
+	BEDROCK_REGIONS,
+	BEDROCK_CLAUDE_SONNET_4_MODEL_ID,
+} from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@src/components/ui"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StandardTooltip } from "@src/components/ui"
 
-import { AWS_REGIONS } from "../constants"
 import { inputEventTransform, noTransform } from "../transforms"
 
 type BedrockProps = {
@@ -18,6 +22,15 @@ type BedrockProps = {
 
 export const Bedrock = ({ apiConfiguration, setApiConfigurationField, selectedModelInfo }: BedrockProps) => {
 	const { t } = useAppTranslation()
+	const [awsEndpointSelected, setAwsEndpointSelected] = useState(!!apiConfiguration?.awsBedrockEndpointEnabled)
+
+	// Check if the selected model supports 1M context (Claude Sonnet 4)
+	const supports1MContextBeta = apiConfiguration?.apiModelId === BEDROCK_CLAUDE_SONNET_4_MODEL_ID
+
+	// Update the endpoint enabled state when the configuration changes
+	useEffect(() => {
+		setAwsEndpointSelected(!!apiConfiguration?.awsBedrockEndpointEnabled)
+	}, [apiConfiguration?.awsBedrockEndpointEnabled])
 
 	const handleInputChange = useCallback(
 		<K extends keyof ProviderSettings, E>(
@@ -32,19 +45,51 @@ export const Bedrock = ({ apiConfiguration, setApiConfigurationField, selectedMo
 
 	return (
 		<>
-			<VSCodeRadioGroup
-				value={apiConfiguration?.awsUseProfile ? "profile" : "credentials"}
-				onChange={handleInputChange(
-					"awsUseProfile",
-					(e) => (e.target as HTMLInputElement).value === "profile",
-				)}>
-				<VSCodeRadio value="credentials">{t("settings:providers.awsCredentials")}</VSCodeRadio>
-				<VSCodeRadio value="profile">{t("settings:providers.awsProfile")}</VSCodeRadio>
-			</VSCodeRadioGroup>
+			<div>
+				<label className="block font-medium mb-1">Authentication Method</label>
+				<Select
+					value={
+						apiConfiguration?.awsUseApiKey
+							? "apikey"
+							: apiConfiguration?.awsUseProfile
+								? "profile"
+								: "credentials"
+					}
+					onValueChange={(value) => {
+						if (value === "apikey") {
+							setApiConfigurationField("awsUseApiKey", true)
+							setApiConfigurationField("awsUseProfile", false)
+						} else if (value === "profile") {
+							setApiConfigurationField("awsUseApiKey", false)
+							setApiConfigurationField("awsUseProfile", true)
+						} else {
+							setApiConfigurationField("awsUseApiKey", false)
+							setApiConfigurationField("awsUseProfile", false)
+						}
+					}}>
+					<SelectTrigger className="w-full">
+						<SelectValue placeholder={t("settings:common.select")} />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="credentials">{t("settings:providers.awsCredentials")}</SelectItem>
+						<SelectItem value="profile">{t("settings:providers.awsProfile")}</SelectItem>
+						<SelectItem value="apikey">{t("settings:providers.awsApiKey")}</SelectItem>
+					</SelectContent>
+				</Select>
+			</div>
 			<div className="text-sm text-vscode-descriptionForeground -mt-3">
 				{t("settings:providers.apiKeyStorageNotice")}
 			</div>
-			{apiConfiguration?.awsUseProfile ? (
+			{apiConfiguration?.awsUseApiKey ? (
+				<VSCodeTextField
+					value={apiConfiguration?.awsApiKey || ""}
+					type="password"
+					onInput={handleInputChange("awsApiKey")}
+					placeholder={t("settings:placeholders.apiKey")}
+					className="w-full">
+					<label className="block font-medium mb-1">{t("settings:providers.awsApiKey")}</label>
+				</VSCodeTextField>
+			) : apiConfiguration?.awsUseProfile ? (
 				<VSCodeTextField
 					value={apiConfiguration?.awsProfile || ""}
 					onInput={handleInputChange("awsProfile")}
@@ -89,7 +134,7 @@ export const Bedrock = ({ apiConfiguration, setApiConfigurationField, selectedMo
 						<SelectValue placeholder={t("settings:common.select")} />
 					</SelectTrigger>
 					<SelectContent>
-						{AWS_REGIONS.map(({ value, label }) => (
+						{BEDROCK_REGIONS.map(({ value, label }) => (
 							<SelectItem key={value} value={value}>
 								{label}
 							</SelectItem>
@@ -103,24 +148,64 @@ export const Bedrock = ({ apiConfiguration, setApiConfigurationField, selectedMo
 				{t("settings:providers.awsCrossRegion")}
 			</Checkbox>
 			{selectedModelInfo?.supportsPromptCache && (
-				<Checkbox
-					checked={apiConfiguration?.awsUsePromptCache || false}
-					onChange={handleInputChange("awsUsePromptCache", noTransform)}>
-					<div className="flex items-center gap-1">
-						<span>{t("settings:providers.enablePromptCaching")}</span>
-						<i
-							className="codicon codicon-info text-vscode-descriptionForeground"
-							title={t("settings:providers.enablePromptCachingTitle")}
-							style={{ fontSize: "12px" }}
-						/>
+				<>
+					<Checkbox
+						checked={apiConfiguration?.awsUsePromptCache || false}
+						onChange={handleInputChange("awsUsePromptCache", noTransform)}>
+						<div className="flex items-center gap-1">
+							<span>{t("settings:providers.enablePromptCaching")}</span>
+							<StandardTooltip content={t("settings:providers.enablePromptCachingTitle")}>
+								<i
+									className="codicon codicon-info text-vscode-descriptionForeground"
+									style={{ fontSize: "12px" }}
+								/>
+							</StandardTooltip>
+						</div>
+					</Checkbox>
+					<div className="text-sm text-vscode-descriptionForeground ml-6 mt-1">
+						{t("settings:providers.cacheUsageNote")}
 					</div>
-				</Checkbox>
+				</>
 			)}
-			<div>
-				<div className="text-sm text-vscode-descriptionForeground ml-6 mt-1">
-					{t("settings:providers.cacheUsageNote")}
+			{supports1MContextBeta && (
+				<div>
+					<Checkbox
+						checked={apiConfiguration?.awsBedrock1MContext ?? false}
+						onChange={(checked: boolean) => {
+							setApiConfigurationField("awsBedrock1MContext", checked)
+						}}>
+						{t("settings:providers.awsBedrock1MContextBetaLabel")}
+					</Checkbox>
+					<div className="text-sm text-vscode-descriptionForeground mt-1 ml-6">
+						{t("settings:providers.awsBedrock1MContextBetaDescription")}
+					</div>
 				</div>
-			</div>
+			)}
+			<Checkbox
+				checked={awsEndpointSelected}
+				onChange={(isChecked) => {
+					setAwsEndpointSelected(isChecked)
+					setApiConfigurationField("awsBedrockEndpointEnabled", isChecked)
+				}}>
+				{t("settings:providers.awsBedrockVpc.useCustomVpcEndpoint")}
+			</Checkbox>
+			{awsEndpointSelected && (
+				<>
+					<VSCodeTextField
+						value={apiConfiguration?.awsBedrockEndpoint || ""}
+						style={{ width: "100%", marginTop: 3, marginBottom: 5 }}
+						type="url"
+						onInput={handleInputChange("awsBedrockEndpoint")}
+						placeholder={t("settings:providers.awsBedrockVpc.vpcEndpointUrlPlaceholder")}
+						data-testid="vpc-endpoint-input"
+					/>
+					<div className="text-sm text-vscode-descriptionForeground ml-6 mt-1 mb-3">
+						{t("settings:providers.awsBedrockVpc.examples")}
+						<div className="ml-2">• https://vpce-xxx.bedrock.region.vpce.amazonaws.com/</div>
+						<div className="ml-2">• https://gateway.my-company.com/route/app/bedrock</div>
+					</div>
+				</>
+			)}
 		</>
 	)
 }

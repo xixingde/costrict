@@ -1,7 +1,10 @@
 import { useCallback } from "react"
 import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
-import { ProviderSettings, RouterModels, glamaDefaultModelId } from "@roo/shared/api"
+import { type ProviderSettings, glamaDefaultModelId } from "@roo-code/types"
+
+import type { OrganizationAllowList } from "@roo/cloud"
+import type { RouterModels } from "@roo/api"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { getGlamaAuthUrl } from "@src/oauth/urls"
@@ -15,9 +18,18 @@ type GlamaProps = {
 	setApiConfigurationField: (field: keyof ProviderSettings, value: ProviderSettings[keyof ProviderSettings]) => void
 	routerModels?: RouterModels
 	uriScheme?: string
+	organizationAllowList: OrganizationAllowList
+	modelValidationError?: string
 }
 
-export const Glama = ({ apiConfiguration, setApiConfigurationField, routerModels, uriScheme }: GlamaProps) => {
+export const Glama = ({
+	apiConfiguration,
+	setApiConfigurationField,
+	routerModels,
+	uriScheme,
+	organizationAllowList,
+	modelValidationError,
+}: GlamaProps) => {
 	const { t } = useAppTranslation()
 
 	const handleInputChange = useCallback(
@@ -57,6 +69,8 @@ export const Glama = ({ apiConfiguration, setApiConfigurationField, routerModels
 				modelIdKey="glamaModelId"
 				serviceName="Glama"
 				serviceUrl="https://glama.ai/models"
+				organizationAllowList={organizationAllowList}
+				errorMessage={modelValidationError}
 			/>
 		</>
 	)

@@ -1,29 +1,36 @@
 import {
-	ProviderName,
-	ModelInfo,
+	type ProviderName,
+	type ModelInfo,
 	anthropicModels,
 	bedrockModels,
+	cerebrasModels,
+	claudeCodeModels,
 	deepSeekModels,
+	moonshotModels,
 	geminiModels,
-	geminiCliModels,
 	mistralModels,
 	openAiNativeModels,
 	vertexModels,
-	zgsmProviderKey,
 	xaiModels,
 	groqModels,
 	chutesModels,
-} from "@roo/shared/api"
-import i18next from "i18next"
-
-export { REASONING_MODELS, PROMPT_CACHING_MODELS } from "@roo/shared/api"
-
-export { AWS_REGIONS } from "@roo/shared/aws_regions"
+	geminiCliModels,
+	sambaNovaModels,
+	doubaoModels,
+	internationalZAiModels,
+	fireworksModels,
+	rooModels,
+	featherlessModels,
+} from "@roo-code/types"
 
 export const MODELS_BY_PROVIDER: Partial<Record<ProviderName, Record<string, ModelInfo>>> = {
 	anthropic: anthropicModels,
+	"claude-code": claudeCodeModels,
 	bedrock: bedrockModels,
+	cerebras: cerebrasModels,
 	deepseek: deepSeekModels,
+	doubao: doubaoModels,
+	moonshot: moonshotModels,
 	gemini: geminiModels,
 	"gemini-cli": geminiCliModels,
 	mistral: mistralModels,
@@ -32,14 +39,24 @@ export const MODELS_BY_PROVIDER: Partial<Record<ProviderName, Record<string, Mod
 	xai: xaiModels,
 	groq: groqModels,
 	chutes: chutesModels,
+	sambanova: sambaNovaModels,
+	zai: internationalZAiModels,
+	fireworks: fireworksModels,
+	roo: rooModels,
+	featherless: featherlessModels,
 }
 
 export const PROVIDERS = [
+	{ value: "zgsm", label: "Costrict" },
 	{ value: "openrouter", label: "OpenRouter" },
 	{ value: "anthropic", label: "Anthropic" },
+	{ value: "claude-code", label: "Claude Code" },
+	{ value: "cerebras", label: "Cerebras" },
 	{ value: "gemini", label: "Google Gemini" },
 	{ value: "gemini-cli", label: "Gemini CLI" },
+	{ value: "doubao", label: "Doubao" },
 	{ value: "deepseek", label: "DeepSeek" },
+	{ value: "moonshot", label: "Moonshot" },
 	{ value: "openai-native", label: "OpenAI" },
 	{ value: "openai", label: "OpenAI Compatible" },
 	{ value: "vertex", label: "GCP Vertex AI" },
@@ -54,21 +71,13 @@ export const PROVIDERS = [
 	{ value: "human-relay", label: "Human Relay" },
 	{ value: "xai", label: "xAI (Grok)" },
 	{ value: "groq", label: "Groq" },
+	{ value: "huggingface", label: "Hugging Face" },
 	{ value: "chutes", label: "Chutes AI" },
 	{ value: "litellm", label: "LiteLLM" },
+	{ value: "sambanova", label: "SambaNova" },
+	{ value: "zai", label: "Z AI" },
+	{ value: "fireworks", label: "Fireworks AI" },
+	{ value: "featherless", label: "Featherless AI" },
+	{ value: "io-intelligence", label: "IO Intelligence" },
+	{ value: "roo", label: "Roo Code Cloud" },
 ].sort((a, b) => a.label.localeCompare(b.label))
-
-PROVIDERS.unshift({
-	value: zgsmProviderKey,
-	get label() {
-		return i18next.t("settings:providers.zgsm")
-	},
-})
-
-export const VERTEX_REGIONS = [
-	{ value: "us-east5", label: "us-east5" },
-	{ value: "us-central1", label: "us-central1" },
-	{ value: "europe-west1", label: "europe-west1" },
-	{ value: "europe-west4", label: "europe-west4" },
-	{ value: "asia-southeast1", label: "asia-southeast1" },
-]

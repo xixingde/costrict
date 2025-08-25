@@ -1,4 +1,4 @@
-import { SeverityLevel } from "@roo/shared/codeReview"
+import { SeverityLevel } from "@roo/codeReview"
 
 export const severityColor = (alpha: number = 1) => {
 	return {

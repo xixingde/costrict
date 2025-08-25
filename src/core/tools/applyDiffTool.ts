@@ -2,22 +2,23 @@ import path from "path"
 import fs from "fs/promises"
 import * as vscode from "vscode"
 
+import { TelemetryService } from "@roo-code/telemetry"
+import { DEFAULT_WRITE_DELAY_MS } from "@roo-code/types"
+
 import { ClineSayTool } from "../../shared/ExtensionMessage"
 import { getReadablePath } from "../../utils/path"
+import { getDiffLines } from "../../utils/diffLines"
+import { getLanguage } from "../../utils/file"
+import { autoCommit } from "../../utils/git"
 import { Task } from "../task/Task"
 import { ToolUse, RemoveClosingTag, AskApproval, HandleError, PushToolResult } from "../../shared/tools"
 import { formatResponse } from "../prompts/responses"
 import { fileExistsAtPath } from "../../utils/fs"
-import { getDiffLines } from "../../utils/diffLines"
-import { getLanguage } from "../../utils/file"
-import { addLineNumbers } from "../../integrations/misc/extract-text"
 import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
-import { telemetryService } from "../../services/telemetry/TelemetryService"
-import { TelemetryService } from "../../services/telemetry"
 import { unescapeHtmlEntities } from "../../utils/text-normalization"
-import { autoCommit } from "../../utils/git"
+import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
 
-export async function applyDiffTool(
+export async function applyDiffToolLegacy(
 	cline: Task,
 	block: ToolUse,
 	askApproval: AskApproval,
@@ -91,7 +92,7 @@ export async function applyDiffTool(
 				return
 			}
 
-			const originalContent = await fs.readFile(absolutePath, "utf-8")
+			const originalContent: string = await fs.readFile(absolutePath, "utf-8")
 
 			// Apply the diff to the original content
 			const diffResult = (await cline.diffStrategy?.applyDiff(
@@ -108,7 +109,7 @@ export async function applyDiffTool(
 				const currentCount = (cline.consecutiveMistakeCountForApplyDiff.get(relPath) || 0) + 1
 				cline.consecutiveMistakeCountForApplyDiff.set(relPath, currentCount)
 				let formattedError = ""
-				telemetryService.captureDiffApplicationError(cline.taskId, currentCount)
+				TelemetryService.instance.captureDiffApplicationError(cline.taskId, currentCount)
 
 				if (diffResult.failParts && diffResult.failParts.length > 0) {
 					for (const failPart of diffResult.failParts) {
@@ -143,53 +144,104 @@ export async function applyDiffTool(
 			cline.consecutiveMistakeCount = 0
 			cline.consecutiveMistakeCountForApplyDiff.delete(relPath)
 
-			// Show diff view before asking for approval
-			cline.diffViewProvider.editType = "modify"
-			await cline.diffViewProvider.open(relPath)
-			await cline.diffViewProvider.update(diffResult.content, true)
-			await cline.diffViewProvider.scrollToFirstDiff()
+			// Check if preventFocusDisruption experiment is enabled
+			const provider = cline.providerRef.deref()
+			const state = await provider?.getState()
+			const diagnosticsEnabled = state?.diagnosticsEnabled ?? true
+			const writeDelayMs = state?.writeDelayMs ?? DEFAULT_WRITE_DELAY_MS
+			const isPreventFocusDisruptionEnabled = experiments.isEnabled(
+				state?.experiments ?? {},
+				EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION,
+			)
 
-			const completeMessage = JSON.stringify({
-				...sharedMessageProps,
-				diff: diffContent,
-			} satisfies ClineSayTool)
-
-			let toolProgressStatus
-
-			if (cline.diffStrategy && cline.diffStrategy.getProgressStatus) {
-				toolProgressStatus = cline.diffStrategy.getProgressStatus(block, diffResult)
-			}
-
-			const didApprove = await askApproval("tool", completeMessage, toolProgressStatus)
+			// Check if file is write-protected
+			const isWriteProtected = cline.rooProtectedController?.isWriteProtected(relPath) || false
 			const fileLanguage = await getLanguage(absolutePath)
-			const changedLines = getDiffLines(originalContent, diffResult.content)
-			if (!didApprove) {
-				await cline.diffViewProvider.revertChanges() // Cline likely handles closing the diff view
-				TelemetryService.instance.captureCodeReject(fileLanguage, changedLines)
-				return
-			}
+			const changedLines = getDiffLines(originalContent ?? "", diffResult.content ?? "")
+			const captureCodeAccept = (fileLanguage: string, changedLines: number) => {
+				try {
+					TelemetryService.instance.captureCodeAccept(fileLanguage, changedLines)
 
-			const { newProblemsMessage, userEdits, finalContent } = await cline.diffViewProvider.saveChanges()
+					// Check if AutoCommit is enabled before committing
+					const autoCommitEnabled = vscode.workspace.getConfiguration().get<boolean>("AutoCommit", false)
+					if (autoCommitEnabled) {
+						autoCommit(relPath, cline.cwd, {
+							model: cline.api.getModel().id,
+							editorName: vscode.env.appName,
+							date: new Date().toLocaleString(),
+						})
+					}
+				} catch (err) {
+					console.log(err)
+				}
+			}
+			if (isPreventFocusDisruptionEnabled) {
+				// Direct file write without diff view
+				const completeMessage = JSON.stringify({
+					...sharedMessageProps,
+					diff: diffContent,
+					isProtected: isWriteProtected,
+				} satisfies ClineSayTool)
+
+				let toolProgressStatus
+
+				if (cline.diffStrategy && cline.diffStrategy.getProgressStatus) {
+					toolProgressStatus = cline.diffStrategy.getProgressStatus(block, diffResult)
+				}
+
+				const didApprove = await askApproval("tool", completeMessage, toolProgressStatus, isWriteProtected)
+
+				if (!didApprove) {
+					TelemetryService.instance.captureCodeReject(fileLanguage, changedLines)
+					return
+				}
+
+				// Save directly without showing diff view or opening the file
+				cline.diffViewProvider.editType = "modify"
+				cline.diffViewProvider.originalContent = originalContent
+				await cline.diffViewProvider.saveDirectly(
+					relPath,
+					diffResult.content,
+					false,
+					diagnosticsEnabled,
+					writeDelayMs,
+				)
+			} else {
+				// Original behavior with diff view
+				// Show diff view before asking for approval
+				cline.diffViewProvider.editType = "modify"
+				await cline.diffViewProvider.open(relPath)
+				await cline.diffViewProvider.update(diffResult.content, true)
+				cline.diffViewProvider.scrollToFirstDiff()
+
+				const completeMessage = JSON.stringify({
+					...sharedMessageProps,
+					diff: diffContent,
+					isProtected: isWriteProtected,
+				} satisfies ClineSayTool)
+
+				let toolProgressStatus
+
+				if (cline.diffStrategy && cline.diffStrategy.getProgressStatus) {
+					toolProgressStatus = cline.diffStrategy.getProgressStatus(block, diffResult)
+				}
+
+				const didApprove = await askApproval("tool", completeMessage, toolProgressStatus, isWriteProtected)
+				if (!didApprove) {
+					await cline.diffViewProvider.revertChanges() // Cline likely handles closing the diff view
+					TelemetryService.instance.captureCodeReject(fileLanguage, changedLines)
+					return
+				}
+
+				// Call saveChanges to update the DiffViewProvider properties
+				await cline.diffViewProvider.saveChanges(diagnosticsEnabled, writeDelayMs)
+			}
 
 			// Track file edit operation
 			if (relPath) {
 				await cline.fileContextTracker.trackFileContext(relPath, "roo_edited" as RecordSource)
 			}
-			try {
-				TelemetryService.instance.captureCodeAccept(fileLanguage, changedLines)
-
-				// Check if AutoCommit is enabled before committing
-				const autoCommitEnabled = vscode.workspace.getConfiguration().get<boolean>("AutoCommit", false)
-				if (autoCommitEnabled) {
-					autoCommit(relPath, cline.cwd, {
-						model: cline.api.getModel().id,
-						editorName: vscode.env.appName,
-						date: new Date().toLocaleString(),
-					})
-				}
-			} catch (err) {
-				console.log(err)
-			}
+			captureCodeAccept(fileLanguage, changedLines)
 
 			// Used to determine if we should wait for busy terminal to update before sending api request
 			cline.didEditFile = true
@@ -199,33 +251,20 @@ export async function applyDiffTool(
 				partFailHint = `But unable to apply all diff parts to file: ${absolutePath}, silently use <read_file> tool to check newest file version and re-apply diffs\n`
 			}
 
-			if (userEdits) {
-				await cline.say(
-					"user_feedback_diff",
-					JSON.stringify({
-						tool: fileExists ? "editedExistingFile" : "newFileCreated",
-						path: getReadablePath(cline.cwd, relPath),
-						diff: userEdits,
-					} satisfies ClineSayTool),
-				)
+			// Get the formatted response message
+			const message = await cline.diffViewProvider.pushToolWriteResult(cline, cline.cwd, !fileExists)
 
-				pushToolResult(
-					`The user made the following updates to your content:\n\n${userEdits}\n\n` +
-						partFailHint +
-						`The updated content, which includes both your original modifications and the user's edits, has been successfully saved to ${relPath.toPosix()}. Here is the full, updated content of the file, including line numbers:\n\n` +
-						`<final_file_content path="${relPath.toPosix()}">\n${addLineNumbers(
-							finalContent || "",
-						)}\n</final_file_content>\n\n` +
-						`Please note:\n` +
-						`1. You do not need to re-write the file with these changes, as they have already been applied.\n` +
-						`2. Proceed with the task using this updated file content as the new baseline.\n` +
-						`3. If the user's edits have addressed part of the task or changed the requirements, adjust your approach accordingly.` +
-						`${newProblemsMessage}`,
-				)
+			// Check for single SEARCH/REPLACE block warning
+			const searchBlocks = (diffContent.match(/<<<<<<< SEARCH/g) || []).length
+			const singleBlockNotice =
+				searchBlocks === 1
+					? "\n<notice>Making multiple related changes in a single apply_diff is more efficient. If other changes are needed in this file, please include them as additional SEARCH/REPLACE blocks.</notice>"
+					: ""
+
+			if (partFailHint) {
+				pushToolResult(partFailHint + message + singleBlockNotice)
 			} else {
-				pushToolResult(
-					`Changes successfully applied to ${relPath.toPosix()}:\n\n${newProblemsMessage}\n` + partFailHint,
-				)
+				pushToolResult(message + singleBlockNotice)
 			}
 
 			await cline.diffViewProvider.reset()

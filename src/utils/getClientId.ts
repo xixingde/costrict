@@ -1,4 +1,3 @@
-// Import required modules
 import * as vscode from "vscode"
 import * as os from "os"
 import * as path from "path"
@@ -12,12 +11,12 @@ let clientIdCache: string | null = null
 
 // Gets the path to client ID file
 const getClientIdFilePath = (): string => {
-	return path.join(os.homedir(), ".zgsm", ".clientId")
+	return path.join(os.homedir(), ".costrict", ".clientId")
 }
 
 // Gets .zgsm directory path
 const getZgsmDirPath = (): string => {
-	return path.join(os.homedir(), ".zgsm")
+	return path.join(os.homedir(), ".costrict")
 }
 
 // Generates new client ID
@@ -50,7 +49,7 @@ export const getClientId = (): string => {
 		const newClientId = generateNewClientId()
 		const zgsmDir = getZgsmDirPath()
 
-		// Create .Costrict directory if not exists
+		// Create .zgsm directory if not exists
 		if (!existsSync(zgsmDir)) {
 			mkdirSync(zgsmDir, { recursive: true })
 		}

@@ -2,7 +2,10 @@ import { useCallback, useState, useRef } from "react"
 import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import { useQueryClient } from "@tanstack/react-query"
 
-import { ProviderSettings, RouterModels, unboundDefaultModelId } from "@roo/shared/api"
+import { type ProviderSettings, unboundDefaultModelId } from "@roo-code/types"
+
+import type { OrganizationAllowList } from "@roo/cloud"
+import type { RouterModels } from "@roo/api"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { VSCodeButtonLink } from "@src/components/common/VSCodeButtonLink"
@@ -14,11 +17,23 @@ import { ModelPicker } from "../ModelPicker"
 
 type UnboundProps = {
 	apiConfiguration: ProviderSettings
-	setApiConfigurationField: (field: keyof ProviderSettings, value: ProviderSettings[keyof ProviderSettings]) => void
+	setApiConfigurationField: (
+		field: keyof ProviderSettings,
+		value: ProviderSettings[keyof ProviderSettings],
+		isUserAction?: boolean,
+	) => void
 	routerModels?: RouterModels
+	organizationAllowList: OrganizationAllowList
+	modelValidationError?: string
 }
 
-export const Unbound = ({ apiConfiguration, setApiConfigurationField, routerModels }: UnboundProps) => {
+export const Unbound = ({
+	apiConfiguration,
+	setApiConfigurationField,
+	routerModels,
+	organizationAllowList,
+	modelValidationError,
+}: UnboundProps) => {
 	const { t } = useAppTranslation()
 	const [didRefetch, setDidRefetch] = useState<boolean>()
 	const [isInvalidKey, setIsInvalidKey] = useState<boolean>(false)
@@ -99,7 +114,7 @@ export const Unbound = ({ apiConfiguration, setApiConfigurationField, routerMode
 
 			if (!currentModelId || !modelExists) {
 				const firstAvailableModelId = Object.keys(updatedModels)[0]
-				setApiConfigurationField("unboundModelId", firstAvailableModelId)
+				setApiConfigurationField("unboundModelId", firstAvailableModelId, false) // false = automatic model selection
 			}
 		}
 
@@ -167,6 +182,8 @@ export const Unbound = ({ apiConfiguration, setApiConfigurationField, routerMode
 				serviceName="Unbound"
 				serviceUrl="https://api.getunbound.ai/models"
 				setApiConfigurationField={setApiConfigurationField}
+				organizationAllowList={organizationAllowList}
+				errorMessage={modelValidationError}
 			/>
 		</>
 	)
