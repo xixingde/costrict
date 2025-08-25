@@ -1371,13 +1371,13 @@ export class ClineProvider
 		let mcpServersDir: string
 		if (process.platform === "win32") {
 			// Windows: %APPDATA%\Roo-Code\MCP
-			mcpServersDir = path.join(os.homedir(), "AppData", "Roaming", "Roo-Code", "MCP")
+			mcpServersDir = path.join(os.homedir(), "AppData", "Roaming", "Costrict", "MCP")
 		} else if (process.platform === "darwin") {
 			// macOS: ~/Documents/Cline/MCP
 			mcpServersDir = path.join(os.homedir(), "Documents", "Cline", "MCP")
 		} else {
 			// Linux: ~/.local/share/Cline/MCP
-			mcpServersDir = path.join(os.homedir(), ".local", "share", "Roo-Code", "MCP")
+			mcpServersDir = path.join(os.homedir(), ".local", "share", "Costrict", "MCP")
 		}
 
 		try {
