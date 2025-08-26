@@ -14,10 +14,10 @@ vi.mock("vscode", () => ({
 // Mock Package module
 vi.mock("../../../shared/package", () => ({
 	Package: {
-		name: "roo-cline",
-		publisher: "RooVeterinaryInc",
+		name: "zgsm",
+		publisher: "zgsm-ai",
 		version: "1.0.0",
-		outputChannel: "Roo-Code",
+		outputChannel: "Costrict",
 	},
 }))
 
