@@ -7,9 +7,9 @@ or
 
 `git remote set-url upstream https://github.com/RooCodeInc/Roo-Code.git`
 
-<!-- git checkout merge-roo-vx 设置合并分支 -->
+<!-- git checkout roo-to-main 设置合并分支 -->
 
-`git checkout -b merge-roo-v3`
+`git checkout -b roo-to-main`
 
 <!-- git fetch upstream -->
 
@@ -29,4 +29,4 @@ or
 
 <!-- git push origin merge-roo-vx -->
 
-`git push origin merge-roo-v3`
+`git push origin roo-to-main`

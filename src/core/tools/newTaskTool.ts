@@ -9,6 +9,7 @@ import { defaultModeSlug, getModeBySlug } from "../../shared/modes"
 import { formatResponse } from "../prompts/responses"
 import { t } from "../../i18n"
 import { parseMarkdownChecklist } from "./updateTodoListTool"
+import { Package } from "../../shared/package"
 
 export async function newTaskTool(
 	cline: Task,
@@ -56,7 +57,12 @@ export async function newTaskTool(
 				return
 			}
 			const state = await provider.getState()
-			const requireTodos = vscode.workspace.getConfiguration("zgsm").get<boolean>("newTaskRequireTodos", false)
+
+			// Use Package.name (dynamic at build time) as the VSCode configuration namespace.
+			// Supports multiple extension variants (e.g., stable/nightly) without hardcoded strings.
+			const requireTodos = vscode.workspace
+				.getConfiguration(Package.name)
+				.get<boolean>("newTaskRequireTodos", false)
 
 			// Check if todos are required based on VSCode setting
 			// Note: undefined means not provided, empty string is valid
