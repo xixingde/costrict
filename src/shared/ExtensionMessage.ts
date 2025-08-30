@@ -10,8 +10,10 @@ import type {
 	ModelInfo,
 	MarketplaceItem,
 	TodoItem,
+	CloudUserInfo,
+	OrganizationAllowList,
+	ShareVisibility,
 } from "@roo-code/types"
-import type { CloudUserInfo, OrganizationAllowList, ShareVisibility } from "@roo-code/cloud"
 
 import { GitCommit } from "../utils/git"
 
@@ -367,6 +369,8 @@ export interface ClineSayTool {
 		| "finishTask"
 		| "searchAndReplace"
 		| "insertContent"
+		| "generateImage"
+		| "imageGenerated"
 	path?: string
 	diff?: string
 	content?: string
@@ -403,6 +407,7 @@ export interface ClineSayTool {
 		}>
 	}>
 	question?: string
+	imageData?: string // Base64 encoded image data for generated images
 }
 
 // Must keep in sync with system prompt.
