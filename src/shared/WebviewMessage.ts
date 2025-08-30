@@ -6,12 +6,12 @@ import {
 	type ModeConfig,
 	type InstallMarketplaceItemOptions,
 	type MarketplaceItem,
+	type ShareVisibility,
 	marketplaceItemSchema,
 } from "@roo-code/types"
-import type { IndexStatusResponse } from "../core/costrict/codebase-index/types"
-import type { ShareVisibility } from "@roo-code/cloud"
 
 import { Mode } from "./modes"
+import { IndexStatusResponse } from "../core/costrict/codebase-index"
 
 export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse" | "objectResponse"
 
@@ -232,6 +232,9 @@ export interface WebviewMessage {
 		| "settingsButtonclicked"
 		| "copyError"
 		| "showMdmAuthRequiredNotification"
+		| "imageGenerationSettings"
+		| "openRouterImageApiKey"
+		| "openRouterImageGenerationSelectedModel"
 	text?: string
 	editedMessageContent?: string
 	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "account" | "zgsm-account"
@@ -268,6 +271,7 @@ export interface WebviewMessage {
 	messageTs?: number
 	historyPreviewCollapsed?: boolean
 	filters?: { type?: string; search?: string; tags?: string[] }
+	settings?: any
 	url?: string // For openExternal
 	mpItem?: MarketplaceItem
 	mpInstallOptions?: InstallMarketplaceItemOptions
@@ -280,7 +284,13 @@ export interface WebviewMessage {
 		zgsmCodebaseIndexEnabled: boolean
 		codebaseIndexEnabled: boolean
 		codebaseIndexQdrantUrl: string
-		codebaseIndexEmbedderProvider: "openai" | "ollama" | "openai-compatible" | "gemini" | "mistral"
+		codebaseIndexEmbedderProvider:
+			| "openai"
+			| "ollama"
+			| "openai-compatible"
+			| "gemini"
+			| "mistral"
+			| "vercel-ai-gateway"
 		codebaseIndexEmbedderBaseUrl?: string
 		codebaseIndexEmbedderModelId: string
 		codebaseIndexEmbedderModelDimension?: number // Generic dimension for all providers
@@ -294,6 +304,7 @@ export interface WebviewMessage {
 		codebaseIndexOpenAiCompatibleApiKey?: string
 		codebaseIndexGeminiApiKey?: string
 		codebaseIndexMistralApiKey?: string
+		codebaseIndexVercelAiGatewayApiKey?: string
 	}
 	issueId?: string
 }
