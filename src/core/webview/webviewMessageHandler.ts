@@ -1023,7 +1023,13 @@ export const webviewMessageHandler = async (
 			await provider.postStateToWebview()
 			break
 		// case "remoteControlEnabled":
-		// 	await updateGlobalState("remoteControlEnabled", message.bool ?? false)
+		// 	try {
+		// 		await CloudService.instance.updateUserSettings({
+		// 			extensionBridgeEnabled: message.bool ?? false,
+		// 		})
+		// 	} catch (error) {
+		// 		provider.log(`Failed to update cloud settings for remote control: ${error}`)
+		// 	}
 		// 	await provider.remoteControlEnabled(message.bool ?? false)
 		// 	await provider.postStateToWebview()
 		// 	break
@@ -1384,6 +1390,14 @@ export const webviewMessageHandler = async (
 			changeLanguage(message.text ?? "en")
 			await updateGlobalState("language", message.text as Language)
 			ErrorCodeManager.getInstance().refreshErrorCodes()
+			await provider.postStateToWebview()
+			break
+		case "openRouterImageApiKey":
+			await provider.contextProxy.setValue("openRouterImageApiKey", message.text)
+			await provider.postStateToWebview()
+			break
+		case "openRouterImageGenerationSelectedModel":
+			await provider.contextProxy.setValue("openRouterImageGenerationSelectedModel", message.text)
 			await provider.postStateToWebview()
 			break
 		case "showRooIgnoredFiles":

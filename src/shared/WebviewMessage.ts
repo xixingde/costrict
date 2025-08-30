@@ -232,6 +232,9 @@ export interface WebviewMessage {
 		| "settingsButtonclicked"
 		| "copyError"
 		| "showMdmAuthRequiredNotification"
+		| "imageGenerationSettings"
+		| "openRouterImageApiKey"
+		| "openRouterImageGenerationSelectedModel"
 	text?: string
 	editedMessageContent?: string
 	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "account" | "zgsm-account"
@@ -268,6 +271,7 @@ export interface WebviewMessage {
 	messageTs?: number
 	historyPreviewCollapsed?: boolean
 	filters?: { type?: string; search?: string; tags?: string[] }
+	settings?: any
 	url?: string // For openExternal
 	mpItem?: MarketplaceItem
 	mpInstallOptions?: InstallMarketplaceItemOptions
