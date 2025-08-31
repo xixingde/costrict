@@ -68,7 +68,7 @@ describe("generatePackageJson", () => {
 								when: "activeWebviewPanelId == zgsm.TabPanelProvider",
 							},
 							{
-								command: "zgsm.accountButtonClicked",
+								command: "zgsm.cloudButtonClicked",
 								group: "navigation@6",
 								when: "activeWebviewPanelId == zgsm.TabPanelProvider",
 							},
@@ -181,7 +181,7 @@ describe("generatePackageJson", () => {
 							when: "activeWebviewPanelId == roo-code-nightly.TabPanelProvider",
 						},
 						{
-							command: "roo-code-nightly.accountButtonClicked",
+							command: "roo-code-nightly.cloudButtonClicked",
 							group: "navigation@6",
 							when: "activeWebviewPanelId == roo-code-nightly.TabPanelProvider",
 						},

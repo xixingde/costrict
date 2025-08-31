@@ -128,8 +128,8 @@
 				"icon": "$(link-external)"
 			},
 			{
-				"command": "zgsm.accountButtonClicked",
-				"title": "%command.account.title%",
+				"command": "zgsm.cloudButtonClicked",
+				"title": "%command.cloud.title%",
 				"icon": "$(account)"
 			},
 			{
@@ -323,7 +323,7 @@
 					"when": "view == zgsm.SidebarProvider"
 				},
 				{
-					"command": "zgsm.accountButtonClicked",
+					"command": "zgsm.cloudButtonClicked",
 					"group": "navigation@4",
 					"when": "view == zgsm.SidebarProvider"
 				},
@@ -370,7 +370,7 @@
 					"when": "activeWebviewPanelId == zgsm.TabPanelProvider"
 				},
 				{
-					"command": "zgsm.accountButtonClicked",
+					"command": "zgsm.cloudButtonClicked",
 					"group": "navigation@4",
 					"when": "activeWebviewPanelId == zgsm.TabPanelProvider"
 				},

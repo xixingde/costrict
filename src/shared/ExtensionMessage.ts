@@ -144,7 +144,7 @@ export interface ExtensionMessage {
 		| "historyButtonClicked"
 		| "promptsButtonClicked"
 		| "marketplaceButtonClicked"
-		| "accountButtonClicked"
+		| "cloudButtonClicked"
 		| "zgsmAccountButtonClicked"
 		| "didBecomeVisible"
 		| "focusInput"
