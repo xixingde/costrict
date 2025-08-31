@@ -22,17 +22,17 @@ import CodeReviewPage from "./components/code-review"
 import { HumanRelayDialog } from "./components/human-relay/HumanRelayDialog"
 import { DeleteMessageDialog, EditMessageDialog } from "./components/chat/MessageModificationConfirmationDialog"
 import ErrorBoundary from "./components/ErrorBoundary"
-import { AccountView } from "./components/account/AccountView"
+import { CloudView } from "./components/cloud/CloudView"
 import { useAddNonInteractiveClickListener } from "./components/ui/hooks/useNonInteractiveClick"
 import { TooltipProvider } from "./components/ui/tooltip"
 import { STANDARD_TOOLTIP_DELAY } from "./components/ui/standard-tooltip"
-import { ZgsmAccountView } from "./components/account/ZgsmAccountView"
+import { ZgsmAccountView } from "./components/cloud/ZgsmAccountView"
 import { TabContent, TabList, TabTrigger } from "./components/common/Tab"
 import { cn } from "./lib/utils"
 import { ReauthConfirmationDialog } from "./components/chat/ReauthConfirmationDialog"
 import { ZgsmCodebaseDisableConfirmDialog } from "./components/settings/ZgsmCodebaseDisableConfirmDialog"
 
-type Tab = "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "account" | "zgsm-account" | "codeReview"
+type Tab = "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "cloud" | "zgsm-account" | "codeReview"
 
 interface HumanRelayDialogState {
 	isOpen: boolean
@@ -75,7 +75,7 @@ const tabsByMessageAction: Partial<Record<NonNullable<ExtensionMessage["action"]
 	mcpButtonClicked: "mcp",
 	historyButtonClicked: "history",
 	// marketplaceButtonClicked: "marketplace",
-	accountButtonClicked: "account",
+	cloudButtonClicked: "cloud",
 	zgsmAccountButtonClicked: "zgsm-account",
 	codeReviewButtonClicked: "codeReview",
 }
@@ -138,12 +138,9 @@ const App = () => {
 		(newTab: Tab) => {
 			// Only check MDM compliance if mdmCompliant is explicitly false (meaning there's an MDM policy and user is non-compliant)
 			// If mdmCompliant is undefined or true, allow tab switching
-			// if (mdmCompliant === false && newTab !== "account") {
-			// 	// Notify the user that authentication is required by their organization
-			// 	vscode.postMessage({ type: "showMdmAuthRequiredNotification" })
-			// 	return
-			// }
-			if (mdmCompliant === false && newTab !== "account" && newTab !== "zgsm-account") {
+			if (mdmCompliant === false && newTab !== "cloud" && newTab !== "zgsm-account") {
+				// Notify the user that authentication is required by their organization
+				// vscode.postMessage({ type: "showMdmAuthRequiredNotification" })
 				return
 			}
 
@@ -178,7 +175,7 @@ const App = () => {
 					// Handle other actions using the mapping
 					const newTab =
 						tabsByMessageAction[
-							message.action === "accountButtonClicked" ? "zgsmAccountButtonClicked" : message.action
+							message.action === "cloudButtonClicked" ? "zgsmAccountButtonClicked" : message.action
 						]
 					const section = message.values?.section as string | undefined
 					const marketplaceTab = message.values?.marketplaceTab as string | undefined
@@ -325,8 +322,8 @@ const App = () => {
 					targetTab={currentMarketplaceTab as "mcp" | "mode" | undefined}
 				/>
 			)} */}
-			{tab === "account" && (
-				<AccountView
+			{tab === "cloud" && (
+				<CloudView
 					userInfo={cloudUserInfo}
 					isAuthenticated={cloudIsAuthenticated}
 					cloudApiUrl={cloudApiUrl}

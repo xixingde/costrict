@@ -153,7 +153,7 @@ export const ZgsmAI = ({
 
 							window.postMessage({
 								type: "action",
-								action: "accountButtonClicked",
+								action: "cloudButtonClicked",
 							})
 						}}>
 						{t("account:loginForFullFeatures")}

@@ -176,7 +176,7 @@ export interface WebviewMessage {
 		| "toggleApiConfigPin"
 		| "setHistoryPreviewCollapsed"
 		| "hasOpenedModeSelector"
-		| "accountButtonClicked"
+		| "cloudButtonClicked"
 		| "rooCloudSignIn"
 		| "rooCloudSignOut"
 		| "condenseTaskContextRequest"
@@ -238,7 +238,7 @@ export interface WebviewMessage {
 		| "openRouterImageGenerationSelectedModel"
 	text?: string
 	editedMessageContent?: string
-	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "account" | "zgsm-account"
+	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "cloud" | "zgsm-account"
 	disabled?: boolean
 	context?: string
 	dataUri?: string
