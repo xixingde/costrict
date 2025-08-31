@@ -50,7 +50,7 @@ export class CodebaseIndexClient {
 		port: number
 		[key: string]: any
 	} = {} as any
-
+	lastHeaders = {} as any
 	private clientId: string = getClientId()
 
 	get processName() {
@@ -139,25 +139,18 @@ export class CodebaseIndexClient {
 	private async makeRequest<T>(url: string, options: RequestInit = {}, token?: string): Promise<ApiResponse<T>> {
 		const headers = await this.getHeaders(token)
 
-		const defaultOptions: RequestInit = {
-			headers: {
-				...headers,
-				"Content-Type": "application/json",
-			},
-		}
-
 		const finalOptions: RequestInit = {
-			...defaultOptions,
 			...options,
 			headers: {
-				...defaultOptions.headers,
+				"Content-Type": "application/json",
+				...headers,
 				...options.headers,
 			},
 		}
 
 		const maxRetries = 2
 		let lastError: Error = new Error("Unknown error")
-
+		this.lastHeaders = finalOptions.headers
 		for (let attempt = 0; attempt <= maxRetries; attempt++) {
 			try {
 				const response = await fetch(url, finalOptions)
@@ -326,8 +319,6 @@ export class CodebaseIndexClient {
 
 	async isRunning(processName = this.processName) {
 		const pids = await processIsRunning(processName, this.logger)
-		if (pids.length > 0) {
-		}
 		return [pids.length > 0, pids] as [boolean, number[]]
 	}
 
@@ -376,8 +367,8 @@ export class CodebaseIndexClient {
 			if (!codebaseIndexerServiceConfig) {
 				throw new Error("Failed to find codebase-indexer service in well-known.json")
 			}
-
-			if (codebaseIndexerServiceConfig.status !== "running") {
+			const [isRun] = await this.isRunning(this.serverName)
+			if (codebaseIndexerServiceConfig.status !== "running" && !isRun) {
 				throw new Error("codebase-indexer service not running!")
 			}
 
@@ -442,6 +433,41 @@ export class CodebaseIndexClient {
 		return this.makeRequest<number>(url, options, token)
 	}
 
+	publishSyncWorkspaceEvents<T>(request: WorkspaceEventRequest) {
+		const url = `${this.getCodebaseIndexerServerHost(this.serverHost)}/codebase-indexer/api/v1/events`
+
+		const headers = {
+			...this.lastHeaders,
+			"X-Request-ID": uuidv7(),
+			"Content-Type": "application/json",
+		} as {
+			[key: string]: string
+		}
+
+		const httpModule = url.startsWith("https://") ? require("https") : require("http")
+		const urlObj = new URL(url)
+
+		const options = {
+			hostname: urlObj.hostname,
+			port: urlObj.port,
+			path: urlObj.pathname + urlObj.search,
+			method: "POST",
+			headers: headers,
+			timeout: 3000,
+		}
+
+		try {
+			const req = httpModule.request(options)
+			req.on("error", (error: Error) => {
+				console.error("Failed to send workspace close event:", error.message)
+			})
+			req.write(JSON.stringify(request))
+			req.end()
+		} catch (error: any) {
+			console.error("Failed to create HTTP request for workspace close event:", error.message)
+		}
+	}
+
 	/**
 	 * Manually trigger index build
 	 * @param request Index build request
@@ -483,7 +509,7 @@ export class CodebaseIndexClient {
 	 * @returns Promise<ApiResponse<number>> Returns response data
 	 */
 	async healthCheck(
-		path: string,
+		url: string,
 		token?: string,
 	): Promise<{
 		message: string
@@ -496,7 +522,7 @@ export class CodebaseIndexClient {
 			method: "GET",
 		}
 
-		return this.makeRequest(path, options, token) as unknown as {
+		return this.makeRequest(url, options, token) as unknown as {
 			message: string
 			status: string
 			[key: string]: any
