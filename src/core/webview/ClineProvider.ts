@@ -1643,7 +1643,7 @@ export class ClineProvider
 			version: this.context.extension?.packageJSON?.version ?? "",
 			apiConfiguration,
 			customInstructions,
-			showAutoApproveSettingsAtChat: showAutoApproveSettingsAtChat ?? false,
+			showAutoApproveSettingsAtChat: showAutoApproveSettingsAtChat ?? true,
 			alwaysAllowReadOnly: alwaysAllowReadOnly ?? false,
 			alwaysAllowReadOnlyOutsideWorkspace: alwaysAllowReadOnlyOutsideWorkspace ?? false,
 			alwaysAllowWrite: alwaysAllowWrite ?? false,
@@ -1846,7 +1846,7 @@ export class ClineProvider
 			lastShownAnnouncementId: stateValues.lastShownAnnouncementId,
 			customInstructions: stateValues.customInstructions,
 			apiModelId: stateValues.apiModelId,
-			showAutoApproveSettingsAtChat: stateValues.showAutoApproveSettingsAtChat ?? false,
+			showAutoApproveSettingsAtChat: stateValues.showAutoApproveSettingsAtChat ?? true,
 			alwaysAllowReadOnly: stateValues.alwaysAllowReadOnly ?? false,
 			alwaysAllowReadOnlyOutsideWorkspace: stateValues.alwaysAllowReadOnlyOutsideWorkspace ?? false,
 			alwaysAllowWrite: stateValues.alwaysAllowWrite ?? false,
@@ -1959,15 +1959,16 @@ export class ClineProvider
 			includeTaskHistoryInEnhance: stateValues.includeTaskHistoryInEnhance ?? true,
 			// Add remoteControlEnabled setting - get from cloud settings
 			remoteControlEnabled: (() => {
-				try {
-					const cloudSettings = CloudService.instance.getUserSettings()
-					return cloudSettings?.settings?.extensionBridgeEnabled ?? false
-				} catch (error) {
-					console.error(
-						`[getState] failed to get remote control setting from cloud: ${error instanceof Error ? error.message : String(error)}`,
-					)
-					return false
-				}
+				return false
+				// try {
+				// 	const cloudSettings = CloudService.instance.getUserSettings()
+				// 	return cloudSettings?.settings?.extensionBridgeEnabled ?? false
+				// } catch (error) {
+				// 	console.error(
+				// 		`[getState] failed to get remote control setting from cloud: ${error instanceof Error ? error.message : String(error)}`,
+				// 	)
+				// 	return false
+				// }
 			})(),
 			// Add image generation settings
 			openRouterImageApiKey: stateValues.openRouterImageApiKey,

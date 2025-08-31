@@ -247,6 +247,10 @@ export const webviewMessageHandler = async (
 			await provider.cancelTask()
 			break
 		}
+		case "showZgsmCodebaseDisableConfirmDialog": {
+			await provider.postMessageToWebview({ type: "showZgsmCodebaseDisableConfirmDialog" })
+			break
+		}
 		case "checkReviewSuggestion":
 			await CodeReviewService.getInstance().setActiveIssue(message.issueId!)
 			break
@@ -2860,6 +2864,11 @@ export const webviewMessageHandler = async (
 						"info",
 						"ZgsmCodebaseIndexManager",
 					)
+					zgsmCodebaseIndexManager.restartClient()
+					await provider.postMessageToWebview({
+						type: "zgsmCodebaseIndexEnabled",
+						payload: isEnabled,
+					})
 				} else {
 					await updateGlobalState("zgsmCodebaseIndexEnabled", oldEnabled)
 
@@ -2868,6 +2877,10 @@ export const webviewMessageHandler = async (
 						"error",
 						"ZgsmCodebaseIndexManager",
 					)
+					await provider.postMessageToWebview({
+						type: "zgsmCodebaseIndexEnabled",
+						payload: oldEnabled,
+					})
 				}
 			} catch (error) {
 				const errorMessage =
