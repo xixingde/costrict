@@ -1,5 +1,21 @@
 # Costrict Change Log
 
+## [1.6.4]
+
+- Fix wsl2 `your 131072x1 screen size is bogus. expect trouble`
+
+## [1.6.3]
+
+- Optimize history cache warning
+- Default enable auto approve settings display in chat
+- Optimize workspace event handling and request management
+- Enhance process detection and health check
+- Enhance codebase index handling and confirmation dialog
+- Improve file monitoring performance
+- Update internationalization entries
+- Sync roocode
+- Fix known issues
+
 ## [1.6.2]
 
 - Optimize login tips
