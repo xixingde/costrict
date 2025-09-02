@@ -774,7 +774,6 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				)
 
 				highlightLayerRef.current.innerHTML = processedText
-				console.log("processedText")
 
 				// Custom replacement for commands - only highlight valid ones
 				processedText = processedText.replace(commandRegexGlobal, (match, commandName) => {
