@@ -114,6 +114,9 @@
 		},
 		"IMAGE_GENERATION": {
 			"description": "When enabled, Costrict can generate images from text prompts using OpenRouter's image generation models. Requires an OpenRouter API key to be configured."
+		},
+		"RUN_SLASH_COMMAND": {
+			"description": "When enabled, Costrict can run your slash commands to execute workflows."
 		}
 	},
 	"modelPicker": {

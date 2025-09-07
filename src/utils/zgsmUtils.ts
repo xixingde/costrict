@@ -3,6 +3,7 @@ import os from "os"
 import * as vscode from "vscode"
 import { Package } from "../shared/package"
 import { getClientId } from "./getClientId"
+import osName from "os-name"
 
 export function getParams(state: string, ignore: string[] = []) {
 	return [
@@ -70,3 +71,10 @@ export function getLocalIP(): string {
 // 	}
 // 	return headers
 // }
+
+let operatingSystem = ""
+
+export const getOperatingSystem = () => {
+	if (operatingSystem) return operatingSystem
+	return (operatingSystem = osName(os.platform(), os.release()))
+}

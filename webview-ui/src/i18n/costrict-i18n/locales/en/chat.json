@@ -84,5 +84,9 @@
 	},
 	"copy": {
 		"errorDetail": "Copy error detail"
+	},
+	"slashCommand": {
+		"wantsToRun": "Costrict wants to run a slash command:",
+		"didRun": "Costrict ran a slash command:"
 	}
 }

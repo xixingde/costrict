@@ -1,5 +1,5 @@
 import os from "os"
-import osName from "os-name"
+import { getOperatingSystem } from "../../../utils/zgsmUtils"
 
 import { getShell } from "../../../utils/shell"
 
@@ -8,7 +8,7 @@ export function getSystemInfoSection(cwd: string): string {
 
 SYSTEM INFORMATION
 
-Operating System: ${osName()}
+Operating System: ${getOperatingSystem()}
 Default Shell: ${getShell()}
 Home Directory: ${os.homedir().toPosix()}
 Current Workspace Directory: ${cwd.toPosix()}

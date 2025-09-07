@@ -159,9 +159,7 @@ export async function insertContentTool(
 		}
 
 		// Ask for approval (same for both flows)
-		const didApprove = await cline
-			.ask("tool", completeMessage, isWriteProtected)
-			.then((response) => response.response === "yesButtonClicked")
+		const didApprove = await askApproval("tool", completeMessage, undefined, isWriteProtected)
 		const language = await getLanguage(relPath)
 		const diffLines = getDiffLines(fileContent, updatedContent)
 		if (!didApprove) {

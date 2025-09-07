@@ -32,12 +32,14 @@ import { getApiResponseRenderMode, renderModes } from "./utils/response-render-c
 import { createLogger, ILogger } from "../../utils/logger"
 import { Package } from "../../shared/package"
 import { COSTRICT_DEFAULT_HEADERS } from "../../shared/headers"
+import { handleOpenAIError } from "./utils/openai-error-handler"
 
 let modelsCache = new WeakRef<string[]>([])
 const autoModeModelId = "Auto"
 export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
 	private client: OpenAI
+	private readonly providerName = "zgsm"
 	private baseURL: string
 	private chatType?: "user" | "system"
 	private headers = {}
@@ -154,21 +156,26 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 				modelInfo,
 			)
 
-			const { data: stream, response } = await this.client.chat.completions
-				.create(
-					requestOptions,
-					Object.assign(isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}, {
-						headers: _headers,
-					}),
-				)
-				.withResponse()
-
-			if (this.options.zgsmModelId === autoModeModelId) {
-				const userInputHeader = response.headers.get("x-user-input")
-				if (userInputHeader) {
-					const decodedUserInput = Buffer.from(userInputHeader, "base64").toString("utf-8")
-					this.logger.info(`[x-user-input]: ${decodedUserInput}`)
+			let stream
+			try {
+				const { data: _stream, response } = await this.client.chat.completions
+					.create(
+						requestOptions,
+						Object.assign(isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}, {
+							headers: _headers,
+						}),
+					)
+					.withResponse()
+				stream = _stream
+				if (this.options.zgsmModelId === autoModeModelId) {
+					const userInputHeader = response.headers.get("x-user-input")
+					if (userInputHeader) {
+						const decodedUserInput = Buffer.from(userInputHeader, "base64").toString("utf-8")
+						this.logger.info(`[x-user-input]: ${decodedUserInput}`)
+					}
 				}
+			} catch (error) {
+				throw handleOpenAIError(error, this.providerName)
 			}
 
 			// 6. Optimize stream processing - use batch processing and buffer
@@ -184,12 +191,17 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 				modelInfo,
 			)
 
-			const response = await this.client.chat.completions.create(
-				requestOptions,
-				Object.assign(isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}, {
-					headers: _headers,
-				}),
-			)
+			let response
+			try {
+				response = await this.client.chat.completions.create(
+					requestOptions,
+					Object.assign(isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}, {
+						headers: _headers,
+					}),
+				)
+			} catch (error) {
+				throw handleOpenAIError(error, this.providerName)
+			}
 
 			yield {
 				type: "text",
@@ -459,16 +471,20 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 
 			// Add max_tokens if needed
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
-
-			const response = await this.client.chat.completions.create(
-				requestOptions,
-				isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {},
-			)
+			let response
+			try {
+				response = await this.client.chat.completions.create(
+					requestOptions,
+					isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {},
+				)
+			} catch (error) {
+				throw handleOpenAIError(error, this.providerName)
+			}
 
 			return response.choices[0]?.message.content || ""
 		} catch (error) {
 			if (error instanceof Error) {
-				throw new Error(`OpenAI completion error: ${error.message}`)
+				throw new Error(`${this.providerName} completion error: ${error.message}`)
 			}
 
 			throw error
@@ -505,11 +521,15 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 			// but they do support max_completion_tokens (the modern OpenAI parameter)
 			// This allows O3 models to limit response length when includeMaxTokens is enabled
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
-
-			const stream = await this.client.chat.completions.create(
-				requestOptions,
-				methodIsAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {},
-			)
+			let stream
+			try {
+				stream = await this.client.chat.completions.create(
+					requestOptions,
+					methodIsAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {},
+				)
+			} catch (error) {
+				throw handleOpenAIError(error, this.providerName)
+			}
 
 			yield* this.handleStreamResponse(stream)
 		} else {
@@ -531,10 +551,15 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 			// This allows O3 models to limit response length when includeMaxTokens is enabled
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
 
-			const response = await this.client.chat.completions.create(
-				requestOptions,
-				methodIsAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {},
-			)
+			let response
+			try {
+				response = await this.client.chat.completions.create(
+					requestOptions,
+					methodIsAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {},
+				)
+			} catch (error) {
+				throw handleOpenAIError(error, this.providerName)
+			}
 
 			yield {
 				type: "text",
