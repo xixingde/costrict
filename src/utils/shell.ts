@@ -440,10 +440,7 @@ export function getShell(): string {
 		shell = getShellFromUserInfo()
 	}
 
-	const systemShell = detectSystemAvailableShell()
-	if (systemShell) {
-		return systemShell
-	}
+	shell = detectSystemAvailableShell()
 
 	// 3. If still nothing, try environment variable
 	if (!shell) {
