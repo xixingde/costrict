@@ -35,7 +35,7 @@ const DEFAULT_CONFIG: WorkspaceEventMonitorConfig = {
 	enabled: true,
 	debounceMs: 1000, // Reduced from 1000ms to 500ms for faster response
 	batchSize: 100, // Reduced from 100 to 50 for more frequent smaller batches
-	maxRetries: 2, // Increased from 2 to 3 for better reliability
+	maxRetries: 3, // Increased from 2 to 3 for better reliability
 	retryDelayMs: 1000,
 }
 
@@ -207,7 +207,7 @@ export class WorkspaceEventMonitor {
 		const workspaceFolders = vscode.workspace.workspaceFolders
 		if (!workspaceFolders || workspaceFolders.length === 0) {
 			this.log.warn("[WorkspaceEventMonitor] No workspace folders, skipping file system monitor registration")
-			return
+			throw new Error("No workspace folders")
 		}
 
 		// Workspace folder change events
@@ -635,8 +635,9 @@ export class WorkspaceEventMonitor {
 		let retryCount = 0
 		const startTime = Date.now()
 		const maxTotalRetryTime = 30000 // 30 seconds total retry time limit
+		const maxRetries = events.find((v) => v.eventType === "open_workspace") ? 5 : this.config.maxRetries // 1 retry for open_workspace, 3 retries for other events
 
-		while (retryCount <= this.config.maxRetries) {
+		while (retryCount <= maxRetries) {
 			try {
 				const response = await ZgsmCodebaseIndexManager.getInstance().publishWorkspaceEvents(request)
 
@@ -656,21 +657,19 @@ export class WorkspaceEventMonitor {
 					break
 				}
 
-				if (retryCount < this.config.maxRetries) {
+				if (retryCount < maxRetries) {
 					// Use exponential backoff strategy
 					const delayMs = Math.min(
 						this.config.retryDelayMs * Math.pow(2, retryCount),
 						10000, // Maximum delay 10 seconds
 					)
 					// this.log.error(`[WorkspaceEventMonitor] ${evts} Failed to send event (retry after ${delayMs}ms):`, errorMessage)
-					this.log.info(
-						`[WorkspaceEventMonitor] ${evts} ${retryCount + 1}/${this.config.maxRetries} retry failed`,
-					)
+					this.log.info(`[WorkspaceEventMonitor] ${evts} ${retryCount + 1}/${maxRetries} retry failed`)
 					await this.delay(delayMs)
 					retryCount++
 				} else {
 					this.log.error(
-						`[WorkspaceEventMonitor] ${evts} reached maximum retry count(${this.config.maxRetries}), event send failed`,
+						`[WorkspaceEventMonitor] ${evts} reached maximum retry count(${maxRetries}), event send failed`,
 					)
 					try {
 						TelemetryService.instance?.captureError?.(CodeBaseError.SyncFailed)
@@ -711,10 +710,15 @@ export class WorkspaceEventMonitor {
 	}
 
 	private async ensureServiceEnabled() {
-		if (!this.clineProvider) {
+		const workspaceFolders = vscode.workspace.workspaceFolders
+
+		if (!workspaceFolders || workspaceFolders.length === 0) {
 			return false
 		}
 
+		if (!this.clineProvider) {
+			return false
+		}
 		const { apiConfiguration } = await this.clineProvider.getState()
 
 		if (apiConfiguration.apiProvider !== "zgsm" || !apiConfiguration.zgsmCodebaseIndexEnabled) {

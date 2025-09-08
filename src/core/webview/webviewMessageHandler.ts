@@ -3026,8 +3026,18 @@ export const webviewMessageHandler = async (
 		}
 		case "zgsmCodebaseIndexEnabled": {
 			try {
+				// Get current workspace path
+				const workspacePath = getWorkspacePath()
+				if (!workspacePath) {
+					provider.log("Unable to get workspace path", "error", "ZgsmCodebaseIndexManager")
+					vscode.window.showErrorMessage("Unable to get workspace path")
+					break
+				}
+
 				const oldEnabled = getGlobalState("zgsmCodebaseIndexEnabled")
+
 				if (oldEnabled === message.bool) return
+
 				const { apiConfiguration } = await provider.getState()
 
 				if (apiConfiguration?.apiProvider !== "zgsm") {
@@ -3036,7 +3046,6 @@ export const webviewMessageHandler = async (
 				}
 				// Get switch status from message.bool
 				const isEnabled = message.bool
-				const startTime = Date.now()
 				if (isEnabled === undefined) {
 					provider.log(
 						"zgsmCodebaseIndexEnabled message missing bool parameter",
@@ -3044,14 +3053,6 @@ export const webviewMessageHandler = async (
 						"ZgsmCodebaseIndexManager",
 					)
 					vscode.window.showErrorMessage("Codebase index switch status is invalid")
-					break
-				}
-
-				// Get current workspace path
-				const workspacePath = getWorkspacePath()
-				if (!workspacePath) {
-					provider.log("Unable to get workspace path", "error", "ZgsmCodebaseIndexManager")
-					vscode.window.showErrorMessage("Unable to get workspace path")
 					break
 				}
 

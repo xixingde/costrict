@@ -88,13 +88,16 @@ const mapIndexStatusInfoToIndexStatus = (statusInfo: IndexStatusInfo, t: (key: s
 
 export const ZgsmCodebaseSettings = ({ setCachedStateField }: ZgsmCodebaseSettingsProps) => {
 	const { t } = useAppTranslation()
-	const { zgsmCodebaseIndexEnabled, apiConfiguration } = useExtensionState()
+	const { zgsmCodebaseIndexEnabled, apiConfiguration, cwd } = useExtensionState()
 	// Polling related states
 	const pollingIntervalId = useRef<NodeJS.Timeout | null>(null)
 	const isPollingActive = useRef<boolean>(false)
 
 	// Check if in pending enable state - only when API provider is not zgsm
-	const isPendingEnable = useMemo(() => apiConfiguration?.apiProvider !== "zgsm", [apiConfiguration?.apiProvider])
+	const isPendingEnable = useMemo(
+		() => apiConfiguration?.apiProvider !== "zgsm" || !cwd,
+		[apiConfiguration?.apiProvider, cwd],
+	)
 
 	// Use useMemo to avoid unnecessary state updates
 	const shouldDisableAll = useMemo(
@@ -257,6 +260,7 @@ export const ZgsmCodebaseSettings = ({ setCachedStateField }: ZgsmCodebaseSettin
 			onRebuild: () => void,
 			disabled: boolean = false,
 			isPendingEnableSection: boolean = false,
+			cwd = "",
 		) => {
 			return (
 				<div
@@ -459,7 +463,7 @@ export const ZgsmCodebaseSettings = ({ setCachedStateField }: ZgsmCodebaseSettin
 								{isPendingEnableSection && (
 									<TooltipContent>
 										<p>
-											{isPendingEnable
+											{isPendingEnable && cwd
 												? t("settings:codebase.general.onlyCostrictProviderSupport")
 												: t("settings:codebase.semanticIndex.codebaseIndexDisabled")}
 										</p>
@@ -519,7 +523,11 @@ export const ZgsmCodebaseSettings = ({ setCachedStateField }: ZgsmCodebaseSettin
 							</TooltipTrigger>
 							{isPendingEnable && (
 								<TooltipContent>
-									<p>{t("settings:codebase.general.onlyCostrictProviderSupport")}</p>
+									<p>
+										{!cwd
+											? t("settings:codebase.semanticIndex.codebaseIndexDisabled")
+											: t("settings:codebase.general.onlyCostrictProviderSupport")}
+									</p>
 								</TooltipContent>
 							)}
 						</Tooltip>
@@ -536,6 +544,7 @@ export const ZgsmCodebaseSettings = ({ setCachedStateField }: ZgsmCodebaseSettin
 						handleRebuildSemanticIndex,
 						!zgsmCodebaseIndexEnabled,
 						shouldDisableAll,
+						cwd,
 					)}
 
 					{renderIndexSection(
@@ -545,6 +554,7 @@ export const ZgsmCodebaseSettings = ({ setCachedStateField }: ZgsmCodebaseSettin
 						handleRebuildCodeIndex,
 						!zgsmCodebaseIndexEnabled,
 						shouldDisableAll,
+						cwd,
 					)}
 
 					<div className={`flex flex-col gap-3 pl-3 border-l-2 border-vscode-button-background`}>
@@ -555,7 +565,12 @@ export const ZgsmCodebaseSettings = ({ setCachedStateField }: ZgsmCodebaseSettin
 						<div className="text-vscode-descriptionForeground text-sm mb-3">
 							{t("settings:codebase.ignoreFileSettings.description")}
 						</div>
-						<Button onClick={handleEditIgnoreFile} variant="outline" size="sm" className="w-fit">
+						<Button
+							onClick={handleEditIgnoreFile}
+							variant="outline"
+							size="sm"
+							className="w-fit"
+							disabled={!cwd}>
 							{t("settings:codebase.ignoreFileSettings.edit")}
 						</Button>
 					</div>

@@ -2697,8 +2697,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			yield firstChunk.value
 			this.isWaitingForFirstChunk = false
 		} catch (error) {
-			const errorMsg = await ErrorCodeManager.getInstance().parseResponse(error, this.taskId, this.instanceId)
-			if (error.status === 401 && apiConfiguration?.apiProvider === "zgsm") {
+			const isZgsm = apiConfiguration?.apiProvider === "zgsm"
+			const errorMsg = await ErrorCodeManager.getInstance().parseResponse(
+				error,
+				isZgsm,
+				this.taskId,
+				this.instanceId,
+			)
+			if (error.status === 401 && isZgsm) {
 				ZgsmAuthService.openStatusBarLoginTip()
 			}
 

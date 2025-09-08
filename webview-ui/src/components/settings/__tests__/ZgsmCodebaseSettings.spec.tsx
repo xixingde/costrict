@@ -130,6 +130,7 @@ const renderZgsmCodebaseSettings = (props: TestProps = {}) => {
 	mockUseExtensionState.mockReturnValue({
 		zgsmCodebaseIndexEnabled: props.zgsmCodebaseIndexEnabled ?? false,
 		apiConfiguration: props.apiConfiguration ?? { apiProvider: "zgsm" },
+		cwd: "/test/path", // Add cwd to prevent checkbox from being disabled
 	})
 
 	return render(
