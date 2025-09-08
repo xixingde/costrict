@@ -305,6 +305,7 @@ export class WorkspaceEventMonitor {
 	 * This function is used by chokidar's ignored option
 	 */
 	private shouldIgnoreFile(filePath: string, stats: fs.Stats): boolean {
+		if (getWorkspacePath() === filePath) return false
 		// First, use CoIgnoreController if it's initialized
 		if (this.ignoreController && this.ignoreController.coignoreContentInitialized) {
 			if (!this.ignoreController.validateAccess(filePath)) {

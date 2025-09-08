@@ -114,6 +114,9 @@
 		},
 		"IMAGE_GENERATION": {
 			"description": "启用后，Costrict 可以使用 OpenRouter 的图像生成模型从文本提示生成图像。需要配置 OpenRouter API 密钥。"
+		},
+		"RUN_SLASH_COMMAND": {
+			"description": "启用后 Costrict 可运行斜杠命令执行工作流程。"
 		}
 	},
 	"modelPicker": {

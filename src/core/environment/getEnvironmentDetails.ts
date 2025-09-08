@@ -20,8 +20,8 @@ import { formatResponse } from "../prompts/responses"
 
 import { Task } from "../task/Task"
 import { formatReminderSection } from "./reminder"
-import osName from "os-name"
 import { getShell } from "../../utils/shell"
+import { getOperatingSystem } from "../../utils/zgsmUtils"
 
 export async function getEnvironmentDetails(cline: Task, includeFileDetails: boolean = false) {
 	let details = ""
@@ -232,7 +232,7 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 		globalCustomInstructions: simpleAskSuggestion + shellSuggestion + globalCustomInstructions,
 		language: language ?? formatLanguage(vscode.env.language),
 	})
-	details += `\n\n# Operating System\n${osName()}`
+	details += `\n\n# Operating System\n${getOperatingSystem()}`
 	details += `\n\n# Default Shell\n${getShell()}`
 	details += `\n\n# Current Mode\n`
 	details += `<slug>${currentMode}</slug>\n`

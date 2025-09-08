@@ -84,5 +84,9 @@
 	},
 	"copy": {
 		"errorDetail": "複製錯誤詳情"
+	},
+	"slashCommand": {
+		"wantsToRun": "Costrict 想要執行斜線指令:",
+		"didRun": "Costrict 執行了斜線指令:"
 	}
 }

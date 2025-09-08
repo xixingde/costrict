@@ -41,7 +41,7 @@ import { CloudService, BridgeOrchestrator } from "@roo-code/cloud"
 
 // api
 import { ApiHandler, ApiHandlerCreateMessageMetadata, buildApiHandler } from "../../api"
-import { ApiStream } from "../../api/transform/stream"
+import { ApiStream, GroundingSource } from "../../api/transform/stream"
 import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
 
 // shared
@@ -50,7 +50,7 @@ import { combineApiRequests } from "../../shared/combineApiRequests"
 import { combineCommandSequences } from "../../shared/combineCommandSequences"
 import { t } from "../../i18n"
 import { ClineApiReqCancelReason, ClineApiReqInfo } from "../../shared/ExtensionMessage"
-import { getApiMetrics } from "../../shared/getApiMetrics"
+import { getApiMetrics, hasTokenUsageChanged } from "../../shared/getApiMetrics"
 import { ClineAskResponse } from "../../shared/WebviewMessage"
 import { defaultModeSlug } from "../../shared/modes"
 import { DiffStrategy } from "../../shared/tools"
@@ -144,6 +144,7 @@ export interface TaskOptions extends CreateTaskOptions {
 	taskNumber?: number
 	onCreated?: (task: Task) => void
 	initialTodos?: TodoItem[]
+	workspacePath?: string
 }
 
 export class Task extends EventEmitter<TaskEvents> implements TaskLike {
@@ -301,6 +302,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	private lastUsedInstructions?: string
 	private skipPrevResponseIdOnce: boolean = false
 
+	// Token Usage Cache
+	private tokenUsageSnapshot?: TokenUsage
+	private tokenUsageSnapshotAt?: number
+
 	constructor({
 		provider,
 		apiConfiguration,
@@ -318,6 +323,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		taskNumber = -1,
 		onCreated,
 		initialTodos,
+		workspacePath,
 	}: TaskOptions) {
 		super()
 
@@ -338,7 +344,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Normal use-case is usually retry similar history task with new workspace.
 		this.workspacePath = parentTask
 			? parentTask.workspacePath
-			: getWorkspacePath(path.join(os.homedir(), "Desktop"))
+			: (workspacePath ?? getWorkspacePath(path.join(os.homedir(), "Desktop")))
 
 		this.instanceId = crypto.randomUUID().slice(0, 8)
 		this.taskNumber = -1
@@ -680,7 +686,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				mode: this._taskMode || defaultModeSlug, // Use the task's own mode, not the current provider mode.
 			})
 
-			this.emit(RooCodeEventName.TaskTokenUsageUpdated, this.taskId, tokenUsage)
+			if (hasTokenUsageChanged(tokenUsage, this.tokenUsageSnapshot)) {
+				this.emit(RooCodeEventName.TaskTokenUsageUpdated, this.taskId, tokenUsage)
+				this.tokenUsageSnapshot = undefined
+				this.tokenUsageSnapshotAt = undefined
+			}
 
 			await this.providerRef.deref()?.updateTaskHistory(historyItem)
 		} catch (error) {
@@ -896,6 +906,31 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.askResponseText = text
 		this.askResponseImages = images
 		this.api?.setChatType?.(chatType || "system")
+
+		// Create a checkpoint whenever the user sends a message.
+		// Use allowEmpty=true to ensure a checkpoint is recorded even if there are no file changes.
+		// Suppress the checkpoint_saved chat row for this particular checkpoint to keep the timeline clean.
+		if (askResponse === "messageResponse") {
+			void this.checkpointSave(false, true)
+		}
+
+		// Mark the last follow-up question as answered
+		if (askResponse === "messageResponse" || askResponse === "yesButtonClicked") {
+			// Find the last unanswered follow-up message using findLastIndex
+			const lastFollowUpIndex = findLastIndex(
+				this.clineMessages,
+				(msg) => msg.type === "ask" && msg.ask === "followup" && !msg.isAnswered,
+			)
+
+			if (lastFollowUpIndex !== -1) {
+				// Mark this follow-up as answered
+				this.clineMessages[lastFollowUpIndex].isAnswered = true
+				// Save the updated messages
+				this.saveClineMessages().catch((error) => {
+					console.error("Failed to save answered follow-up state:", error)
+				})
+			}
+		}
 	}
 
 	public approveAsk({ text, images }: { text?: string; images?: string[] } = {}) {
@@ -977,6 +1012,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 
 		const { contextTokens: prevContextTokens } = this.getTokenUsage()
+
 		const {
 			messages,
 			summary,
@@ -1885,7 +1921,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					this.didFinishAbortingStream = true
 				}
 
-				// Reset streaming state.
+				// Reset streaming state for each new API request
 				this.currentStreamingContentIndex = 0
 				this.currentStreamingDidCheckpoint = false
 				this.assistantMessageContent = []
@@ -1906,6 +1942,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				const stream = this.attemptApiRequest()
 				let assistantMessage = ""
 				let reasoningMessage = ""
+				let pendingGroundingSources: GroundingSource[] = []
 				this.isStreaming = true
 
 				try {
@@ -1932,6 +1969,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								cacheWriteTokens += chunk.cacheWriteTokens ?? 0
 								cacheReadTokens += chunk.cacheReadTokens ?? 0
 								totalCost = chunk.totalCost
+								break
+							case "grounding":
+								// Handle grounding sources separately from regular content
+								// to prevent state persistence issues - store them separately
+								if (chunk.sources && chunk.sources.length > 0) {
+									pendingGroundingSources.push(...chunk.sources)
+								}
 								break
 							case "text": {
 								assistantMessage += chunk.text
@@ -2226,6 +2270,16 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				let didEndLoop = false
 
 				if (assistantMessage.length > 0) {
+					// Display grounding sources to the user if they exist
+					if (pendingGroundingSources.length > 0) {
+						const citationLinks = pendingGroundingSources.map((source, i) => `[${i + 1}](${source.url})`)
+						const sourcesText = `${t("common:gemini.sources")} ${citationLinks.join(", ")}`
+
+						await this.say("text", sourcesText, undefined, false, undefined, undefined, {
+							isNonInteractive: true,
+						})
+					}
+
 					await this.addToApiConversationHistory({
 						role: "assistant",
 						content: [{ type: "text", text: assistantMessage }],
@@ -2398,11 +2452,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		const { contextTokens } = this.getTokenUsage()
 		const modelInfo = this.api.getModel().info
+
 		const maxTokens = getModelMaxOutputTokens({
 			modelId: this.api.getModel().id,
 			model: modelInfo,
 			settings: this.apiConfiguration,
 		})
+
 		const contextWindow = modelInfo.contextWindow
 
 		// Get the current profile ID using the helper method
@@ -2741,8 +2797,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	// Checkpoints
 
-	public async checkpointSave(force: boolean = false) {
-		return checkpointSave(this, force)
+	public async checkpointSave(force: boolean = false, suppressMessage: boolean = false) {
+		return checkpointSave(this, force, suppressMessage)
 	}
 
 	public async checkpointRestore(options: CheckpointRestoreOptions) {
@@ -2843,6 +2899,17 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	public get queuedMessages(): QueuedMessage[] {
 		return this.messageQueueService.messages
+	}
+
+	public get tokenUsage(): TokenUsage | undefined {
+		if (this.tokenUsageSnapshot && this.tokenUsageSnapshotAt) {
+			return this.tokenUsageSnapshot
+		}
+
+		this.tokenUsageSnapshot = this.getTokenUsage()
+		this.tokenUsageSnapshotAt = this.clineMessages.at(-1)?.ts
+
+		return this.tokenUsageSnapshot
 	}
 
 	public get cwd() {

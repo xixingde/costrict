@@ -872,9 +872,39 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	useMount(() => textAreaRef.current?.focus())
 
 	const visibleMessages = useMemo(() => {
+		// Pre-compute checkpoint hashes that have associated user messages for O(1) lookup
+		const userMessageCheckpointHashes = new Set<string>()
+		modifiedMessages.forEach((msg) => {
+			if (
+				msg.say === "user_feedback" &&
+				msg.checkpoint &&
+				(msg.checkpoint as any).type === "user_message" &&
+				(msg.checkpoint as any).hash
+			) {
+				userMessageCheckpointHashes.add((msg.checkpoint as any).hash)
+			}
+		})
+
 		// Remove the 500-message limit to prevent array index shifting
 		// Virtuoso is designed to efficiently handle large lists through virtualization
-		const newVisibleMessages = modifiedMessages.filter((message: ClineMessage) => {
+		const newVisibleMessages = modifiedMessages.filter((message) => {
+			// Filter out checkpoint_saved messages that should be suppressed
+			if (message.say === "checkpoint_saved") {
+				// Check if this checkpoint has the suppressMessage flag set
+				if (
+					message.checkpoint &&
+					typeof message.checkpoint === "object" &&
+					"suppressMessage" in message.checkpoint &&
+					message.checkpoint.suppressMessage
+				) {
+					return false
+				}
+				// Also filter out checkpoint messages associated with user messages (legacy behavior)
+				if (message.text && userMessageCheckpointHashes.has(message.text)) {
+					return false
+				}
+			}
+
 			if (everVisibleMessagesTsRef.current.has(message.ts)) {
 				const alwaysHiddenOnceProcessedAsk: ClineAsk[] = [
 					"api_req_failed",
@@ -978,6 +1008,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				"listCodeDefinitionNames",
 				"searchFiles",
 				"codebaseSearch",
+				"runSlashCommand",
 			].includes(tool.tool)
 		}
 
@@ -1527,7 +1558,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					onSuggestionClick={handleSuggestionClickInRow} // This was already stabilized
 					onBatchFileResponse={handleBatchFileResponse}
 					onFollowUpUnmount={handleFollowUpUnmount}
-					isFollowUpAnswered={messageOrGroup.ts === currentFollowUpTs}
+					isFollowUpAnswered={messageOrGroup.isAnswered === true || messageOrGroup.ts === currentFollowUpTs}
 					editable={
 						messageOrGroup.type === "ask" &&
 						messageOrGroup.ask === "tool" &&

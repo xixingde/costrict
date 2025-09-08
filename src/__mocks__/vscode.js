@@ -114,6 +114,7 @@ export const extensions = {
 
 export const env = {
 	openExternal: () => Promise.resolve(),
+	uriScheme: "vscode",
 }
 
 export const Uri = mockUri
