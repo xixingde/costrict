@@ -663,7 +663,7 @@ export class ClineProvider
 		const prompt = supportPrompt.create(promptType as SupportPromptType, params, customSupportPrompts)
 
 		if (command === "addToContext") {
-			const pathWithSelectedTextResult = supportPrompt.createPathWithSelectedText(
+			const { pathOnly, selectedText } = supportPrompt.createPathWithSelectedText(
 				promptType as SupportPromptType,
 				params,
 				customSupportPrompts,
@@ -672,8 +672,8 @@ export class ClineProvider
 			await visibleProvider.postMessageToWebview({
 				type: "invoke",
 				invoke: "setChatBoxMessage",
-				text: pathWithSelectedTextResult.pathOnly,
-				selectText: pathWithSelectedTextResult.selectedText,
+				text: pathOnly.length > 0 ? `${pathOnly} ` : "",
+				selectText: selectedText,
 			})
 			return
 		}
