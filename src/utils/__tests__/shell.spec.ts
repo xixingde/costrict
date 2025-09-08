@@ -261,9 +261,15 @@ describe("Shell Detection Tests", () => {
 			mockVsCodeConfig("osx", "MyCustomShell", {
 				MyCustomShell: { path: "/usr/local/bin/fish" },
 			})
+			const existsSyncMock = mockExistsSync([SHELL_PATHS.ZSH])
+			const statSyncMock = mockStatSync([SHELL_PATHS.ZSH])
+
 			// Note: getShell() now prioritizes system detection over VS Code config
 			// So it will return the default shell for the platform
 			expect(getShell()).toBe("/bin/zsh")
+
+			existsSyncMock.mockRestore()
+			statSyncMock.mockRestore()
 		})
 
 		it("should handle array path from VSCode terminal profile", () => {
@@ -283,19 +289,30 @@ describe("Shell Detection Tests", () => {
 			}
 
 			vi.mocked(vscode.workspace.getConfiguration).mockReturnValue(mockConfig as any)
+			const existsSyncMock = mockExistsSync([SHELL_PATHS.ZSH])
+			const statSyncMock = mockStatSync([SHELL_PATHS.ZSH])
 
 			const result = getShell()
 			// Note: getShell() now prioritizes system detection over VS Code config
 			// So it will return the default shell for the platform
 			expect(result).toBe("/bin/zsh")
+
+			existsSyncMock.mockRestore()
+			statSyncMock.mockRestore()
 		})
 
 		it("falls back to userInfo().shell if no VS Code config is available", () => {
 			vscode.workspace.getConfiguration = () => ({ get: () => undefined }) as any
 			vi.mocked(userInfo).mockReturnValue({ shell: "/opt/homebrew/bin/zsh" } as any)
+			const existsSyncMock = mockExistsSync([SHELL_PATHS.ZSH])
+			const statSyncMock = mockStatSync([SHELL_PATHS.ZSH])
+
 			// Note: getShell() now prioritizes system detection over userInfo
 			// So it will return the default shell for the platform
 			expect(getShell()).toBe("/bin/zsh")
+
+			existsSyncMock.mockRestore()
+			statSyncMock.mockRestore()
 		})
 
 		it("falls back to SHELL env var if no userInfo shell is found", () => {
@@ -542,9 +559,14 @@ describe("Shell Detection Tests", () => {
 			mockVsCodeConfig("osx", "MyCustomShell", {
 				MyCustomShell: { path: "/usr/local/bin/custom-shell" },
 			})
+			const existsSyncMock = mockExistsSync([SHELL_PATHS.ZSH])
+			const statSyncMock = mockStatSync([SHELL_PATHS.ZSH])
 
 			const result = getShell()
 			expect(result).toBe("/bin/zsh") // macOS fallback
+
+			existsSyncMock.mockRestore()
+			statSyncMock.mockRestore()
 		})
 
 		it("should validate shells from userInfo", () => {
