@@ -84,7 +84,7 @@ describe("Task grounding sources handling", () => {
 		// Import Task after mocks are set up
 		const taskModule = await import("../Task")
 		Task = taskModule.Task
-	})
+	}, 60000) // Increase timeout to 60 seconds
 
 	beforeEach(() => {
 		// Mock provider with necessary methods

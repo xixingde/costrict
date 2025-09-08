@@ -4,7 +4,7 @@ import type { ClineProvider } from "./../../webview/ClineProvider"
 import * as fs from "fs"
 import * as path from "path"
 import { CodebaseIndexClient } from "./client"
-import { PlatformDetector } from "./platform"
+// import { PlatformDetector } from "./platform"
 import {
 	ICodebaseIndexManager,
 	VersionInfo,
@@ -32,7 +32,7 @@ export class ZgsmCodebaseIndexManager implements ICodebaseIndexManager {
 	public client: CodebaseIndexClient | null = null
 	private logger: ILogger | null = null
 	private clineProvider: ClineProvider | null = null
-	private platformDetector: PlatformDetector
+	// private platformDetector: PlatformDetector
 	private isInitialized: boolean = false
 	// private serverEndpoint = ""
 	private preBuildInfo = {
@@ -62,7 +62,7 @@ export class ZgsmCodebaseIndexManager implements ICodebaseIndexManager {
 	 * Private constructor to ensure singleton pattern
 	 */
 	private constructor() {
-		this.platformDetector = new PlatformDetector()
+		// this.platformDetector = new PlatformDetector()
 	}
 
 	/**

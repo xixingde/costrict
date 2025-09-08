@@ -207,7 +207,7 @@ export class WorkspaceEventMonitor {
 		const workspaceFolders = vscode.workspace.workspaceFolders
 		if (!workspaceFolders || workspaceFolders.length === 0) {
 			this.log.warn("[WorkspaceEventMonitor] No workspace folders, skipping file system monitor registration")
-			return
+			throw new Error("No workspace folders")
 		}
 
 		// Workspace folder change events
@@ -710,10 +710,15 @@ export class WorkspaceEventMonitor {
 	}
 
 	private async ensureServiceEnabled() {
-		if (!this.clineProvider) {
+		const workspaceFolders = vscode.workspace.workspaceFolders
+
+		if (!workspaceFolders || workspaceFolders.length === 0) {
 			return false
 		}
 
+		if (!this.clineProvider) {
+			return false
+		}
 		const { apiConfiguration } = await this.clineProvider.getState()
 
 		if (apiConfiguration.apiProvider !== "zgsm" || !apiConfiguration.zgsmCodebaseIndexEnabled) {
