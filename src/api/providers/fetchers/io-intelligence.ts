@@ -148,7 +148,7 @@ export async function getIOIntelligenceModels(apiKey?: string): Promise<ModelRec
 
 		return models
 	} catch (error) {
-		console.error("Error fetching IO Intelligence models:", error)
+		console.warn("Error fetching IO Intelligence models:", error)
 
 		// Return cached data if available
 		if (cache) {

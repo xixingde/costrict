@@ -19,6 +19,7 @@ export type ApiHandlerOptions = Omit<ProviderSettings, "apiProvider"> & {
 // RouterName
 
 const routerNames = [
+	"zgsm",
 	"openrouter",
 	"requesty",
 	"glama",
@@ -147,6 +148,7 @@ export const getModelMaxOutputTokens = ({
 export type GetModelsOptions =
 	| { provider: "openrouter" }
 	| { provider: "glama" }
+	| { provider: "zgsm"; baseUrl?: string; apiKey?: string; openAiHeaders?: Record<string, string> }
 	| { provider: "requesty"; apiKey?: string; baseUrl?: string }
 	| { provider: "unbound"; apiKey?: string }
 	| { provider: "litellm"; apiKey: string; baseUrl: string }

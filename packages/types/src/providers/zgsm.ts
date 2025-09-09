@@ -1,32 +1,8 @@
 import { ModelInfo } from "../model.js"
-import { anthropicModels } from "./anthropic.js"
-import { bedrockModels } from "./bedrock.js"
-import { chutesModels } from "./chutes.js"
-import { claudeCodeModels } from "./claude-code.js"
-import { deepSeekModels } from "./deepseek.js"
-import { geminiModels } from "./gemini.js"
-import { groqModels } from "./groq.js"
-import { mistralModels } from "./mistral.js"
-import { openAiNativeModels } from "./openai.js"
-import { vertexModels } from "./vertex.js"
-import { vscodeLlmModels } from "./vscode-llm.js"
-import { xaiModels } from "./xai.js"
 
 export const zgsmDefaultModelId = "glm45-fp8"
 
 export const zgsmModels = {
-	...anthropicModels,
-	...bedrockModels,
-	...chutesModels,
-	...claudeCodeModels,
-	...deepSeekModels,
-	...geminiModels,
-	...groqModels,
-	...mistralModels,
-	...openAiNativeModels,
-	...vertexModels,
-	...vscodeLlmModels,
-	...xaiModels,
 	"glm45-fp8": {
 		maxTokens: 32768,
 		contextWindow: 131072,

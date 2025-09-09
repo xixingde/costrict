@@ -36,7 +36,7 @@ export async function getGlamaModels(): Promise<Record<string, ModelInfo>> {
 			models[rawModel.id] = modelInfo
 		}
 	} catch (error) {
-		console.error(`Error fetching Glama models: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`)
+		console.warn(`Error fetching Glama models: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`)
 	}
 
 	return models

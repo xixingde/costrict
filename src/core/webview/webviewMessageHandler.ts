@@ -12,6 +12,7 @@ import {
 	type ClineMessage,
 	type TelemetrySetting,
 	TelemetryEventName,
+	ModelInfo,
 } from "@roo-code/types"
 import { CloudService } from "@roo-code/cloud"
 import { TelemetryService } from "@roo-code/telemetry"
@@ -35,7 +36,6 @@ import {
 import { checkExistKey } from "../../shared/checkExistApiConfig"
 import { experimentDefault } from "../../shared/experiments"
 import { Terminal } from "../../integrations/terminal/Terminal"
-import { getZgsmFullResponseData } from "../../shared/getZgsmSelectedModelInfo"
 import { openFile } from "../../integrations/misc/open-file"
 import { openImage, saveImage } from "../../integrations/misc/image-handler"
 import { selectImages } from "../../integrations/misc/process-images"
@@ -47,7 +47,7 @@ import { playTts, setTtsEnabled, setTtsSpeed, stopTts } from "../../utils/tts"
 import { searchCommits } from "../../utils/git"
 import { exportSettings, importSettingsWithFeedback } from "../config/importExport"
 import { getOpenAiModels } from "../../api/providers/openai"
-import { getZgsmModels } from "../../api/providers/zgsm"
+import { getZgsmModels } from "../../api/providers/fetchers/zgsm"
 import { getVsCodeLmModels } from "../../api/providers/vscode-lm"
 import { openMention } from "../mentions"
 import { getWorkspacePath } from "../../utils/path"
@@ -60,7 +60,7 @@ import { getCommand } from "../../utils/commands"
 const ALLOWED_VSCODE_SETTINGS = new Set(["terminal.integrated.inheritEnv"])
 
 // Cache to prevent duplicate calls - stores ongoing requests
-const pendingIndexStatusRequests = new Map<string, Promise<any>>()
+// const pendingIndexStatusRequests = new Map<string, Promise<any>>()
 
 import { MarketplaceManager, MarketplaceItemType } from "../../services/marketplace"
 import { setPendingTodoList } from "../tools/updateTodoListTool"
@@ -353,6 +353,9 @@ export const webviewMessageHandler = async (
 				askResponse: "messageResponse",
 				text: editedContent,
 				images,
+				values: {
+					chatType: "user",
+				},
 			})
 
 			// Don't initialize with history item for edit operations
@@ -773,6 +776,7 @@ export const webviewMessageHandler = async (
 				ollama: {},
 				lmstudio: {},
 				deepinfra: {},
+				zgsm: {},
 			}
 
 			const safeGetModels = async (options: GetModelsOptions): Promise<ModelRecord> => {
@@ -788,6 +792,15 @@ export const webviewMessageHandler = async (
 			}
 
 			const modelFetchPromises: Array<{ key: RouterName; options: GetModelsOptions }> = [
+				{
+					key: "zgsm",
+					options: {
+						provider: "zgsm",
+						baseUrl: message?.values?.baseUrl,
+						apiKey: message?.values?.apiKey,
+						openAiHeaders: message?.values?.openAiHeaders || {},
+					},
+				},
 				{ key: "openrouter", options: { provider: "openrouter" } },
 				{
 					key: "requesty",
@@ -834,6 +847,19 @@ export const webviewMessageHandler = async (
 			const results = await Promise.allSettled(
 				modelFetchPromises.map(async ({ key, options }) => {
 					const models = await safeGetModels(options)
+					if (key === "zgsm") {
+						const openAiModels = [] as string[]
+						const fullResponseData = [] as ModelInfo[]
+						for (const [id, value] of Object.entries(models)) {
+							openAiModels.push(id)
+							fullResponseData.push(value)
+						}
+						provider.postMessageToWebview({
+							type: "zgsmModels",
+							openAiModels,
+							fullResponseData,
+						})
+					}
 					return { key, models } // key is RouterName here
 				}),
 			)
@@ -855,7 +881,7 @@ export const webviewMessageHandler = async (
 					if (routerName === "ollama" && Object.keys(result.value.models).length > 0) {
 						provider.postMessageToWebview({
 							type: "ollamaModels",
-							ollamaModels: Object.keys(result.value.models),
+							ollamaModels: result.value.models,
 						})
 					} else if (routerName === "lmstudio" && Object.keys(result.value.models).length > 0) {
 						provider.postMessageToWebview({
@@ -900,7 +926,7 @@ export const webviewMessageHandler = async (
 				if (Object.keys(ollamaModels).length > 0) {
 					provider.postMessageToWebview({
 						type: "ollamaModels",
-						ollamaModels: Object.keys(ollamaModels),
+						ollamaModels: ollamaModels,
 					})
 				}
 			} catch (error) {
@@ -943,23 +969,6 @@ export const webviewMessageHandler = async (
 
 				provider.postMessageToWebview({ type: "openAiModels", openAiModels })
 			}
-
-			break
-		case "requestZgsmModels":
-			const openAiModels = await getZgsmModels(
-				message?.values?.baseUrl || ZgsmAuthConfig.getInstance().getDefaultApiBaseUrl(),
-				message?.values?.apiKey,
-				message?.values?.openAiHeaders || {},
-			)
-
-			// Get complete response data and send to WebView
-			const fullResponseData = getZgsmFullResponseData()
-			const modelsArray = Array.isArray(openAiModels) ? openAiModels : []
-			provider.postMessageToWebview({
-				type: "zgsmModels",
-				openAiModels: modelsArray,
-				fullResponseData,
-			})
 
 			break
 		case "requestVsCodeLmModels":

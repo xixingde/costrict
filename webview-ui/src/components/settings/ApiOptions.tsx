@@ -222,9 +222,8 @@ const ApiOptions = ({
 			if (selectedProvider === "zgsm") {
 				// Use our custom headers state to build the headers object.
 				const headerObject = convertHeadersToObject(customHeaders)
-
 				vscode.postMessage({
-					type: "requestZgsmModels",
+					type: "requestRouterModels",
 					values: {
 						baseUrl: apiConfiguration?.zgsmBaseUrl?.trim(),
 						apiKey: apiConfiguration?.zgsmAccessToken,

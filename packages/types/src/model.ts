@@ -96,3 +96,7 @@ export const modelInfoSchema = z.object({
 })
 
 export type ModelInfo = z.infer<typeof modelInfoSchema>
+
+export interface IZgsmModelResponseData extends ModelInfo {
+	id?: string
+}

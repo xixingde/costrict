@@ -49,7 +49,7 @@ export async function getRequestyModels(baseUrl?: string, apiKey?: string): Prom
 			models[rawModel.id] = modelInfo
 		}
 	} catch (error) {
-		console.error(`Error fetching Requesty models: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`)
+		console.warn(`Error fetching Requesty models: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`)
 	}
 
 	return models

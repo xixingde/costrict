@@ -29,7 +29,6 @@ function validateModelsAndKeysProvided(apiConfiguration: ProviderSettings): stri
 	switch (apiConfiguration.apiProvider) {
 		case "zgsm":
 			return validateZgsmBaseUrl(apiConfiguration)
-			break
 		case "openrouter":
 			if (!apiConfiguration.openRouterApiKey) {
 				return i18next.t("settings:validation.apiKey")
@@ -272,6 +271,9 @@ export function validateModelId(apiConfiguration: ProviderSettings, routerModels
 	let modelId: string | undefined
 
 	switch (provider) {
+		case "zgsm":
+			modelId = apiConfiguration.zgsmModelId
+			break
 		case "openrouter":
 			modelId = apiConfiguration.openRouterModelId
 			break

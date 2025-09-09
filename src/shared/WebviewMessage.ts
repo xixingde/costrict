@@ -210,7 +210,6 @@ export interface WebviewMessage {
 		| "zgsmLogin"
 		| "zgsmLogout"
 		| "zgsmAbort"
-		| "requestZgsmModels"
 		| "useZgsmCustomConfig"
 		| "zgsmCodebaseIndexEnabled"
 		| "showZgsmCodebaseDisableConfirmDialog"
