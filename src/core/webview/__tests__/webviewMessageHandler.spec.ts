@@ -218,13 +218,21 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 			},
 		}
 
-		mockGetModels.mockResolvedValue(mockModels)
+		mockGetModels
+			.mockResolvedValueOnce(mockModels) // zgsm success (first call)
+			.mockResolvedValue(mockModels) // other providers success
 
 		await webviewMessageHandler(mockClineProvider, {
 			type: "requestRouterModels",
 		})
 
 		// Verify getModels was called for each provider
+		expect(mockGetModels).toHaveBeenCalledWith({
+			provider: "zgsm",
+			apiKey: undefined,
+			baseUrl: undefined,
+			openAiHeaders: {},
+		})
 		expect(mockGetModels).toHaveBeenCalledWith({ provider: "deepinfra" })
 		expect(mockGetModels).toHaveBeenCalledWith({ provider: "openrouter" })
 		expect(mockGetModels).toHaveBeenCalledWith({ provider: "requesty", apiKey: "requesty-key" })
@@ -237,10 +245,18 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 			baseUrl: "http://localhost:4000",
 		})
 
+		// Verify ZGSM models message is sent first
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "zgsmModels",
+			openAiModels: ["model-1", "model-2"],
+			fullResponseData: [mockModels["model-1"], mockModels["model-2"]],
+		})
+
 		// Verify response was sent
 		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "routerModels",
 			routerModels: {
+				zgsm: mockModels,
 				deepinfra: mockModels,
 				openrouter: mockModels,
 				requesty: mockModels,
@@ -312,24 +328,40 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 			},
 		}
 
-		mockGetModels.mockResolvedValue(mockModels)
+		mockGetModels
+			.mockResolvedValueOnce(mockModels) // zgsm success (first call)
+			.mockResolvedValue(mockModels) // other providers success
 
 		await webviewMessageHandler(mockClineProvider, {
 			type: "requestRouterModels",
 			// No values provided
 		})
 
-		// Verify LiteLLM was NOT called
+		// Verify LiteLLM was NOT called (but ZGSM was called first)
+		expect(mockGetModels).toHaveBeenCalledWith({
+			provider: "zgsm",
+			apiKey: undefined,
+			baseUrl: undefined,
+			openAiHeaders: {},
+		})
 		expect(mockGetModels).not.toHaveBeenCalledWith(
 			expect.objectContaining({
 				provider: "litellm",
 			}),
 		)
 
+		// Verify ZGSM models message is sent first
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "zgsmModels",
+			openAiModels: ["model-1"],
+			fullResponseData: [mockModels["model-1"]],
+		})
+
 		// Verify response includes empty object for LiteLLM
 		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "routerModels",
 			routerModels: {
+				zgsm: mockModels,
 				deepinfra: mockModels,
 				openrouter: mockModels,
 				requesty: mockModels,
@@ -355,6 +387,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 
 		// Mock some providers to succeed and others to fail
 		mockGetModels
+			.mockResolvedValueOnce(mockModels) // zgsm success (first call)
 			.mockResolvedValueOnce(mockModels) // openrouter
 			.mockRejectedValueOnce(new Error("Requesty API error")) // requesty
 			.mockResolvedValueOnce(mockModels) // glama
@@ -367,10 +400,18 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 			type: "requestRouterModels",
 		})
 
+		// Verify ZGSM models message is sent first
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "zgsmModels",
+			openAiModels: ["model-1"],
+			fullResponseData: [mockModels["model-1"]],
+		})
+
 		// Verify successful providers are included
 		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "routerModels",
 			routerModels: {
+				zgsm: mockModels,
 				deepinfra: mockModels,
 				openrouter: mockModels,
 				requesty: {},
@@ -381,6 +422,13 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 				lmstudio: {},
 				"vercel-ai-gateway": mockModels,
 			},
+		})
+
+		// Verify ZGSM models message is sent first
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "zgsmModels",
+			openAiModels: ["model-1"],
+			fullResponseData: [mockModels["model-1"]],
 		})
 
 		// Verify error messages were sent for failed providers
@@ -409,6 +457,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 	it("handles Error objects and string errors correctly", async () => {
 		// Mock providers to fail with different error types
 		mockGetModels
+			.mockResolvedValueOnce({}) // zgsm success (first call)
 			.mockRejectedValueOnce(new Error("Structured error message")) // openrouter
 			.mockRejectedValueOnce(new Error("Requesty API error")) // requesty
 			.mockRejectedValueOnce(new Error("Glama API error")) // glama
