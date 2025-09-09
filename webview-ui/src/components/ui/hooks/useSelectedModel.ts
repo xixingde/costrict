@@ -68,37 +68,23 @@ import type { ModelRecord, RouterModels } from "@roo/api"
 import { useRouterModels } from "./useRouterModels"
 import { useOpenRouterModelProviders } from "./useOpenRouterModelProviders"
 import { useLmStudioModels } from "./useLmStudioModels"
-import { ExtensionMessage } from "@roo/ExtensionMessage"
-import { getZgsmSelectedModelInfo } from "@roo/getZgsmSelectedModelInfo"
 
-let webViewZgsmFullResponseData: any[] = []
-
-const handler = (event: MessageEvent) => {
-	const message: ExtensionMessage = event.data
-
-	if (message.type === "zgsmModels" && message.fullResponseData) {
-		webViewZgsmFullResponseData = message.fullResponseData
-	}
-}
-
-window.addEventListener("message", handler)
-
-const getWebViewZgsmFullResponseData = (): any[] => {
-	return webViewZgsmFullResponseData
-}
+import { useOllamaModels } from "./useOllamaModels"
 
 export const useSelectedModel = (apiConfiguration?: ProviderSettings) => {
 	const provider = apiConfiguration?.apiProvider || "zgsm"
 	const openRouterModelId = provider === "openrouter" ? apiConfiguration?.openRouterModelId : undefined
 	const lmStudioModelId = provider === "lmstudio" ? apiConfiguration?.lmStudioModelId : undefined
+	const ollamaModelId = provider === "ollama" ? apiConfiguration?.ollamaModelId : undefined
 
 	const routerModels = useRouterModels()
 	const openRouterModelProviders = useOpenRouterModelProviders(openRouterModelId)
 	const lmStudioModels = useLmStudioModels(lmStudioModelId)
-
+	const ollamaModels = useOllamaModels(ollamaModelId)
 	const { id, info } =
 		apiConfiguration &&
 		(typeof lmStudioModelId === "undefined" || typeof lmStudioModels.data !== "undefined") &&
+		(typeof ollamaModelId === "undefined" || typeof ollamaModels.data !== "undefined") &&
 		typeof routerModels.data !== "undefined" &&
 		typeof openRouterModelProviders.data !== "undefined"
 			? getSelectedModel({
@@ -107,6 +93,7 @@ export const useSelectedModel = (apiConfiguration?: ProviderSettings) => {
 					routerModels: routerModels.data,
 					openRouterModelProviders: openRouterModelProviders.data,
 					lmStudioModels: lmStudioModels.data,
+					ollamaModels: ollamaModels.data,
 				})
 			: {
 					id: apiConfiguration?.zgsmModelId || apiConfiguration?.apiModelId || zgsmDefaultModelId,
@@ -134,24 +121,22 @@ function getSelectedModel({
 	routerModels,
 	openRouterModelProviders,
 	lmStudioModels,
+	ollamaModels,
 }: {
 	provider: ProviderName
 	apiConfiguration: ProviderSettings
 	routerModels: RouterModels
 	openRouterModelProviders: Record<string, ModelInfo>
 	lmStudioModels: ModelRecord | undefined
+	ollamaModels: ModelRecord | undefined
 }): { id: string; info: ModelInfo | undefined } {
 	// the `undefined` case are used to show the invalid selection to prevent
 	// users from seeing the default model if their selection is invalid
 	// this gives a better UX than showing the default model
 	switch (provider) {
 		case "zgsm": {
-			const openAiCustomModelInfo = apiConfiguration?.openAiCustomModelInfo ?? openAiModelInfoSaneDefaults
 			const id = apiConfiguration.zgsmModelId || apiConfiguration.apiModelId || zgsmDefaultModelId
-			const info = !apiConfiguration.useZgsmCustomConfig
-				? getWebViewZgsmFullResponseData().find((item) => item.id === id) || getZgsmSelectedModelInfo(id)
-				: openAiCustomModelInfo
-
+			const info = routerModels.zgsm[id]
 			return { id, info }
 		}
 		case "openrouter": {
@@ -294,7 +279,7 @@ function getSelectedModel({
 		}
 		case "ollama": {
 			const id = apiConfiguration.ollamaModelId ?? ""
-			const info = routerModels.ollama && routerModels.ollama[id]
+			const info = ollamaModels && ollamaModels[apiConfiguration.ollamaModelId!]
 			return {
 				id,
 				info: info || undefined,

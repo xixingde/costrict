@@ -97,7 +97,7 @@ const ProviderRenderer: React.FC<ProviderRendererProps> = ({
 				const headerObject = convertHeadersToObject(customHeaders)
 
 				vscode.postMessage({
-					type: "requestZgsmModels",
+					type: "requestRouterModels",
 					values: {
 						baseUrl: apiConfiguration?.zgsmBaseUrl?.trim(),
 						apiKey: apiConfiguration?.zgsmAccessToken,

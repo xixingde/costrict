@@ -12,6 +12,7 @@ import { fileExistsAtPath } from "../../../utils/fs"
 import { getOpenRouterModels } from "./openrouter"
 import { getVercelAiGatewayModels } from "./vercel-ai-gateway"
 import { getRequestyModels } from "./requesty"
+import { getZgsmModels } from "./zgsm"
 import { getGlamaModels } from "./glama"
 import { getUnboundModels } from "./unbound"
 import { getLiteLLMModels } from "./litellm"
@@ -20,6 +21,9 @@ import { getOllamaModels } from "./ollama"
 import { getLMStudioModels } from "./lmstudio"
 import { getIOIntelligenceModels } from "./io-intelligence"
 import { getDeepInfraModels } from "./deepinfra"
+import { ZgsmAuthConfig } from "../../../core/costrict/auth"
+import { IZgsmModelResponseData } from "@roo-code/types"
+
 const memoryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 5 * 60 })
 
 async function writeModels(router: RouterName, data: ModelRecord) {
@@ -28,7 +32,7 @@ async function writeModels(router: RouterName, data: ModelRecord) {
 	await safeWriteJson(path.join(cacheDir, filename), data)
 }
 
-async function readModels(router: RouterName): Promise<ModelRecord | undefined> {
+export async function readModels(router: RouterName): Promise<ModelRecord | undefined> {
 	const filename = `${router}_models.json`
 	const cacheDir = await getCacheDirectoryPath(ContextProxy.instance.globalStorageUri.fsPath)
 	const filePath = path.join(cacheDir, filename)
@@ -56,6 +60,22 @@ export const getModels = async (options: GetModelsOptions): Promise<ModelRecord>
 
 	try {
 		switch (provider) {
+			case "zgsm": {
+				const _models = await getZgsmModels(
+					options.baseUrl || ZgsmAuthConfig.getInstance().getDefaultApiBaseUrl(),
+					options.apiKey,
+					options.openAiHeaders,
+				)
+				models = _models.reduce((acc, model: IZgsmModelResponseData) => {
+					if (!model.id) {
+						return acc
+					}
+
+					acc[model.id] = model
+					return acc
+				}, {} as ModelRecord)
+				break
+			}
 			case "openrouter":
 				models = await getOpenRouterModels()
 				break

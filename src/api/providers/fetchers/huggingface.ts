@@ -181,7 +181,7 @@ export async function getHuggingFaceModels(): Promise<ModelRecord> {
 
 		return models
 	} catch (error) {
-		console.error("Error fetching HuggingFace models:", error)
+		console.warn("Error fetching HuggingFace models:", error)
 
 		// Return cached data if available
 		if (cache) {

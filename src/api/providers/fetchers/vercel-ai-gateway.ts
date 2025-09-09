@@ -80,7 +80,7 @@ export async function getVercelAiGatewayModels(options?: ApiHandlerOptions): Pro
 			})
 		}
 	} catch (error) {
-		console.error(
+		console.warn(
 			`Error fetching Vercel AI Gateway models: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
 		)
 	}

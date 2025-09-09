@@ -84,7 +84,7 @@ describe("Vercel AI Gateway Fetchers", () => {
 		})
 
 		it("handles API errors gracefully", async () => {
-			const consoleErrorSpy = vitest.spyOn(console, "error").mockImplementation(() => {})
+			const consoleErrorSpy = vitest.spyOn(console, "warn").mockImplementation(() => {})
 			mockedAxios.get.mockRejectedValueOnce(new Error("Network error"))
 
 			const models = await getVercelAiGatewayModels()

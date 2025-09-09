@@ -2713,10 +2713,18 @@ describe("ClineProvider - Router Models", () => {
 			baseUrl: "http://localhost:4000",
 		})
 
+		// Verify ZGSM models message is sent first
+		expect(mockPostMessage).toHaveBeenCalledWith({
+			type: "zgsmModels",
+			openAiModels: ["model-1", "model-2"],
+			fullResponseData: [mockModels["model-1"], mockModels["model-2"]],
+		})
+
 		// Verify response was sent
 		expect(mockPostMessage).toHaveBeenCalledWith({
 			type: "routerModels",
 			routerModels: {
+				zgsm: mockModels,
 				deepinfra: mockModels,
 				openrouter: mockModels,
 				requesty: mockModels,
@@ -2752,6 +2760,7 @@ describe("ClineProvider - Router Models", () => {
 
 		// Mock some providers to succeed and others to fail
 		vi.mocked(getModels)
+			.mockResolvedValueOnce(mockModels) // zgsm success (first call)
 			.mockResolvedValueOnce(mockModels) // openrouter success
 			.mockRejectedValueOnce(new Error("Requesty API error")) // requesty fail
 			.mockResolvedValueOnce(mockModels) // glama success
@@ -2762,10 +2771,18 @@ describe("ClineProvider - Router Models", () => {
 
 		await messageHandler({ type: "requestRouterModels" })
 
+		// Verify ZGSM models message is sent first
+		expect(mockPostMessage).toHaveBeenCalledWith({
+			type: "zgsmModels",
+			openAiModels: ["model-1"],
+			fullResponseData: [mockModels["model-1"]],
+		})
+
 		// Verify main response includes successful providers and empty objects for failed ones
 		expect(mockPostMessage).toHaveBeenCalledWith({
 			type: "routerModels",
 			routerModels: {
+				zgsm: mockModels,
 				deepinfra: mockModels,
 				openrouter: mockModels,
 				requesty: {},
@@ -2863,7 +2880,9 @@ describe("ClineProvider - Router Models", () => {
 			"model-1": { maxTokens: 4096, contextWindow: 8192, description: "Test model", supportsPromptCache: false },
 		}
 		const { getModels } = await import("../../../api/providers/fetchers/modelCache")
-		vi.mocked(getModels).mockResolvedValue(mockModels)
+		vi.mocked(getModels)
+			.mockResolvedValueOnce(mockModels) // zgsm success (first call)
+			.mockResolvedValue(mockModels) // other providers success
 
 		await messageHandler({ type: "requestRouterModels" })
 
@@ -2874,10 +2893,18 @@ describe("ClineProvider - Router Models", () => {
 			}),
 		)
 
+		// Verify ZGSM models message is sent first
+		expect(mockPostMessage).toHaveBeenCalledWith({
+			type: "zgsmModels",
+			openAiModels: ["model-1"],
+			fullResponseData: [mockModels["model-1"]],
+		})
+
 		// Verify response includes empty object for LiteLLM
 		expect(mockPostMessage).toHaveBeenCalledWith({
 			type: "routerModels",
 			routerModels: {
+				zgsm: mockModels,
 				deepinfra: mockModels,
 				openrouter: mockModels,
 				requesty: mockModels,

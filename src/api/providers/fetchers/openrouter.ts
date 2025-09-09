@@ -126,9 +126,7 @@ export async function getOpenRouterModels(options?: ApiHandlerOptions): Promise<
 			})
 		}
 	} catch (error) {
-		console.error(
-			`Error fetching OpenRouter models: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
-		)
+		console.warn(`Error fetching OpenRouter models: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`)
 	}
 
 	return models
@@ -171,7 +169,7 @@ export async function getOpenRouterModelEndpoints(
 			})
 		}
 	} catch (error) {
-		console.error(
+		console.warn(
 			`Error fetching OpenRouter model endpoints: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
 		)
 	}
