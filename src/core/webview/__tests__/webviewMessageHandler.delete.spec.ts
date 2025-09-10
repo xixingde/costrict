@@ -19,12 +19,19 @@ vi.mock("vscode", () => ({
 		showErrorMessage: vi.fn(),
 		showWarningMessage: vi.fn(),
 		showInformationMessage: vi.fn(),
+		createTextEditorDecorationType: vi.fn(() => ({})),
 	},
 	workspace: {
 		workspaceFolders: undefined,
 		getConfiguration: vi.fn(() => ({
 			get: vi.fn(),
 			update: vi.fn(),
+		})),
+		createFileSystemWatcher: vi.fn(() => ({
+			onDidChange: vi.fn(() => ({ dispose: vi.fn() })),
+			onDidCreate: vi.fn(() => ({ dispose: vi.fn() })),
+			onDidDelete: vi.fn(() => ({ dispose: vi.fn() })),
+			dispose: vi.fn(),
 		})),
 	},
 	ConfigurationTarget: {
@@ -36,6 +43,7 @@ vi.mock("vscode", () => ({
 		parse: vi.fn((str) => ({ toString: () => str })),
 		file: vi.fn((path) => ({ fsPath: path })),
 	},
+	RelativePattern: vi.fn((base, pattern) => ({ base, pattern })),
 	env: {
 		openExternal: vi.fn(),
 		clipboard: {

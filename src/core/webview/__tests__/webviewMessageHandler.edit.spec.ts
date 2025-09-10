@@ -6,6 +6,7 @@ vi.mock("vscode", () => ({
 	window: {
 		showWarningMessage: vi.fn(),
 		showErrorMessage: vi.fn(),
+		createTextEditorDecorationType: vi.fn(() => ({})),
 	},
 	workspace: {
 		workspaceFolders: [{ uri: { fsPath: "/mock/workspace" } }],
@@ -13,10 +14,17 @@ vi.mock("vscode", () => ({
 			get: vi.fn(),
 			update: vi.fn(),
 		}),
+		createFileSystemWatcher: vi.fn(() => ({
+			onDidChange: vi.fn(() => ({ dispose: vi.fn() })),
+			onDidCreate: vi.fn(() => ({ dispose: vi.fn() })),
+			onDidDelete: vi.fn(() => ({ dispose: vi.fn() })),
+			dispose: vi.fn(),
+		})),
 	},
 	Uri: {
 		file: vi.fn((path) => ({ fsPath: path })),
 	},
+	RelativePattern: vi.fn((base, pattern) => ({ base, pattern })),
 	env: {
 		uriScheme: "vscode",
 	},
