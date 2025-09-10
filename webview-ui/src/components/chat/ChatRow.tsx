@@ -61,6 +61,7 @@ interface ChatRowProps {
 	onFollowUpUnmount?: () => void
 	isFollowUpAnswered?: boolean
 	editable?: boolean
+	shouldHighlight?: boolean
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -74,7 +75,12 @@ const ChatRow = memo(
 		const prevHeightRef = useRef(0)
 
 		const [chatrow, { height }] = useSize(
-			<div className="px-[15px] py-[10px] pr-[6px]">
+			<div
+				className={`px-[15px] py-[10px] pr-[6px] transition-all duration-300 ease-in-out ${
+					props.shouldHighlight
+						? "bg-vscode-editor-findMatchHighlightBackground border-l-4 border-vscode-editor-findMatchBorder shadow-sm"
+						: ""
+				}`}>
 				<ChatRowContent {...props} />
 			</div>,
 		)

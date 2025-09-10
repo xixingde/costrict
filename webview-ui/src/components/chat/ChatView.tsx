@@ -57,6 +57,7 @@ import SystemPromptWarning from "./SystemPromptWarning"
 import ProfileViolationWarning from "./ProfileViolationWarning"
 import { CheckpointWarning } from "./CheckpointWarning"
 import { QueuedMessages } from "./QueuedMessages"
+import ChatSearch from "./ChatSearch"
 
 export interface ChatViewProps {
 	isHidden: boolean
@@ -125,6 +126,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		soundVolume,
 		// cloudIsAuthenticated,
 		messageQueue = [],
+		experiments,
 	} = useExtensionState()
 
 	const messagesRef = useRef(messages)
@@ -196,9 +198,10 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const [wasStreaming, setWasStreaming] = useState<boolean>(false)
 	const [showCheckpointWarning, setShowCheckpointWarning] = useState<boolean>(false)
 	const [isCondensing, setIsCondensing] = useState<boolean>(false)
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const [showAnnouncementModal, setShowAnnouncementModal] = useState(false)
+	// const [showAnnouncementModal, setShowAnnouncementModal] = useState(false)
 	const [hoverPreviewMap, setHoverPreviewMap] = useState<Map<string, string>>(new Map())
+	const [showSearch, setShowSearch] = useState(false)
+	const [searchQuery, setSearchQuery] = useState<string | undefined>(undefined)
 	const everVisibleMessagesTsRef = useRef<LRUCache<number, boolean>>(
 		new LRUCache({
 			max: 100,
@@ -1390,6 +1393,22 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		[setExpandedRows], // setExpandedRows is stable
 	)
 
+	// 滚动到指定消息
+	const scrollToMessage = useCallback(
+		(messageIndex: number) => {
+			if (virtuosoRef.current && messageIndex >= 0 && messageIndex < groupedMessages.length) {
+				virtuosoRef.current.scrollToIndex({
+					index: messageIndex,
+					behavior: "smooth",
+					align: "center",
+				})
+				// 禁用自动滚动，因为用户正在手动导航
+				disableAutoScrollRef.current = true
+			}
+		},
+		[groupedMessages.length],
+	)
+
 	// Scroll when user toggles certain rows.
 	const toggleRowExpansion = useCallback(
 		(ts: number) => {
@@ -1521,7 +1540,17 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		// Mark that user has responded
 		userRespondedRef.current = true
 	}, [])
-
+	const shouldHighlight = useCallback((searchQuery?: string, messageOrGroup?: ClineMessage, showSearch?: boolean) => {
+		if (!searchQuery) {
+			return false
+		}
+		return !!(
+			showSearch &&
+			messageOrGroup &&
+			messageOrGroup.text &&
+			messageOrGroup.text.toLowerCase().includes(searchQuery.toLowerCase())
+		)
+	}, [])
 	const itemContent = useCallback(
 		(index: number, messageOrGroup: ClineMessage | ClineMessage[]) => {
 			// browser session group
@@ -1577,6 +1606,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							return tool.tool === "updateTodoList" && enableButtons && !!primaryButtonText
 						})()
 					}
+					shouldHighlight={shouldHighlight(searchQuery, messageOrGroup, showSearch)}
 				/>
 			)
 		},
@@ -1591,6 +1621,9 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			handleBatchFileResponse,
 			handleFollowUpUnmount,
 			currentFollowUpTs,
+			shouldHighlight,
+			searchQuery,
+			showSearch,
 			alwaysAllowUpdateTodoList,
 			enableButtons,
 			primaryButtonText,
@@ -1757,8 +1790,22 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					switchToNextMode()
 				}
 			}
+
+			// Check for Command/Ctrl + F for search - toggle functionality
+			if ((event.metaKey || event.ctrlKey) && event.key === "f") {
+				event.preventDefault() // Prevent default browser behavior
+				event.stopPropagation() // Prevent event from bubbling to VSCode
+				setShowSearch((prev) => !prev)
+			}
+
+			// Escape key to close search
+			if (event.key === "Escape" && showSearch) {
+				event.preventDefault()
+				event.stopPropagation() // Prevent event from bubbling to VSCode
+				setShowSearch(false)
+			}
 		},
-		[switchToNextMode, switchToPreviousMode],
+		[switchToNextMode, switchToPreviousMode, showSearch, setShowSearch],
 	)
 
 	useEffect(() => {
@@ -1893,6 +1940,14 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 			{task && (
 				<>
+					{showSearch && !isHidden && experiments?.chatSearch && (
+						<ChatSearch
+							messages={modifiedMessages}
+							onNavigateToResult={scrollToMessage}
+							onClose={() => setShowSearch(false)}
+							onSearchChange={(_, query) => setSearchQuery(query)}
+						/>
+					)}
 					<div className="grow flex" ref={scrollContainerRef}>
 						<Virtuoso
 							ref={virtuosoRef}

@@ -117,6 +117,16 @@
 		},
 		"RUN_SLASH_COMMAND": {
 			"description": "When enabled, Costrict can run your slash commands to execute workflows."
+		},
+		"CHAT_SEARCH": {
+			"name": "Chat History Search in Window",
+			"description": "When enabled, Costrict can search chat history in the conversation window.",
+			"placeholder": "Search messages...",
+			"noResults": "No results found",
+			"resultsCount": "{{current}} of {{total}}",
+			"previous": "Previous result",
+			"next": "Next result",
+			"close": "Close search"
 		}
 	},
 	"modelPicker": {
