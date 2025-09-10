@@ -507,10 +507,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				if (handleHistoryNavigation(event, showContextMenu, isComposing)) {
 					return
 				}
-				// if (isEditMode && !showContextMenu && event.key === "Escape") {
-				// 	onCancel?.()
-				// 	return
-				// }
+
 				if (event.key === "Enter" && !event.shiftKey && !isComposing) {
 					event.preventDefault()
 

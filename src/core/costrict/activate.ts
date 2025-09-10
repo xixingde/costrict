@@ -121,11 +121,17 @@ export async function activate(
 			// Start token refresh timer
 		} else {
 			// ZgsmAuthService.openStatusBarLoginTip()
-			loginTip = () =>
-				getPanel()?.webview.postMessage({
-					type: "showReauthConfirmationDialog",
-					messageTs: new Date().getTime(),
+			loginTip = () => {
+				zgsmAuthService.getTokens().then(async (tokens) => {
+					if (!tokens) {
+						getPanel()?.webview.postMessage({
+							type: "showReauthConfirmationDialog",
+							messageTs: new Date().getTime(),
+						})
+						return
+					}
 				})
+			}
 			provider.log("Login status detected at plugin startup: invalid")
 		}
 	} catch (error) {

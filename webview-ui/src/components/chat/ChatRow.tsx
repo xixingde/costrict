@@ -118,7 +118,6 @@ export const ChatRowContent = ({
 
 	const { mcpServers, alwaysAllowMcp, currentCheckpoint, mode, apiConfiguration } = useExtensionState()
 	const { info: model } = useSelectedModel(apiConfiguration)
-	const [reasoningCollapsed, setReasoningCollapsed] = useState(true)
 	const [isDiffErrorExpanded, setIsDiffErrorExpanded] = useState(false)
 	const [showCopySuccess, setShowCopySuccess] = useState(false)
 	const [isEditing, setIsEditing] = useState(false)
@@ -1096,9 +1095,10 @@ export const ChatRowContent = ({
 					return (
 						<ReasoningBlock
 							content={message.text || ""}
-							elapsed={isLast && isStreaming ? Date.now() - message.ts : undefined}
-							isCollapsed={reasoningCollapsed}
-							onToggleCollapse={() => setReasoningCollapsed(!reasoningCollapsed)}
+							ts={message.ts}
+							isStreaming={isStreaming}
+							isLast={isLast}
+							metadata={message.metadata as any}
 						/>
 					)
 				case "api_req_started":
@@ -1241,12 +1241,22 @@ export const ChatRowContent = ({
 											variant="ghost"
 											size="icon"
 											className="shrink-0"
-											disabled={isStreaming}
 											onClick={(e) => {
 												e.stopPropagation()
-												handleEditClick()
+												copyWithFeedback(message.text || "").then((success) => {
+													if (success) {
+														// Show checkmark
+														setShowCopySuccess(true)
+
+														// Reset after a brief delay
+														setTimeout(() => {
+															setShowCopySuccess(false)
+														}, 1000)
+													}
+												})
 											}}>
-											<span className="codicon codicon-edit" />
+											<span
+												className={`codicon codicon-${showCopySuccess ? "check" : "copy"}`}></span>
 										</Button>
 										<Button
 											variant="ghost"
