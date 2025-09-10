@@ -69,6 +69,7 @@ import { CodeReviewService } from "../costrict/code-review"
 import { ZgsmCodebaseIndexManager, IndexSwitchRequest, IndexStatusInfo } from "../costrict/codebase-index"
 import { ErrorCodeManager } from "../costrict/error-code"
 import { writeCostrictAccessToken } from "../costrict/codebase-index/utils"
+import { workspaceEventMonitor } from "../costrict/codebase-index/workspace-event-monitor"
 
 export const webviewMessageHandler = async (
 	provider: ClineProvider,
@@ -3192,6 +3193,7 @@ export const webviewMessageHandler = async (
 						type: "zgsmCodebaseIndexEnabled",
 						payload: isEnabled,
 					})
+					workspaceEventMonitor.initialize()
 				} else {
 					await updateGlobalState("zgsmCodebaseIndexEnabled", oldEnabled)
 

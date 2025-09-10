@@ -61,8 +61,72 @@ describe("encoding", () => {
 	})
 
 	describe("detectEncoding", () => {
-		it("should throw error for binary files", async () => {
+		it("should throw error for known binary extensions", async () => {
 			const buffer = Buffer.from("binary content")
+
+			await expect(detectEncoding(buffer, ".exe")).rejects.toThrow("Cannot read text for file type: .exe")
+			expect(mockIsBinaryFile).not.toHaveBeenCalled() // Should not call isBinaryFile
+		})
+
+		it("should throw error for various binary extensions", async () => {
+			const buffer = Buffer.from("binary content")
+			const binaryExtensions = [".dll", ".so", ".zip", ".png", ".mp3"]
+			mockIsBinaryFile.mockResolvedValue(false)
+
+			for (const ext of binaryExtensions) {
+				await expect(detectEncoding(buffer, ext)).rejects.toThrow(`Cannot read text for file type: ${ext}`)
+			}
+		})
+
+		it("should handle text files normally", async () => {
+			const buffer = Buffer.from("text content")
+			mockIsBinaryFile.mockResolvedValue(false)
+			mockJschardet.detect.mockReturnValue({
+				encoding: "utf8",
+				confidence: 0.95,
+			})
+
+			const result = await detectEncoding(buffer, ".txt")
+
+			expect(result).toBe("utf8")
+		})
+
+		it("should fallback to utf8 for low confidence detection (< 0.9)", async () => {
+			const buffer = Buffer.from("uncertain content")
+			mockIsBinaryFile.mockResolvedValue(false)
+			mockJschardet.detect.mockReturnValue({
+				encoding: "gbk",
+				confidence: 0.8, // Below new threshold 0.9
+			})
+
+			const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+			const result = await detectEncoding(buffer, ".txt")
+
+			expect(result).toBe("utf8")
+			expect(consoleSpy).toHaveBeenCalledWith(
+				"Low confidence encoding detection: gbk (confidence: 0.8), falling back to utf8",
+			)
+		})
+
+		it("should use detected encoding for high confidence detection (>= 0.9)", async () => {
+			const buffer = Buffer.from("certain content")
+			mockIsBinaryFile.mockResolvedValue(false)
+			mockJschardet.detect.mockReturnValue({
+				encoding: "gbk",
+				confidence: 0.95, // Above new threshold 0.9
+			})
+
+			const result = await detectEncoding(buffer, ".txt")
+
+			expect(result).toBe("gbk")
+		})
+
+		it("should throw error for binary files when encoding detection fails", async () => {
+			const buffer = Buffer.from("binary content")
+			mockJschardet.detect.mockReturnValue({
+				encoding: "",
+				confidence: 0,
+			})
 			mockIsBinaryFile.mockResolvedValue(true)
 
 			await expect(detectEncoding(buffer, ".exe")).rejects.toThrow("Cannot read text for file type: .exe")
@@ -358,8 +422,9 @@ describe("encoding", () => {
 			mockPath.extname.mockReturnValue(".txt")
 			mockJschardet.detect.mockReturnValue({
 				encoding: "utf8",
-				confidence: 0.9,
+				confidence: 0.95,
 			})
+			mockIsBinaryFile.mockResolvedValue(false)
 
 			const result = await isBinaryFileWithEncodingDetection(filePath)
 
@@ -367,11 +432,110 @@ describe("encoding", () => {
 			expect(mockFs.readFile).toHaveBeenCalledWith(filePath)
 		})
 
-		it("should return true for files that fail encoding detection and are binary", async () => {
+		it("should return true for known binary extensions", async () => {
 			const filePath = "/path/to/file.exe"
-			const buffer = Buffer.from("binary content")
+			const buffer = Buffer.from("some content")
 			mockFs.readFile.mockResolvedValue(buffer)
 			mockPath.extname.mockReturnValue(".exe")
+
+			const result = await isBinaryFileWithEncodingDetection(filePath)
+
+			expect(result).toBe(true)
+			// Should not perform encoding detection because extension already indicates binary file
+			expect(mockJschardet.detect).not.toHaveBeenCalled()
+		})
+
+		it("should return true for files with binary magic numbers", async () => {
+			const filePath = "/path/to/file.bin"
+			const elfHeader = Buffer.from([0x7f, 0x45, 0x4c, 0x46, 0x01, 0x01, 0x01, 0x00])
+			const buffer = Buffer.concat([elfHeader, Buffer.from("some content")])
+			mockFs.readFile.mockResolvedValue(buffer)
+			mockPath.extname.mockReturnValue(".bin")
+
+			const result = await isBinaryFileWithEncodingDetection(filePath)
+
+			expect(result).toBe(true)
+			// Should not perform encoding detection because magic number already indicates binary file
+			expect(mockJschardet.detect).not.toHaveBeenCalled()
+		})
+
+		it("should return true for files with null bytes", async () => {
+			const filePath = "/path/to/file.dat"
+			const buffer = Buffer.from("text\x00\x00\x00\x00\x00content")
+			mockFs.readFile.mockResolvedValue(buffer)
+			mockPath.extname.mockReturnValue(".dat")
+			mockIsBinaryFile.mockResolvedValue(false)
+
+			const result = await isBinaryFileWithEncodingDetection(filePath)
+
+			expect(result).toBe(true)
+		})
+
+		it("should return true for files with many non-printable characters", async () => {
+			const filePath = "/path/to/file.dat"
+			// Create buffer with many non-printable characters
+			const buffer = Buffer.alloc(1024)
+			for (let i = 0; i < 1024; i++) {
+				buffer[i] = Math.floor(Math.random() * 32) // 0-31 are all non-printable characters
+			}
+			mockFs.readFile.mockResolvedValue(buffer)
+			mockPath.extname.mockReturnValue(".dat")
+			mockIsBinaryFile.mockResolvedValue(false)
+
+			const result = await isBinaryFileWithEncodingDetection(filePath)
+
+			expect(result).toBe(true)
+		})
+
+		it("should return true for files detected as binary by isBinaryFile library", async () => {
+			const filePath = "/path/to/file.dat"
+			const buffer = Buffer.from("some content")
+			mockFs.readFile.mockResolvedValue(buffer)
+			mockPath.extname.mockReturnValue(".dat")
+			mockIsBinaryFile.mockResolvedValue(true)
+
+			const result = await isBinaryFileWithEncodingDetection(filePath)
+
+			expect(result).toBe(true)
+		})
+
+		it("should return true for files with low confidence encoding detection", async () => {
+			const filePath = "/path/to/file.txt"
+			const buffer = Buffer.from("ambiguous content")
+			mockFs.readFile.mockResolvedValue(buffer)
+			mockPath.extname.mockReturnValue(".txt")
+			mockJschardet.detect.mockReturnValue({
+				encoding: "utf8",
+				confidence: 0.8, // Below new threshold 0.9
+			})
+			mockIsBinaryFile.mockResolvedValue(true)
+
+			const result = await isBinaryFileWithEncodingDetection(filePath)
+
+			expect(result).toBe(true)
+		})
+
+		it("should return false for files with high confidence encoding detection", async () => {
+			const filePath = "/path/to/file.txt"
+			const buffer = Buffer.from("clear text content")
+			mockFs.readFile.mockResolvedValue(buffer)
+			mockPath.extname.mockReturnValue(".txt")
+			mockJschardet.detect.mockReturnValue({
+				encoding: "utf8",
+				confidence: 0.95, // Above new threshold 0.9
+			})
+			mockIsBinaryFile.mockResolvedValue(false)
+
+			const result = await isBinaryFileWithEncodingDetection(filePath)
+
+			expect(result).toBe(false)
+		})
+
+		it("should return true for files that fail encoding detection", async () => {
+			const filePath = "/path/to/file.txt"
+			const buffer = Buffer.from("binary content")
+			mockFs.readFile.mockResolvedValue(buffer)
+			mockPath.extname.mockReturnValue(".txt")
 			mockJschardet.detect.mockReturnValue({
 				encoding: "",
 				confidence: 0,
@@ -392,19 +556,96 @@ describe("encoding", () => {
 			expect(result).toBe(true)
 		})
 
-		it("should return false when encoding detection succeeds even with low confidence", async () => {
-			const filePath = "/path/to/file.txt"
-			const buffer = Buffer.from("text content")
+		it("should handle PE executable files", async () => {
+			const filePath = "/path/to/file.dll"
+			const peHeader = Buffer.from([0x4d, 0x5a, 0x90, 0x00, 0x03, 0x00])
+			const buffer = Buffer.concat([peHeader, Buffer.from("some content")])
+			mockFs.readFile.mockResolvedValue(buffer)
+			mockPath.extname.mockReturnValue(".dll")
+
+			const result = await isBinaryFileWithEncodingDetection(filePath)
+
+			expect(result).toBe(true)
+		})
+
+		it("should handle ZIP archive files", async () => {
+			const filePath = "/path/to/file.zip"
+			const zipHeader = Buffer.from([0x50, 0x4b, 0x03, 0x04])
+			const buffer = Buffer.concat([zipHeader, Buffer.from("some content")])
+			mockFs.readFile.mockResolvedValue(buffer)
+			mockPath.extname.mockReturnValue(".zip")
+
+			const result = await isBinaryFileWithEncodingDetection(filePath)
+
+			expect(result).toBe(true)
+		})
+
+		it("should handle PNG image files", async () => {
+			const filePath = "/path/to/file.png"
+			const pngHeader = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+			const buffer = Buffer.concat([pngHeader, Buffer.from("some content")])
+			mockFs.readFile.mockResolvedValue(buffer)
+			mockPath.extname.mockReturnValue(".png")
+
+			const result = await isBinaryFileWithEncodingDetection(filePath)
+
+			expect(result).toBe(true)
+		})
+
+		it("should handle PDF document files", async () => {
+			const filePath = "/path/to/file.pdf"
+			const pdfHeader = Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2d])
+			const buffer = Buffer.concat([pdfHeader, Buffer.from("some content")])
+			mockFs.readFile.mockResolvedValue(buffer)
+			mockPath.extname.mockReturnValue(".pdf")
+
+			const result = await isBinaryFileWithEncodingDetection(filePath)
+
+			expect(result).toBe(true)
+		})
+
+		it("should handle empty files", async () => {
+			const filePath = "/path/to/empty.txt"
+			const buffer = Buffer.alloc(0)
+			mockFs.readFile.mockResolvedValue(buffer)
+			mockPath.extname.mockReturnValue(".txt")
+			mockJschardet.detect.mockReturnValue({
+				encoding: "",
+				confidence: 0,
+			})
+			mockIsBinaryFile.mockResolvedValue(false)
+
+			const result = await isBinaryFileWithEncodingDetection(filePath)
+
+			expect(result).toBe(false) // Empty files are considered text files
+		})
+
+		it("should handle very small files", async () => {
+			const filePath = "/path/to/small.txt"
+			const buffer = Buffer.from("a")
 			mockFs.readFile.mockResolvedValue(buffer)
 			mockPath.extname.mockReturnValue(".txt")
 			mockJschardet.detect.mockReturnValue({
 				encoding: "utf8",
-				confidence: 0.3,
+				confidence: 0.95,
 			})
+			mockIsBinaryFile.mockResolvedValue(false)
 
 			const result = await isBinaryFileWithEncodingDetection(filePath)
 
 			expect(result).toBe(false)
+		})
+
+		it("should handle files with mixed content", async () => {
+			const filePath = "/path/to/mixed.txt"
+			const buffer = Buffer.from("text content with some \x00 null bytes")
+			mockFs.readFile.mockResolvedValue(buffer)
+			mockPath.extname.mockReturnValue(".txt")
+			mockIsBinaryFile.mockResolvedValue(false)
+
+			const result = await isBinaryFileWithEncodingDetection(filePath)
+
+			expect(result).toBe(true) // Files containing null bytes are considered binary files
 		})
 	})
 })

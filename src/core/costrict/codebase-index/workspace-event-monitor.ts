@@ -13,6 +13,7 @@ import type { ClineProvider } from "../../webview/ClineProvider"
 import { LRUCache } from "lru-cache"
 import { isPathInIgnoredDirectory } from "../../../services/glob/ignore-utils"
 import { scannerExtensions } from "../../../services/code-index/shared/supported-extensions"
+import { BINARY_EXTENSIONS } from "../../../utils/encoding"
 
 type FileEventHandler = (uri: vscode.Uri) => void
 type RenameEventHandler = (oldPath: vscode.Uri, newPath: vscode.Uri) => void
@@ -65,8 +66,8 @@ export class WorkspaceEventMonitor {
 		string,
 		{ contentHash: string }
 	>({
-		max: 500, // 缓存500个条目
-		ttl: 10 * 60 * 1000, // 10分钟TTL
+		max: 500, // Cache 500 entries
+		ttl: 10 * 60 * 1000, // 10 minutes TTL
 	})
 
 	// Performance monitoring
@@ -105,6 +106,7 @@ export class WorkspaceEventMonitor {
 	 */
 	public async initialize(): Promise<void> {
 		if (this.isInitialized) {
+			this.handleInitialWorkspaceOpen()
 			this.log.info("[WorkspaceEventMonitor] Event monitor already initialized, skipping")
 			return
 		}
@@ -219,7 +221,7 @@ export class WorkspaceEventMonitor {
 			this.disposables.push(
 				vscode.workspace.onDidRenameFiles((event) => {
 					for (const f of event.files) {
-						// 防止重复触发 add/delete
+						// Prevent duplicate triggering of add/delete
 						this.skipNextDelete.add(f.oldUri.fsPath)
 						this.skipNextCreate.add(f.newUri.fsPath)
 						this.emitRename(f.oldUri, f.newUri)
@@ -272,7 +274,7 @@ export class WorkspaceEventMonitor {
 		}
 	}
 
-	// --- 事件注册 ---
+	// --- Event Registration ---
 	onAdd(handler: FileEventHandler) {
 		this.addHandlers.push(handler)
 	}
@@ -286,7 +288,7 @@ export class WorkspaceEventMonitor {
 		this.renameHandlers.push(handler)
 	}
 
-	// --- 内部触发 ---
+	// --- Internal Triggering ---
 	private emitAdd(uri: vscode.Uri) {
 		this.addHandlers.forEach((h) => h(uri))
 	}
@@ -360,7 +362,7 @@ export class WorkspaceEventMonitor {
 				".bin",
 				".map",
 			]
-			if (largeFileExtensions.includes(ext)) {
+			if (largeFileExtensions.includes(ext) || BINARY_EXTENSIONS.has(ext)) {
 				return true
 			}
 		}
@@ -397,23 +399,23 @@ export class WorkspaceEventMonitor {
 		const filePath = url.fsPath
 		if (this.shouldIgnoreFile(filePath, fs.statSync(filePath))) return
 
-		// 1. 重新读取磁盘内容
+		// 1. Re-read disk content
 		let buf: Buffer
 		try {
 			buf = fs.readFileSync(filePath)
 		} catch {
-			// 文件瞬间被删，忽略
+			// File was deleted instantly, ignore
 			this.documentContentCache.delete(filePath)
 			return
 		}
 
-		// 2. 计算当前哈希
+		// 2. Calculate current hash
 		const nowHash = computeHash(buf.toString())
 		const oldHash = this.documentContentCache.get(filePath)?.contentHash
 
-		// 3. 比较
+		// 3. Compare
 		if (oldHash === undefined) {
-			// 第一次发现该文件
+			// First time discovering this file
 			this.documentContentCache.set(filePath, { contentHash: nowHash })
 		} else if (oldHash !== nowHash) {
 			this.documentContentCache.set(filePath, { contentHash: nowHash })
@@ -510,7 +512,7 @@ export class WorkspaceEventMonitor {
 	/**
 	 * Handle workspace initial open event
 	 */
-	private async handleInitialWorkspaceOpen() {
+	async handleInitialWorkspaceOpen() {
 		if (!(await this.ensureServiceEnabled())) return
 
 		const workspaceFolders = vscode.workspace.workspaceFolders
