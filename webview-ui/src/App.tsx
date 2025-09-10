@@ -23,7 +23,7 @@ import { HumanRelayDialog } from "./components/human-relay/HumanRelayDialog"
 import { CheckpointRestoreDialog } from "./components/chat/CheckpointRestoreDialog"
 import { DeleteMessageDialog, EditMessageDialog } from "./components/chat/MessageModificationConfirmationDialog"
 import ErrorBoundary from "./components/ErrorBoundary"
-import { CloudView } from "./components/cloud/CloudView"
+// import { CloudView } from "./components/cloud/CloudView"
 import { useAddNonInteractiveClickListener } from "./components/ui/hooks/useNonInteractiveClick"
 import { TooltipProvider } from "./components/ui/tooltip"
 import { STANDARD_TOOLTIP_DELAY } from "./components/ui/standard-tooltip"
@@ -92,9 +92,9 @@ const App = () => {
 		telemetrySetting,
 		telemetryKey,
 		machineId,
-		cloudUserInfo,
-		cloudIsAuthenticated,
-		cloudApiUrl,
+		// cloudUserInfo,
+		// cloudIsAuthenticated,
+		// cloudApiUrl,
 		renderContext,
 		mdmCompliant,
 		apiConfiguration,
@@ -333,14 +333,14 @@ const App = () => {
 					targetTab={currentMarketplaceTab as "mcp" | "mode" | undefined}
 				/>
 			)} */}
-			{tab === "cloud" && (
+			{/* {tab === "cloud" && (
 				<CloudView
 					userInfo={cloudUserInfo}
 					isAuthenticated={cloudIsAuthenticated}
 					cloudApiUrl={cloudApiUrl}
 					onDone={() => switchTab("chat")}
 				/>
-			)}
+			)} */}
 			{tab === "zgsm-account" && (
 				<ZgsmAccountView apiConfiguration={apiConfiguration} onDone={() => switchTab("chat")} />
 			)}

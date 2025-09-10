@@ -82,18 +82,12 @@ vi.mock("../Announcement", () => ({
 	},
 }))
 
-// // Mock RooCloudCTA component
-// vi.mock("@src/components/welcome/RooCloudCTA", () => ({
-// 	default: function MockRooCloudCTA() {
-// 		return (
-// 			<div data-testid="roo-cloud-cta">
-// 				<div>rooCloudCTA.title</div>
-// 				<div>rooCloudCTA.description</div>
-// 				<div>rooCloudCTA.joinWaitlist</div>
-// 			</div>
-// 		)
-// 	},
-// }))
+// Mock DismissibleUpsell component
+vi.mock("@/components/common/DismissibleUpsell", () => ({
+	default: function MockDismissibleUpsell({ children }: { children: React.ReactNode }) {
+		return <div data-testid="dismissible-upsell">{children}</div>
+	},
+}))
 
 // Mock QueuedMessages component
 vi.mock("../QueuedMessages", () => ({
@@ -1274,11 +1268,11 @@ describe("ChatView - Version Indicator Tests", () => {
 	})
 })
 
-// describe("ChatView - RooCloudCTA Display Tests", () => {
+// describe("ChatView - DismissibleUpsell Display Tests", () => {
 // 	beforeEach(() => vi.clearAllMocks())
 
-// 	it("does not show RooCloudCTA when user is authenticated to Cloud", () => {
-// 		const { queryByTestId, getByTestId } = renderChatView()
+// 	it("does not show DismissibleUpsell when user is authenticated to Cloud", () => {
+// 		const { queryByTestId } = renderChatView()
 
 // 		// Hydrate state with user authenticated to cloud and some task history
 // 		mockPostMessage({
@@ -1293,13 +1287,12 @@ describe("ChatView - Version Indicator Tests", () => {
 // 			clineMessages: [], // No active task
 // 		})
 
-// 		// Should not show RooCloudCTA but should show RooTips
-// 		expect(queryByTestId("roo-cloud-cta")).not.toBeInTheDocument()
-// 		expect(getByTestId("roo-tips")).toBeInTheDocument()
-// 	})
+// 	// Should not show DismissibleUpsell when authenticated
+// 	expect(queryByTestId("dismissible-upsell")).not.toBeInTheDocument()
+// })
 
-// 	it("does not show RooCloudCTA when user has only run 3 tasks in their history", () => {
-// 		const { queryByTestId, getByTestId } = renderChatView()
+// it("does not show DismissibleUpsell when user has only run 3 tasks in their history", () => {
+// 	const { queryByTestId } = renderChatView()
 
 // 		// Hydrate state with user not authenticated and only 3 tasks in history
 // 		mockPostMessage({
@@ -1312,13 +1305,12 @@ describe("ChatView - Version Indicator Tests", () => {
 // 			clineMessages: [], // No active task
 // 		})
 
-// 		// Should not show RooCloudCTA but should show RooTips
-// 		expect(queryByTestId("roo-cloud-cta")).not.toBeInTheDocument()
-// 		expect(getByTestId("roo-tips")).toBeInTheDocument()
-// 	})
+// 	// Should not show DismissibleUpsell with less than 4 tasks
+// 	expect(queryByTestId("dismissible-upsell")).not.toBeInTheDocument()
+// })
 
-// 	it("shows RooCloudCTA when user is not authenticated and has run 4 or more tasks", async () => {
-// 		const { getByTestId, queryByTestId } = renderChatView()
+// it("shows DismissibleUpsell when user is not authenticated and has run 4 or more tasks", async () => {
+// 	const { getByTestId } = renderChatView()
 
 // 		// Hydrate state with user not authenticated and 4+ tasks in history
 // 		mockPostMessage({
@@ -1332,15 +1324,14 @@ describe("ChatView - Version Indicator Tests", () => {
 // 			clineMessages: [], // No active task
 // 		})
 
-// 		// Should show RooCloudCTA and not RooTips
-// 		await waitFor(() => {
-// 			expect(getByTestId("roo-cloud-cta")).toBeInTheDocument()
-// 		})
-// 		expect(queryByTestId("roo-tips")).not.toBeInTheDocument()
+// 	// Wait for component to render and show DismissibleUpsell
+// 	await waitFor(() => {
+// 		expect(getByTestId("dismissible-upsell")).toBeInTheDocument()
 // 	})
+// })
 
-// 	it("shows RooCloudCTA when user is not authenticated and has run 5 tasks", async () => {
-// 		const { getByTestId, queryByTestId } = renderChatView()
+// it("shows DismissibleUpsell when user is not authenticated and has run 5 tasks", async () => {
+// 	const { getByTestId } = renderChatView()
 
 // 		// Hydrate state with user not authenticated and 5 tasks in history
 // 		mockPostMessage({
@@ -1355,15 +1346,14 @@ describe("ChatView - Version Indicator Tests", () => {
 // 			clineMessages: [], // No active task
 // 		})
 
-// 		// Should show RooCloudCTA and not RooTips
-// 		await waitFor(() => {
-// 			expect(getByTestId("roo-cloud-cta")).toBeInTheDocument()
-// 		})
-// 		expect(queryByTestId("roo-tips")).not.toBeInTheDocument()
+// 	// Wait for component to render and show DismissibleUpsell
+// 	await waitFor(() => {
+// 		expect(getByTestId("dismissible-upsell")).toBeInTheDocument()
 // 	})
+// })
 
-// 	it("does not show RooCloudCTA when there is an active task (regardless of auth status)", async () => {
-// 		const { queryByTestId } = renderChatView()
+// it("does not show DismissibleUpsell when there is an active task (regardless of auth status)", async () => {
+// 	const { queryByTestId } = renderChatView()
 
 // 		// Hydrate state with user not authenticated, 4+ tasks, but with an active task
 // 		mockPostMessage({
@@ -1384,19 +1374,19 @@ describe("ChatView - Version Indicator Tests", () => {
 // 			],
 // 		})
 
-// 		// Wait for the state to be updated and the task view to be shown
-// 		await waitFor(() => {
-// 			// Should not show RooCloudCTA when there's an active task
-// 			expect(queryByTestId("roo-cloud-cta")).not.toBeInTheDocument()
-// 			// Should not show RooTips either since the entire welcome screen is hidden during active tasks
-// 			expect(queryByTestId("roo-tips")).not.toBeInTheDocument()
-// 			// Should not show RooHero either since the entire welcome screen is hidden during active tasks
-// 			expect(queryByTestId("roo-hero")).not.toBeInTheDocument()
-// 		})
+// 	// Wait for component to render with active task
+// 	await waitFor(() => {
+// 		// Should not show DismissibleUpsell during active task
+// 		expect(queryByTestId("dismissible-upsell")).not.toBeInTheDocument()
+// 		// Should not show RooTips either since the entire welcome screen is hidden during active tasks
+// 		expect(queryByTestId("roo-tips")).not.toBeInTheDocument()
+// 		// Should not show RooHero either since the entire welcome screen is hidden during active tasks
+// 		expect(queryByTestId("roo-hero")).not.toBeInTheDocument()
 // 	})
+// })
 
-// 	it("shows RooTips when user is authenticated (instead of RooCloudCTA)", () => {
-// 		const { queryByTestId, getByTestId } = renderChatView()
+// it("shows RooTips when user is authenticated (instead of DismissibleUpsell)", () => {
+// 	const { queryByTestId, getByTestId } = renderChatView()
 
 // 		// Hydrate state with user authenticated to cloud
 // 		mockPostMessage({
@@ -1410,13 +1400,13 @@ describe("ChatView - Version Indicator Tests", () => {
 // 			clineMessages: [], // No active task
 // 		})
 
-// 		// Should not show RooCloudCTA but should show RooTips
-// 		expect(queryByTestId("roo-cloud-cta")).not.toBeInTheDocument()
-// 		expect(getByTestId("roo-tips")).toBeInTheDocument()
-// 	})
+// 	// Should not show DismissibleUpsell but should show RooTips
+// 	expect(queryByTestId("dismissible-upsell")).not.toBeInTheDocument()
+// 	expect(getByTestId("roo-tips")).toBeInTheDocument()
+// })
 
-// 	it("shows RooTips when user has fewer than 4 tasks (instead of RooCloudCTA)", () => {
-// 		const { queryByTestId, getByTestId } = renderChatView()
+// it("shows RooTips when user has fewer than 4 tasks (instead of DismissibleUpsell)", () => {
+// 	const { queryByTestId, getByTestId } = renderChatView()
 
 // 		// Hydrate state with user not authenticated but fewer than 4 tasks
 // 		mockPostMessage({
@@ -1429,8 +1419,73 @@ describe("ChatView - Version Indicator Tests", () => {
 // 			clineMessages: [], // No active task
 // 		})
 
-// 		// Should not show RooCloudCTA but should show RooTips
-// 		expect(queryByTestId("roo-cloud-cta")).not.toBeInTheDocument()
+// Should not show DismissibleUpsell but should show RooTips
+// 		expect(queryByTestId("dismissible-upsell")).not.toBeInTheDocument()
 // 		expect(getByTestId("roo-tips")).toBeInTheDocument()
+// 	})
+// })
+
+// describe("ChatView - Message Queueing Tests", () => {
+// 	beforeEach(() => {
+// 		vi.clearAllMocks()
+// 		// Reset the mock to clear any initial calls
+// 		vi.mocked(vscode.postMessage).mockClear()
+// 	})
+
+// 	it("shows sending is disabled when task is active", async () => {
+// 		const { getByTestId } = renderChatView()
+
+// 		// Hydrate state with active task that should disable sending
+// 		mockPostMessage({
+// 			clineMessages: [
+// 				{
+// 					type: "say",
+// 					say: "task",
+// 					ts: Date.now() - 1000,
+// 					text: "Task in progress",
+// 				},
+// 				{
+// 					type: "ask",
+// 					ask: "tool",
+// 					ts: Date.now(),
+// 					text: JSON.stringify({ tool: "readFile", path: "test.txt" }),
+// 					partial: true, // Partial messages disable sending
+// 				},
+// 			],
+// 		})
+
+// 		// Wait for state to be updated and check that sending is disabled
+// 		await waitFor(() => {
+// 			const chatTextArea = getByTestId("chat-textarea")
+// 			const input = chatTextArea.querySelector("input")!
+// 			expect(input.getAttribute("data-sending-disabled")).toBe("true")
+// 		})
+// 	})
+
+// 	it("shows sending is enabled when no task is active", async () => {
+// 		const { getByTestId } = renderChatView()
+
+// 		// Hydrate state with completed task
+// 		mockPostMessage({
+// 			clineMessages: [
+// 				{
+// 					type: "ask",
+// 					ask: "completion_result",
+// 					ts: Date.now(),
+// 					text: "Task completed",
+// 					partial: false,
+// 				},
+// 			],
+// 		})
+
+// 		// Wait for state to be updated
+// 		await waitFor(() => {
+// 			expect(getByTestId("chat-textarea")).toBeInTheDocument()
+// 		})
+
+// 		// Check that sending is enabled
+// 		const chatTextArea = getByTestId("chat-textarea")
+// 		const input = chatTextArea.querySelector("input")!
+// 		expect(input.getAttribute("data-sending-disabled")).toBe("false")
 // 	})
 // })
