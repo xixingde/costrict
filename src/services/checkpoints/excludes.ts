@@ -118,6 +118,21 @@ const getLargeDataFilePatterns = () => [
 	"*.dat",
 	"*.dmg",
 	"*.msi",
+	"*.bz2",
+	"*.xz",
+	"*.z",
+	"*.pkg",
+	"*.deb",
+	"*.rpm",
+	"*.sav",
+	"*.rom",
+	"*.n64",
+	"*.z64",
+	"*.v64",
+	"*.a",
+	"*.lib",
+	"*.o",
+	"*.obj",
 ]
 
 const getDatabaseFilePatterns = () => [

@@ -4,6 +4,173 @@ import { isBinaryFile } from "isbinaryfile"
 import fs from "fs/promises"
 import path from "path"
 
+// Common binary file extension list
+export const BINARY_EXTENSIONS = new Set([
+	// Executable files
+	".exe",
+	".dll",
+	".so",
+	".dylib",
+	".a",
+	".lib",
+	".o",
+	".obj",
+	// Compressed files
+	".zip",
+	".rar",
+	".7z",
+	".tar",
+	".gz",
+	".bz2",
+	".xz",
+	".z",
+	// Image files
+	".jpg",
+	".jpeg",
+	".png",
+	".gif",
+	".bmp",
+	".tiff",
+	".webp",
+	".ico",
+	".svg",
+	// Audio and video files
+	".mp3",
+	".mp4",
+	".avi",
+	".mov",
+	"wmv",
+	".flv",
+	".mkv",
+	".wav",
+	".flac",
+	// Document files
+	".doc",
+	".xls",
+	".ppt",
+	".pptx",
+	// Other binary files
+	".bin",
+	".dat",
+	".iso",
+	".dmg",
+	".pkg",
+	".deb",
+	".rpm",
+	".msi",
+	// Font files
+	".ttf",
+	".otf",
+	".woff",
+	".woff2",
+	".eot",
+	// Database files
+	".db",
+	".sqlite",
+	".mdb",
+	".accdb",
+	// Certificate and key files
+	".p12",
+	".pfx",
+	".crt",
+	".cer",
+	".key",
+	".pem",
+	// System files
+	".sys",
+	".drv",
+	".efi",
+	".rom",
+	".bin",
+	// Game files
+	".sav",
+	".rom",
+	".iso",
+	".n64",
+	".z64",
+	".v64",
+])
+
+// Common binary file magic numbers
+export const BINARY_MAGIC_NUMBERS = [
+	// ELF files
+	{ magic: Buffer.from([0x7f, 0x45, 0x4c, 0x46]), description: "ELF executable" },
+	// PE files (Windows EXE/DLL)
+	{ magic: Buffer.from([0x4d, 0x5a]), description: "PE executable" },
+	// ZIP files
+	{ magic: Buffer.from([0x50, 0x4b, 0x03, 0x04]), description: "ZIP archive" },
+	{ magic: Buffer.from([0x50, 0x4b, 0x05, 0x06]), description: "ZIP archive (empty)" },
+	{ magic: Buffer.from([0x50, 0x4b, 0x07, 0x08]), description: "ZIP archive (spanned)" },
+	// RAR files
+	{ magic: Buffer.from([0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x00]), description: "RAR archive" },
+	{ magic: Buffer.from([0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x01, 0x00]), description: "RAR5 archive" },
+	// 7z files
+	{ magic: Buffer.from([0x37, 0x7a, 0xbc, 0xaf, 0x27, 0x1c]), description: "7z archive" },
+	// PNG files
+	{ magic: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), description: "PNG image" },
+	// JPEG files
+	{ magic: Buffer.from([0xff, 0xd8, 0xff]), description: "JPEG image" },
+	// GIF files
+	{ magic: Buffer.from([0x47, 0x49, 0x46, 0x38]), description: "GIF image" },
+	// PDF files
+	{ magic: Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2d]), description: "PDF document" },
+	// Mach-O files (macOS)
+	{ magic: Buffer.from([0xfe, 0xed, 0xfa, 0xce]), description: "Mach-O executable (32-bit)" },
+	{ magic: Buffer.from([0xfe, 0xed, 0xfa, 0xcf]), description: "Mach-O executable (64-bit)" },
+	{ magic: Buffer.from([0xce, 0xfa, 0xed, 0xfe]), description: "Mach-O executable (32-bit reverse)" },
+	{ magic: Buffer.from([0xcf, 0xfa, 0xed, 0xfe]), description: "Mach-O executable (64-bit reverse)" },
+]
+
+/**
+ * Analyze file content characteristics to determine if it's a binary file
+ * @param buffer File buffer
+ * @returns Whether it's a binary file
+ */
+function analyzeContentCharacteristics(buffer: Buffer): boolean {
+	if (buffer.length === 0) {
+		return false
+	}
+
+	// Check for null bytes (typical characteristic of binary files)
+	const nullByteCount = (buffer.toString().match(/\0/g) || []).length
+	if (nullByteCount > buffer.length * 0.01) {
+		// More than 1% null bytes
+		return true
+	}
+
+	// Check the ratio of non-printable characters
+	let nonPrintableCount = 0
+	for (let i = 0; i < Math.min(buffer.length, 1024); i++) {
+		const byte = buffer[i]
+		if (byte < 32 && byte !== 9 && byte !== 10 && byte !== 13) {
+			// Not tab, newline, or carriage return
+			nonPrintableCount++
+		}
+	}
+
+	const nonPrintableRatio = nonPrintableCount / Math.min(buffer.length, 1024)
+	if (nonPrintableRatio > 0.3) {
+		// More than 30% non-printable characters
+		return true
+	}
+
+	// Check for consecutive high byte values (text files with UTF-16 encoding typically don't do this)
+	let highByteSequence = 0
+	for (let i = 0; i < buffer.length - 1; i++) {
+		if (buffer[i] > 127 && buffer[i + 1] > 127) {
+			highByteSequence++
+			if (highByteSequence > 10) {
+				// More than 10 consecutive high bytes
+				return true
+			}
+		} else {
+			highByteSequence = 0
+		}
+	}
+
+	return false
+}
+
 /**
  * Detect the encoding of a file buffer
  * @param fileBuffer The file buffer
@@ -11,7 +178,12 @@ import path from "path"
  * @returns The detected encoding
  */
 export async function detectEncoding(fileBuffer: Buffer, fileExtension?: string): Promise<string> {
-	// 1. Perform encoding detection first
+	// 1. First check if it's a known binary file extension
+	if (fileExtension && BINARY_EXTENSIONS.has(fileExtension)) {
+		throw new Error(`Cannot read text for file type: ${fileExtension}`)
+	}
+
+	// 2. Perform encoding detection
 	const detected = jschardet.detect(fileBuffer)
 	let encoding: string
 	let originalEncoding: string | undefined
@@ -21,10 +193,8 @@ export async function detectEncoding(fileBuffer: Buffer, fileExtension?: string)
 		originalEncoding = detected
 	} else if (detected && detected.encoding) {
 		originalEncoding = detected.encoding
-		// Check confidence level, use default encoding if too low
-		// 0.7 is a conservative threshold that works well when UTF-8 is the dominant encoding
-		// and we prefer to fall back rather than risk mis-decoding
-		if (detected.confidence < 0.7) {
+		// Increase confidence threshold from 0.7 to 0.9
+		if (detected.confidence < 0.9) {
 			console.warn(
 				`Low confidence encoding detection: ${originalEncoding} (confidence: ${detected.confidence}), falling back to utf8`,
 			)
@@ -33,7 +203,7 @@ export async function detectEncoding(fileBuffer: Buffer, fileExtension?: string)
 			encoding = detected.encoding
 		}
 	} else {
-		// 2. Only check if it's a binary file when encoding detection fails
+		// 3. Only check if it's a binary file when encoding detection fails
 		if (fileExtension) {
 			const isBinary = await isBinaryFile(fileBuffer).catch(() => false)
 			if (isBinary) {
@@ -44,7 +214,7 @@ export async function detectEncoding(fileBuffer: Buffer, fileExtension?: string)
 		encoding = "utf8"
 	}
 
-	// 3. Verify if the encoding is supported by iconv-lite
+	// 4. Verify if the encoding is supported by iconv-lite
 	if (!iconv.encodingExists(encoding)) {
 		console.warn(
 			`Unsupported encoding detected: ${encoding}${originalEncoding && originalEncoding !== encoding ? ` (originally detected as: ${originalEncoding})` : ""}, falling back to utf8`,
@@ -85,26 +255,57 @@ export async function detectFileEncoding(filePath: string): Promise<string> {
 }
 
 /**
- * Smart binary file detection that tries encoding detection first
- * @param filePath Path to the file
- * @returns Promise<boolean> true if file is binary, false if it's text
+ * Improved smart binary file detection
+ * @param filePath File path
+ * @returns Promise<boolean> true if file is binary, false if it's a text file
  */
 export async function isBinaryFileWithEncodingDetection(filePath: string): Promise<boolean> {
 	try {
-		const fileBuffer = await fs.readFile(filePath)
+		// 1. First check file extension
 		const fileExtension = path.extname(filePath).toLowerCase()
+		if (BINARY_EXTENSIONS.has(fileExtension)) {
+			return true
+		}
 
-		// Try to detect encoding first
+		// 2. Read file content
+		const fileBuffer = await fs.readFile(filePath)
+
+		// 3. Check file header magic numbers
+		for (const { magic } of BINARY_MAGIC_NUMBERS) {
+			if (fileBuffer.length >= magic.length && fileBuffer.subarray(0, magic.length).equals(magic)) {
+				return true
+			}
+		}
+
+		// 4. Analyze content characteristics
+		if (analyzeContentCharacteristics(fileBuffer)) {
+			return true
+		}
+
+		// 5. Use isBinaryFile library for quick check
+		const isBinaryByLibrary = await isBinaryFile(fileBuffer).catch(() => false)
+		if (isBinaryByLibrary) {
+			return true
+		}
+
+		// 6. Finally perform encoding detection (only for files that might be text)
 		try {
-			await detectEncoding(fileBuffer, fileExtension)
-			// If detectEncoding succeeds, it's a text file
+			const encoding = await detectEncoding(fileBuffer, fileExtension)
+
+			// Even if encoding detection succeeds, check confidence
+			const detected = jschardet.detect(fileBuffer)
+			if (detected && typeof detected === "object" && detected.confidence < 0.9) {
+				// Low confidence, confirm again with isBinaryFile
+				return await isBinaryFile(fileBuffer).catch(() => true)
+			}
+
 			return false
 		} catch (error) {
-			// If detectEncoding fails, check if it's actually a binary file
-			return await isBinaryFile(fileBuffer).catch(() => false)
+			// Encoding detection failed, consider it as binary file
+			return true
 		}
 	} catch (error) {
-		// File read error, assume it's binary
+		// File read error, consider it as binary file
 		return true
 	}
 }

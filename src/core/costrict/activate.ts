@@ -45,6 +45,10 @@ const HISTORY_WARN_SIZE = 1000 * 1000 * 1000 * 3
  * Initialization entry
  */
 async function initialize(provider: ClineProvider, logger: ILogger) {
+	const oldEnabled = provider.getValue("zgsmCodebaseIndexEnabled")
+	if (oldEnabled == null) {
+		await provider.setValue("zgsmCodebaseIndexEnabled", true)
+	}
 	//
 	ZgsmAuthStorage.setProvider(provider)
 	ZgsmAuthApi.setProvider(provider)
