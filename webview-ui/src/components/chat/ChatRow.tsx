@@ -1241,12 +1241,22 @@ export const ChatRowContent = ({
 											variant="ghost"
 											size="icon"
 											className="shrink-0"
-											disabled={isStreaming}
 											onClick={(e) => {
 												e.stopPropagation()
-												handleEditClick()
+												copyWithFeedback(message.text || "").then((success) => {
+													if (success) {
+														// Show checkmark
+														setShowCopySuccess(true)
+
+														// Reset after a brief delay
+														setTimeout(() => {
+															setShowCopySuccess(false)
+														}, 1000)
+													}
+												})
 											}}>
-											<span className="codicon codicon-edit" />
+											<span
+												className={`codicon codicon-${showCopySuccess ? "check" : "copy"}`}></span>
 										</Button>
 										<Button
 											variant="ghost"
