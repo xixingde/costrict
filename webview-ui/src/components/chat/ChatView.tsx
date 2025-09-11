@@ -37,10 +37,10 @@ import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
 import RooHero from "@src/components/welcome/RooHero"
 import RooTips from "@src/components/welcome/RooTips"
-// import RooCloudCTA from "@src/components/welcome/RooCloudCTA"
 import { StandardTooltip } from "@src/components/ui"
 import { useAutoApprovalState } from "@src/hooks/useAutoApprovalState"
 import { useAutoApprovalToggles } from "@src/hooks/useAutoApprovalToggles"
+// import { CloudUpsellDialog } from "@src/components/cloud/CloudUpsellDialog"
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import TelemetryBanner from "../common/TelemetryBanner"
@@ -58,6 +58,9 @@ import ProfileViolationWarning from "./ProfileViolationWarning"
 import { CheckpointWarning } from "./CheckpointWarning"
 import { QueuedMessages } from "./QueuedMessages"
 import ChatSearch from "./ChatSearch"
+// import DismissibleUpsell from "../common/DismissibleUpsell"
+// import { useCloudUpsell } from "@src/hooks/useCloudUpsell"
+// import { Cloud } from "lucide-react"
 
 export interface ChatViewProps {
 	isHidden: boolean
@@ -216,6 +219,15 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	useEffect(() => {
 		clineAskRef.current = clineAsk
 	}, [clineAsk])
+
+	// const {
+	// 	isOpen: isUpsellOpen,
+	// 	openUpsell,
+	// 	closeUpsell,
+	// 	handleConnect,
+	// } = useCloudUpsell({
+	// 	autoOpenOnAuth: false,
+	// })
 
 	// Keep inputValueRef in sync with inputValue state
 	useEffect(() => {
@@ -1907,8 +1919,28 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 						<RooHero />
 						{/* {telemetrySetting === "unset" && <TelemetryBanner />} */}
 
+						{/* <div className="mb-2.5">
+							{cloudIsAuthenticated || taskHistory.length < 4 ? (
+								<RooTips />
+							) : (
+								<>
+									<DismissibleUpsell
+										upsellId="taskList"
+										icon={<Cloud className="size-4 mt-0.5 shrink-0" />}
+										onClick={() => openUpsell()}
+										dismissOnClick={false}
+										className="bg-vscode-editor-background p-4 !text-base">
+										<Trans
+											i18nKey="cloud:upsell.taskList"
+											components={{
+												learnMoreLink: <VSCodeLink href="#" />,
+											}}
+										/>
+									</DismissibleUpsell>
+								</>
+							)}
+						</div> */}
 						<div className="mb-2.5">
-							{/* {cloudIsAuthenticated || taskHistory.length < 4 ? <RooTips /> : <RooCloudCTA />} */}
 							<RooTips />
 						</div>
 						{/* Show the task history preview if expanded and tasks exist */}
@@ -2102,6 +2134,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			)}
 
 			<div id="roo-portal" />
+			{/* <CloudUpsellDialog open={isUpsellOpen} onOpenChange={closeUpsell} onConnect={handleConnect} /> */}
 		</div>
 	)
 }
