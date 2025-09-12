@@ -88,7 +88,7 @@ const App = () => {
 	const {
 		didHydrateState,
 		showWelcome,
-		shouldShowAnnouncement,
+		// shouldShowAnnouncement,
 		telemetrySetting,
 		telemetryKey,
 		machineId,
@@ -234,12 +234,12 @@ const App = () => {
 
 	useEvent("message", onMessage)
 
-	useEffect(() => {
-		if (shouldShowAnnouncement) {
-			setShowAnnouncement(true)
-			vscode.postMessage({ type: "didShowAnnouncement" })
-		}
-	}, [shouldShowAnnouncement])
+	// useEffect(() => {
+	// 	if (shouldShowAnnouncement && tab === "chat") {
+	// 		setShowAnnouncement(true)
+	// 		vscode.postMessage({ type: "didShowAnnouncement" })
+	// 	}
+	// }, [shouldShowAnnouncement, tab])
 
 	useEffect(() => {
 		if (didHydrateState) {

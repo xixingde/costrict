@@ -173,6 +173,7 @@ Original error: ${errorMessage}`
 			TelemetryService.instance.captureDiffApplicationError(cline.taskId, cline.consecutiveMistakeCount)
 			await cline.say("diff_error", `Failed to parse apply_diff XML: ${errorMessage}`)
 			pushToolResult(detailedError)
+			cline.processQueuedMessages()
 			return
 		}
 	} else if (legacyPath && typeof legacyDiffContent === "string") {
@@ -196,6 +197,7 @@ Original error: ${errorMessage}`
 			"args (or legacy 'path' and 'diff' parameters)",
 		)
 		pushToolResult(errorMsg)
+		cline.processQueuedMessages()
 		return
 	}
 
@@ -211,6 +213,7 @@ Original error: ${errorMessage}`
 					: "args (must contain at least one valid file element)",
 			),
 		)
+		cline.processQueuedMessages()
 		return
 	}
 
@@ -676,10 +679,12 @@ ${errorDetails ? `\nTechnical details:\n${errorDetails}\n` : ""}
 
 		// Push the final result combining all operation results
 		pushToolResult(results.join("\n\n") + singleBlockNotice)
+		cline.processQueuedMessages()
 		return
 	} catch (error) {
 		await handleError("applying diff", error)
 		await cline.diffViewProvider.reset()
+		cline.processQueuedMessages()
 		return
 	}
 }
