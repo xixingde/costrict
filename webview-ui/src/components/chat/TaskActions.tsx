@@ -9,6 +9,7 @@ import { useCopyToClipboard } from "@/utils/clipboard"
 import { DeleteTaskDialog } from "../history/DeleteTaskDialog"
 import { IconButton } from "./IconButton"
 import { ShareButton } from "./ShareButton"
+// import { CloudTaskButton } from "./CloudTaskButton"
 
 interface TaskActionsProps {
 	item?: HistoryItem
@@ -64,6 +65,7 @@ export const TaskActions = ({ item, buttonsDisabled }: TaskActionsProps) => {
 			<div style={{ display: "none" }}>
 				<ShareButton item={item} disabled={false} showLabel={false} />
 			</div>
+			{/* <CloudTaskButton item={item} disabled={buttonsDisabled} /> */}
 		</div>
 	)
 }
