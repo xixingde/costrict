@@ -1,5 +1,18 @@
 # Costrict Change Log
 
+## [1.6.9]
+
+- Fix binary file check
+
+## [1.6.8]
+
+- Add chat search
+- Enhance binary file detection and encoding handling
+- Enhanced models cache
+- Sync roocode
+- Fixed test cases
+- Fix known issues
+
 ## [1.6.7]
 
 - Implement MetricsSerializer for metric persistence and locking
