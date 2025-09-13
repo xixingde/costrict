@@ -30,11 +30,11 @@ vi.mock("vscode", () => ({
 }))
 
 vi.mock("p-wait-for", () => ({
-	default: vi.fn().mockImplementation(() => Promise.resolve()),
+	default: vi.fn(),
 }))
 
 vi.mock("delay", () => ({
-	default: vi.fn().mockImplementation(() => Promise.resolve()),
+	default: vi.fn(),
 }))
 
 vi.mock("execa", () => ({
@@ -51,8 +51,6 @@ vi.mock("../../../utils/path")
 vi.mock("../../prompts/responses")
 
 describe("getEnvironmentDetails", () => {
-	// 设置更长的超时时间，避免在GitHub Actions中因资源限制导致超时
-	vi.setConfig({ testTimeout: 60000 })
 	const mockCwd = "/test/path"
 	const mockTaskId = "test-task-id"
 
