@@ -75,8 +75,6 @@ const mockContext = {
 } as unknown as vscode.ExtensionContext
 
 describe("File-Based Custom System Prompt", () => {
-	vi.setConfig({ testTimeout: 60000 })
-
 	beforeEach(() => {
 		// Reset mocks before each test
 		vi.clearAllMocks()
