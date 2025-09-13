@@ -1,5 +1,15 @@
 # Costrict Change Log
 
+## [1.6.10]
+
+- Improves chat search
+- Improves encoding handling for Windows terminal commands
+- Add zgsmAiCustomModelInfo config
+- Enhance model handling and configuration
+- Improve rate limiting
+- Sync roocode
+- Update ci
+
 ## [1.6.9]
 
 - Fix binary file check
