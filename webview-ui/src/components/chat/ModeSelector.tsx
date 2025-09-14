@@ -310,7 +310,6 @@ export const ModeSelector = ({
 							/> */}
 							<IconButton
 								iconClass="codicon-settings-gear"
-								title={t("chat:modeSelector.settings")}
 								onClick={() => {
 									vscode.postMessage({ type: "switchTab", tab: "modes" })
 									setOpen(false)

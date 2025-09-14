@@ -48,9 +48,6 @@
 	"browser": {
 		"rooWantsToUse": "Costrict wants to use the browser:"
 	},
-	"autoApprove": {
-		"description": "Auto-approve allows Costrict to perform actions without asking for permission. Only enable for actions you fully trust. More detailed configuration available in <settingsLink>Settings</settingsLink>."
-	},
 	"announcement": {
 		"title": "🎉 Costrict {{version}} Released",
 		"description": "Costrict {{version}} brings new features and improvements based on your feedback.",
@@ -59,7 +56,7 @@
 	"onboarding": "<strong>The task list in this workspace is empty. </strong> Please enter a task below to get started.",
 	"ask": {
 		"autoApprovedRequestLimitReached": {
-			"description": "Costrict has reached the auto-approval limit of {{count}} API requests. Would you like to reset the count and continue the task?"
+			"description": "Costrict has reached the auto-approved limit of {{count}} API request(s). Would you like to reset the count and proceed with the task?"
 		},
 		"autoApprovedCostLimitReached": {
 			"description": "Costrict has reached the auto-approved cost limit of ${{count}}. Would you like to reset the cost and proceed with the task?"

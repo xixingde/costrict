@@ -84,17 +84,11 @@ export const AutoApproveSettings = ({
 	const { t } = useAppTranslation()
 	const [commandInput, setCommandInput] = useState("")
 	const [deniedCommandInput, setDeniedCommandInput] = useState("")
-	const {
-		showAutoApproveSettingsAtChat,
-		setShowAutoApproveSettingsAtChat,
-		autoApprovalEnabled,
-		setAutoApprovalEnabled,
-	} = useExtensionState()
+	const { autoApprovalEnabled, setAutoApprovalEnabled } = useExtensionState()
 
 	const toggles = useAutoApprovalToggles()
 
-	const { hasEnabledOptions, effectiveAutoApprovalEnabled, effectiveShowAutoApproveSettingsAtChat } =
-		useAutoApprovalState(toggles, autoApprovalEnabled, showAutoApproveSettingsAtChat)
+	const { hasEnabledOptions, effectiveAutoApprovalEnabled } = useAutoApprovalState(toggles, autoApprovalEnabled)
 
 	const handleAddCommand = () => {
 		const currentCommands = allowedCommands ?? []
@@ -120,19 +114,6 @@ export const AutoApproveSettings = ({
 
 	return (
 		<div {...props}>
-			<SectionHeader>
-				<div className="flex items-center gap-2">
-					<VSCodeCheckbox
-						checked={effectiveShowAutoApproveSettingsAtChat}
-						onChange={() => {
-							const newValue = !(showAutoApproveSettingsAtChat ?? false)
-							setShowAutoApproveSettingsAtChat(newValue)
-							vscode.postMessage({ type: "showAutoApproveSettingsAtChat", bool: newValue })
-						}}
-					/>
-					<div>{t("settings:autoApprove.showAtChat")}</div>
-				</div>
-			</SectionHeader>
 			<SectionHeader>
 				<div className="flex items-center gap-2">
 					<CheckCheck className="w-4 h-4" />

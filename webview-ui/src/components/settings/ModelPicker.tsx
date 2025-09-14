@@ -1,7 +1,7 @@
 import { useMemo, useState, useCallback, useEffect, useRef, useLayoutEffect } from "react"
 import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 import { Trans } from "react-i18next"
-import { ChevronsUpDown, Check, X, ChevronUp } from "lucide-react"
+import { ChevronsUpDown, Check, X, ChevronUp, Brain } from "lucide-react"
 
 import type { ProviderSettings, ModelInfo, OrganizationAllowList } from "@roo-code/types"
 
@@ -228,6 +228,7 @@ export const ModelPicker = ({
 									aria-expanded={open}
 									className={cn("w-full", "justify-between", triggerClassName)}
 									data-testid="model-picker-button">
+									<Brain />
 									<div className={`truncate ${PopoverTriggerContentClassName}`}>
 										{selectedModelId ?? t("settings:common.select")}
 									</div>
