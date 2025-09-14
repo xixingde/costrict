@@ -53,7 +53,6 @@ export const globalSettingsSchema = z.object({
 	useZgsmCustomConfig: z.boolean().optional(),
 	zgsmCodebaseIndexEnabled: z.boolean().optional(),
 	autoApprovalEnabled: z.boolean().optional(),
-	showAutoApproveSettingsAtChat: z.boolean().optional(),
 	alwaysAllowReadOnly: z.boolean().optional(),
 	alwaysAllowReadOnlyOutsideWorkspace: z.boolean().optional(),
 	alwaysAllowWrite: z.boolean().optional(),
@@ -258,7 +257,6 @@ export const EVALS_SETTINGS: RooCodeSettings = {
 	pinnedApiConfigs: {},
 
 	autoApprovalEnabled: true,
-	showAutoApproveSettingsAtChat: true,
 	alwaysAllowReadOnly: true,
 	alwaysAllowReadOnlyOutsideWorkspace: false,
 	alwaysAllowWrite: true,

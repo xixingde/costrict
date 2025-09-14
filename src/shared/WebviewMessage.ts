@@ -41,7 +41,6 @@ export interface WebviewMessage {
 		| "customInstructions"
 		| "allowedCommands"
 		| "deniedCommands"
-		| "showAutoApproveSettingsAtChat"
 		| "alwaysAllowReadOnly"
 		| "alwaysAllowReadOnlyOutsideWorkspace"
 		| "alwaysAllowWrite"

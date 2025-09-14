@@ -3,7 +3,7 @@ import { Button, StandardTooltip } from "@src/components/ui"
 
 interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 	iconClass: string
-	title: string
+	title?: string
 	disabled?: boolean
 	tooltip?: boolean
 	isLoading?: boolean

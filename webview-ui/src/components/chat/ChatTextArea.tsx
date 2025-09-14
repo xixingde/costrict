@@ -26,6 +26,7 @@ import { StandardTooltip } from "@src/components/ui"
 import Thumbnails from "../common/Thumbnails"
 import { ModeSelector } from "./ModeSelector"
 // import { ApiConfigSelector } from "./ApiConfigSelector"
+import { AutoApproveDropdown } from "./AutoApproveDropdown"
 import { MAX_IMAGES_PER_MESSAGE } from "./ChatView"
 import ContextMenu from "./ContextMenu"
 // import { IndexingStatusBadge } from "./IndexingStatusBadge"
@@ -1297,7 +1298,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				)} */}
 
 				<div
-					className="flex justify-between items-center"
+					className="flex items-center gap-2"
 					style={{
 						position: "absolute",
 						left: 0,
@@ -1306,22 +1307,19 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						width: "100%",
 						padding: "0 14px",
 					}}>
-					<div className="flex items-center gap-1">
-						{!isEditMode && (
-							<div className="max-w-32">
+					<div className="flex items-center gap-2 min-w-40 overflow-clip flex-1">
+						{apiConfiguration && !isEditMode && (
+							<>
 								<ModeSelector
 									value={mode}
-									title={t("chat:selectMode")}
+									title={mode || t("chat:selectMode")}
 									onChange={handleModeChange}
-									triggerClassName="w-full"
+									triggerClassName="min-w-20 max-w-24 text-ellipsis overflow-hidden"
 									modeShortcutText={modeShortcutText}
 									customModes={customModes}
 									customModePrompts={customModePrompts}
 								/>
-							</div>
-						)}
-						<div className="max-w-32">
-							{/* <ApiConfigSelector
+								{/* <ApiConfigSelector
 								value={currentConfigId}
 								displayName={displayName}
 								disabled={selectApiConfigDisabled}
@@ -1332,8 +1330,8 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								pinnedApiConfigs={pinnedApiConfigs}
 								togglePinnedApiConfig={togglePinnedApiConfig}
 							/> */}
-							{apiConfiguration && !isEditMode && (
 								<ProviderRenderer
+									className="min-w-20 max-w-24 text-ellipsis overflow-hidden"
 									selectedProvider={apiConfiguration.apiProvider || "zgsm"}
 									apiConfiguration={apiConfiguration}
 									organizationAllowList={organizationAllowList}
@@ -1341,10 +1339,11 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									routerModels={(routerModels as RouterModels) || {}}
 									selectedProviderModels={selectedProviderModels}
 								/>
-							)}
-						</div>
+								<AutoApproveDropdown triggerClassName="min-w-20 max-w-24 text-ellipsis overflow-hidden" />
+							</>
+						)}
 					</div>
-					<div className="flex items-center gap-0.5">
+					<div className="flex flex-shrink-0 items-center gap-0.5">
 						{isTtsPlaying && (
 							<StandardTooltip content={t("chat:stopTts")}>
 								<button

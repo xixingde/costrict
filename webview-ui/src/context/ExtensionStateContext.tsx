@@ -127,7 +127,6 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setEnhancementApiConfigId: (value: string) => void
 	setExperimentEnabled: (id: ExperimentId, enabled: boolean) => void
 	setAutoApprovalEnabled: (value: boolean) => void
-	setShowAutoApproveSettingsAtChat: (value: boolean) => void
 	customModes: ModeConfig[]
 	setCustomModes: (value: ModeConfig[]) => void
 	setMaxOpenTabsContext: (value: number) => void
@@ -231,7 +230,6 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		customCondensingPrompt: "", // Default empty string for custom condensing prompt
 		hasOpenedModeSelector: false, // Default to false (not opened yet)
 		autoApprovalEnabled: false,
-		showAutoApproveSettingsAtChat: true,
 		customModes: [],
 		maxOpenTabsContext: 20,
 		maxWorkspaceFiles: 200,
@@ -543,8 +541,6 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		setEnhancementApiConfigId: (value) =>
 			setState((prevState) => ({ ...prevState, enhancementApiConfigId: value })),
 		setAutoApprovalEnabled: (value) => setState((prevState) => ({ ...prevState, autoApprovalEnabled: value })),
-		setShowAutoApproveSettingsAtChat: (value) =>
-			setState((prevState) => ({ ...prevState, showAutoApproveSettingsAtChat: value })),
 		setCustomModes: (value) => setState((prevState) => ({ ...prevState, customModes: value })),
 		setMaxOpenTabsContext: (value) => setState((prevState) => ({ ...prevState, maxOpenTabsContext: value })),
 		setMaxWorkspaceFiles: (value) => setState((prevState) => ({ ...prevState, maxWorkspaceFiles: value })),
