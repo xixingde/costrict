@@ -1273,7 +1273,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 										isEditMode ? "pr-20" : "pr-9",
 									)}
 									style={{
-										bottom: isEditMode ? "0.6rem" : "2rem",
+										bottom: isEditMode ? "2.2rem" : "2rem",
 										color: "color-mix(in oklab, var(--vscode-input-foreground) 50%, transparent)",
 										userSelect: "none",
 										pointerEvents: "none",
@@ -1308,13 +1308,13 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						padding: "0 14px",
 					}}>
 					<div className="flex items-center gap-2 min-w-40 overflow-clip flex-1">
-						{apiConfiguration && !isEditMode && (
+						{apiConfiguration && (
 							<>
 								<ModeSelector
 									value={mode}
-									title={mode || t("chat:selectMode")}
+									title={mode ? `${t("chat:modeSelector.title")}: ${mode}` : t("chat:selectMode")}
 									onChange={handleModeChange}
-									triggerClassName="min-w-20 max-w-24 text-ellipsis overflow-hidden"
+									triggerClassName="min-w-12 max-w-24 text-ellipsis overflow-hidden"
 									modeShortcutText={modeShortcutText}
 									customModes={customModes}
 									customModePrompts={customModePrompts}
@@ -1331,7 +1331,8 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								togglePinnedApiConfig={togglePinnedApiConfig}
 							/> */}
 								<ProviderRenderer
-									className="min-w-20 max-w-24 text-ellipsis overflow-hidden"
+									isEditMode={isEditMode}
+									className="min-w-12 max-w-40 text-ellipsis overflow-hidden"
 									selectedProvider={apiConfiguration.apiProvider || "zgsm"}
 									apiConfiguration={apiConfiguration}
 									organizationAllowList={organizationAllowList}
@@ -1339,7 +1340,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									routerModels={(routerModels as RouterModels) || {}}
 									selectedProviderModels={selectedProviderModels}
 								/>
-								<AutoApproveDropdown triggerClassName="min-w-20 max-w-24 text-ellipsis overflow-hidden" />
+								<AutoApproveDropdown triggerClassName="min-w-12 max-w-24 text-ellipsis overflow-hidden" />
 							</>
 						)}
 					</div>
