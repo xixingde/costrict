@@ -1,7 +1,7 @@
 import { useMemo, useState, useCallback, useEffect, useRef, useLayoutEffect } from "react"
 import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 import { Trans } from "react-i18next"
-import { ChevronsUpDown, Check, X, ChevronUp, Brain } from "lucide-react"
+import { Check, X, Brain } from "lucide-react"
 
 import type { ProviderSettings, ModelInfo, OrganizationAllowList } from "@roo-code/types"
 
@@ -65,7 +65,6 @@ interface ModelPickerProps {
 	triggerClassName?: string
 	popoverContentClassName?: string
 	PopoverTriggerContentClassName?: string
-	buttonIconType?: "upDown" | "up"
 	tooltip?: string
 }
 
@@ -85,7 +84,6 @@ export const ModelPicker = ({
 	triggerClassName = "",
 	popoverContentClassName = "",
 	PopoverTriggerContentClassName = "",
-	buttonIconType = "upDown",
 	tooltip,
 }: ModelPickerProps) => {
 	const { t } = useAppTranslation()
@@ -234,16 +232,6 @@ export const ModelPicker = ({
 										<Brain className="inline-block mr-[4px]" />
 										{selectedModelId ?? t("settings:common.select")}
 									</div>
-									{buttonIconType === "upDown" ? (
-										<ChevronsUpDown className="opacity-50 !w-[12px]" />
-									) : (
-										<ChevronUp
-											className={cn(
-												"pointer-events-none opacity-80 !w-[12px] flex-shrink-0 size-3 transition-transform duration-200",
-												open && "rotate-180",
-											)}
-										/>
-									)}
 								</Button>
 							</PopoverTrigger>
 						</StandardTooltip>
@@ -258,16 +246,6 @@ export const ModelPicker = ({
 								<div className={PopoverTriggerContentClassName}>
 									{selectedModelId ?? t("settings:common.select")}
 								</div>
-								{buttonIconType === "upDown" ? (
-									<ChevronsUpDown className="opacity-50 !w-[12px]" />
-								) : (
-									<ChevronUp
-										className={cn(
-											"pointer-events-none opacity-80 !w-[12px] flex-shrink-0 size-3 transition-transform duration-200",
-											open && "rotate-180",
-										)}
-									/>
-								)}
 							</Button>
 						</PopoverTrigger>
 					)}
