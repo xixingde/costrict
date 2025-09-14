@@ -22,7 +22,7 @@ import { RouterModels } from "@roo/api"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, StandardTooltip } from "@src/components/ui"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { useSelectedModel } from "../ui/hooks/useSelectedModel"
-import { Brain, ChevronUp } from "lucide-react"
+import { Brain } from "lucide-react"
 import { cn } from "@/lib/utils"
 export interface ProviderRendererProps {
 	isEditMode?: boolean
@@ -230,7 +230,6 @@ const ProviderRenderer: React.FC<ProviderRendererProps> = ({
 					showLabel={false}
 					triggerClassName="rounded-md max-w-80 px-[6px] text-xs h-6 opacity-90 hover:opacity-100 hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)] cursor-pointer transition-all duration-150"
 					popoverContentClassName="min-w-80 max-w-9/10 overflow-hidden text-xs"
-					buttonIconType="up"
 					tooltip={tooltip}
 				/>
 			) : (
@@ -256,18 +255,13 @@ const ProviderRenderer: React.FC<ProviderRendererProps> = ({
 								}}>
 								<SelectTrigger
 									className={cn(
-										"rounded-md max-w-30 h-6 px-[6px] opacity-90 hover:opacity-100 hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)] cursor-pointer transition-all duration-150",
+										"rounded-md w-full h-6 px-[6px] opacity-90 hover:opacity-100 hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)]",
 									)}
-									icon={
-										<ChevronUp
-											className={cn(
-												"pointer-events-none opacity-80 !w-[12px] flex-shrink-0 size-3 transition-transform duration-200",
-												showSelect && "rotate-180",
-											)}
-										/>
-									}>
-									<Brain className="inline-block mr-[4px]" />
-									<SelectValue placeholder={t("settings:common.select")} />
+									showIcon={false}>
+									<span className=" overflow-hidden text-ellipsis whitespace-nowrap">
+										<Brain className="inline-block mr-[4px]" />
+										<SelectValue placeholder={t("settings:common.select")} />
+									</span>
 								</SelectTrigger>
 								<SelectContent className="min-w-80 max-w-9/10 overflow-hidden">
 									{selectedProviderModels.map((option) => (

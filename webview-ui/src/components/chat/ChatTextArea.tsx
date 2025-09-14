@@ -1223,7 +1223,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								</StandardTooltip>
 							</div>
 
-							{/* <div className="absolute bottom-2 right-2 z-30">
+							{/* <div className="absolute bottom-2 right-2 z-30 flex items-center gap-1">
 								{isEditMode && (
 									<StandardTooltip content={t("chat:cancel.title")}>
 										<button
@@ -1307,42 +1307,40 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						width: "100%",
 						padding: "0 14px",
 					}}>
-					<div className="flex items-center gap-2 min-w-40 overflow-clip flex-1">
+					<div className="flex items-center gap-2 min-w-0 overflow-clip flex-1">
+						<ModeSelector
+							value={mode}
+							title={mode ? `${t("chat:modeSelector.title")}: ${mode}` : t("chat:selectMode")}
+							onChange={handleModeChange}
+							triggerClassName="min-w-[28px] text-ellipsis overflow-hidden flex-shrink"
+							modeShortcutText={modeShortcutText}
+							customModes={customModes}
+							customModePrompts={customModePrompts}
+						/>
+						{/* <ApiConfigSelector
+							value={currentConfigId}
+							displayName={displayName}
+							disabled={selectApiConfigDisabled}
+							title={t("chat:selectApiConfig")}
+							onChange={handleApiConfigChange}
+							triggerClassName="min-w-[28px] text-ellipsis overflow-hidden flex-shrink"
+							listApiConfigMeta={listApiConfigMeta || []}
+							pinnedApiConfigs={pinnedApiConfigs}
+							togglePinnedApiConfig={togglePinnedApiConfig}
+						/> */}
 						{apiConfiguration && (
-							<>
-								<ModeSelector
-									value={mode}
-									title={mode ? `${t("chat:modeSelector.title")}: ${mode}` : t("chat:selectMode")}
-									onChange={handleModeChange}
-									triggerClassName="min-w-12 max-w-24 text-ellipsis overflow-hidden"
-									modeShortcutText={modeShortcutText}
-									customModes={customModes}
-									customModePrompts={customModePrompts}
-								/>
-								{/* <ApiConfigSelector
-								value={currentConfigId}
-								displayName={displayName}
-								disabled={selectApiConfigDisabled}
-								title={t("chat:selectApiConfig")}
-								onChange={handleApiConfigChange}
-								triggerClassName="w-full text-ellipsis overflow-hidden"
-								listApiConfigMeta={listApiConfigMeta || []}
-								pinnedApiConfigs={pinnedApiConfigs}
-								togglePinnedApiConfig={togglePinnedApiConfig}
-							/> */}
-								<ProviderRenderer
-									isEditMode={isEditMode}
-									className="min-w-12 max-w-40 text-ellipsis overflow-hidden"
-									selectedProvider={apiConfiguration.apiProvider || "zgsm"}
-									apiConfiguration={apiConfiguration}
-									organizationAllowList={organizationAllowList}
-									setApiConfigurationField={setApiConfigurationField}
-									routerModels={(routerModels as RouterModels) || {}}
-									selectedProviderModels={selectedProviderModels}
-								/>
-								<AutoApproveDropdown triggerClassName="min-w-12 max-w-24 text-ellipsis overflow-hidden" />
-							</>
+							<ProviderRenderer
+								isEditMode={isEditMode}
+								className="min-w-12 text-ellipsis overflow-hidden flex-shrink"
+								selectedProvider={apiConfiguration.apiProvider || "zgsm"}
+								apiConfiguration={apiConfiguration}
+								organizationAllowList={organizationAllowList}
+								setApiConfigurationField={setApiConfigurationField}
+								routerModels={(routerModels as RouterModels) || {}}
+								selectedProviderModels={selectedProviderModels}
+							/>
 						)}
+						<AutoApproveDropdown triggerClassName="min-w-[28px] text-ellipsis overflow-hidden flex-shrink" />
 					</div>
 					<div className="flex flex-shrink-0 items-center gap-0.5">
 						{isTtsPlaying && (

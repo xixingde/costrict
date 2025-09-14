@@ -136,10 +136,9 @@ export async function activate(context: vscode.ExtensionContext) {
 	// 	if (data.state === "logged-out") {
 	// 		try {
 	// 			await provider.remoteControlEnabled(false)
-	// 			cloudLogger("[CloudService] BridgeOrchestrator disconnected on logout")
 	// 		} catch (error) {
 	// 			cloudLogger(
-	// 				`[CloudService] Failed to disconnect BridgeOrchestrator on logout: ${error instanceof Error ? error.message : String(error)}`,
+	// 				`[authStateChangedHandler] remoteControlEnabled(false) failed: ${error instanceof Error ? error.message : String(error)}`,
 	// 			)
 	// 		}
 	// 	}
@@ -153,7 +152,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// 		provider.remoteControlEnabled(CloudService.instance.isTaskSyncEnabled())
 	// 	} catch (error) {
 	// 		cloudLogger(
-	// 			`[CloudService] BridgeOrchestrator#connectOrDisconnect failed on settings change: ${error instanceof Error ? error.message : String(error)}`,
+	// 			`[settingsUpdatedHandler] remoteControlEnabled failed: ${error instanceof Error ? error.message : String(error)}`,
 	// 		)
 	// 	}
 	// }
@@ -165,7 +164,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// 	postStateListener()
 
 	// 	if (!CloudService.instance.cloudAPI) {
-	// 		cloudLogger("[CloudService] CloudAPI is not initialized")
+	// 		cloudLogger("[userInfoHandler] CloudAPI is not initialized")
 	// 		return
 	// 	}
 
@@ -173,7 +172,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// 		provider.remoteControlEnabled(CloudService.instance.isTaskSyncEnabled())
 	// 	} catch (error) {
 	// 		cloudLogger(
-	// 			`[CloudService] BridgeOrchestrator#connectOrDisconnect failed on user change: ${error instanceof Error ? error.message : String(error)}`,
+	// 			`[userInfoHandler] remoteControlEnabled failed: ${error instanceof Error ? error.message : String(error)}`,
 	// 		)
 	// 	}
 	// }
