@@ -1,39 +1,67 @@
-import React from "react"
+import { ClineMessage } from "@roo-code/types"
 
 interface HighlightedPlainTextProps {
-	text: string
-	matches?: { start: number; end: number; text: string }[]
+	message: ClineMessage
+	query?: string
+	flag?: string
 }
 
-const HighlightedPlainText = ({ text, matches }: HighlightedPlainTextProps) => {
-	if (!matches || matches.length === 0) {
-		return text
-	}
+const HighlightedPlainText = ({ message, query = "", flag = "" }: HighlightedPlainTextProps) => {
+	if (!query?.trim() || !message?.text) return message.text
 
-	// Sort matches by start position
-	const sortedMatches = [...matches].sort((a, b) => a.start - b.start)
+	const originText = message.text || ""
+	const lowerQuery = query.toLowerCase()
 
-	let lastIndex = 0
-	const parts: React.ReactNode[] = []
+	// 首先以换行符号分割
+	const lines = originText.split("\n")
+	const result: string[] = []
+	let i = 0
 
-	for (const match of sortedMatches) {
-		// Add text before the match
-		if (match.start > lastIndex) {
-			parts.push(text.substring(lastIndex, match.start))
+	while (i < lines.length) {
+		const line = lines[i]
+
+		// 检查是否是代码块开始（精确匹配```开头，可能包含语言标识）
+		if (line.trim().startsWith("```")) {
+			// 找到代码块结束
+			let codeBlockEnd = -1
+			for (let j = i + 1; j < lines.length; j++) {
+				if (lines[j].trim() === "```") {
+					codeBlockEnd = j
+					break
+				}
+			}
+
+			if (codeBlockEnd !== -1) {
+				// 提取完整的代码块
+				const codeBlockLines = lines.slice(i, codeBlockEnd + 1)
+				const codeBlockContent = codeBlockLines.join("\n")
+
+				// 检查代码块是否包含查询字符串
+				if (codeBlockContent.toLowerCase().includes(lowerQuery)) {
+					result.push(
+						`<mark>⬇️${flag ? `${flag}: ` : ""}${query.length > 20 ? `${query.substring(0, 19)}...` : query}⬇️</mark>`,
+					)
+				}
+				result.push(codeBlockContent)
+
+				i = codeBlockEnd + 1
+				continue
+			}
 		}
 
-		// Add highlighted match
-		parts.push(`<mark>${match.text}</mark>`)
+		// 处理普通文本行
+		if (line.toLowerCase().includes(lowerQuery)) {
+			result.push(
+				`${line} <mark>⬅️${flag ? `${flag}: ` : ""}${query.length > 20 ? `${query.substring(0, 19)}...` : query}⬅️</mark>`,
+			)
+		} else {
+			result.push(line)
+		}
 
-		lastIndex = match.end
+		i++
 	}
 
-	// Add remaining text
-	if (lastIndex < text.length) {
-		parts.push(text.substring(lastIndex))
-	}
-
-	return parts.join("")
+	return result.join("\n")
 }
 
 export default HighlightedPlainText

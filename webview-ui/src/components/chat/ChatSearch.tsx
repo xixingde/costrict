@@ -57,6 +57,10 @@ export const ChatSearch: React.FC<ChatSearchProps> = ({
 		onClose()
 	}, [resetSearch, onClose])
 
+	useEffect(() => {
+		onSearchChange(hasResults, searchQuery)
+	}, [hasResults, searchQuery, onSearchChange])
+
 	// 当搜索结果变化时，自动导航到当前结果
 	useDebounceEffect(
 		() => {
@@ -69,9 +73,6 @@ export const ChatSearch: React.FC<ChatSearchProps> = ({
 		[currentResultIndex, hasResults, searchResults, onNavigateToResult],
 	)
 
-	useEffect(() => {
-		onSearchChange(hasResults, searchQuery)
-	}, [hasResults, searchQuery, onSearchChange])
 	// Focus the manual URL input when it becomes visible
 	useEffect(() => {
 		if (showSearch && searchInputRef.current) {
@@ -89,7 +90,7 @@ export const ChatSearch: React.FC<ChatSearchProps> = ({
 					ref={searchInputRef as any}
 					value={searchQuery}
 					placeholder={t("settings:experimental.CHAT_SEARCH.placeholder")}
-					onInput={(e: any) => setSearchQuery(e.target.value)}
+					onInput={(e: any) => setSearchQuery((e.target.value || "").trim())}
 					onKeyDown={handleKeyDown}
 					className="flex-1 min-w-0"
 					style={{ marginBottom: 0 }}
