@@ -165,7 +165,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 						</div>
 					)
 				} else {
-					return <span>Git Commits</span>
+					return <span>{t("chat:contextMenu.gitCommits")}</span>
 				}
 			case ContextMenuOptionType.File:
 			case ContextMenuOptionType.OpenedFile:
@@ -205,7 +205,13 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 						</div>
 					)
 				} else {
-					return <span>Add {option.type === ContextMenuOptionType.File ? "File" : "Folder"}</span>
+					return (
+						<span>
+							{option.type === ContextMenuOptionType.File
+								? t("chat:contextMenu.addFile")
+								: t("chat:contextMenu.addFolder")}
+						</span>
+					)
 				}
 		}
 	}

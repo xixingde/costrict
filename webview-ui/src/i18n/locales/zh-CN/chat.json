@@ -396,7 +396,7 @@
 		"problems": "问题",
 		"terminal": "终端",
 		"url": "粘贴URL以获取内容",
-		"gitCommits": "Git提交",
+		"gitCommits": "Git提交信息",
 		"addFile": "添加文件",
 		"addFolder": "添加文件夹"
 	},
