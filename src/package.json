@@ -418,6 +418,16 @@
 				}
 			]
 		},
+		"keybindings": [
+			{
+				"command": "zgsm.addToContext",
+				"key": "cmd+l",
+				"mac": "cmd+l",
+				"win": "ctrl+l",
+				"linux": "ctrl+l",
+				"when": "editorTextFocus && editorHasSelection"
+			}
+		],
 		"submenus": [
 			{
 				"id": "zgsm.contextMenu",
@@ -641,7 +651,7 @@
 						"medium",
 						"slow"
 					],
-					"default": "medium",
+					"default": "fast",
 					"description": "%settings.apiResponseRenderMode.description%"
 				},
 				"zgsm.newTaskRequireTodos": {
@@ -657,15 +667,7 @@
 					"description": "%settings.codeIndex.embeddingBatchSize.description%"
 				}
 			}
-		},
-		"keybindings": [
-			{
-				"command": "zgsm.addToContext",
-				"key": "ctrl+l",
-				"mac": "cmd+l",
-				"when": "editorHasSelection"
-			}
-		]
+		}
 	},
 	"scripts": {
 		"lint": "eslint . --ext=ts --max-warnings=0",
@@ -698,7 +700,7 @@
 		"@roo-code/types": "workspace:^",
 		"@vscode/codicons": "^0.0.36",
 		"async-mutex": "^0.5.0",
-		"axios": "^1.7.4",
+		"axios": "^1.12.0",
 		"cheerio": "^1.0.0",
 		"chokidar": "^4.0.3",
 		"clone-deep": "^4.0.1",

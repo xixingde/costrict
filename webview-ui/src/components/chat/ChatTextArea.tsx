@@ -30,7 +30,6 @@ import { AutoApproveDropdown } from "./AutoApproveDropdown"
 import { MAX_IMAGES_PER_MESSAGE } from "./ChatView"
 import ContextMenu from "./ContextMenu"
 // import { IndexingStatusBadge } from "./IndexingStatusBadge"
-import { SlashCommandsPopover } from "./SlashCommandsPopover"
 import { usePromptHistory } from "./hooks/usePromptHistory"
 import { useHoverEvent } from "./hooks/useHoverEvent"
 import { MODELS_BY_PROVIDER } from "../settings/constants"
@@ -292,6 +291,11 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		}, [inputValue, setInputValue, t])
 
 		const allModes = useMemo(() => getAllModes(customModes), [customModes])
+
+		// Memoized check for whether the input has content
+		const hasInputContent = useMemo(() => {
+			return inputValue.trim().length > 0
+		}, [inputValue])
 
 		const queryItems = useMemo(() => {
 			return [
@@ -964,8 +968,8 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		return (
 			<div
 				className={cn(
-					"relative flex flex-col gap-1 bg-editor-background outline-none border border-none box-border",
-					isEditMode ? "p-2 w-full" : "px-1.5 pb-1 w-[calc(100%-16px)] ml-auto mr-auto",
+					"flex flex-col gap-1 bg-editor-background outline-none border border-none box-border",
+					isEditMode ? "p-2 w-full" : "relative px-1.5 pb-1 w-[calc(100%-16px)] ml-auto mr-auto",
 				)}>
 				{selectedImages.length > 0 && (
 					<Thumbnails
@@ -1015,10 +1019,10 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								className={cn(
 									"absolute",
 									"bottom-full",
-									"left-0",
+									isEditMode ? "left-6" : "left-0",
 									"right-0",
 									"z-[1000]",
-									"mb-2",
+									isEditMode ? "-mb-3" : "mb-2",
 									"filter",
 									"drop-shadow-md",
 								)}>
@@ -1211,12 +1215,16 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 											"relative inline-flex items-center justify-center",
 											"bg-transparent border-none p-1.5",
 											"rounded-md min-w-[28px] min-h-[28px]",
-											"opacity-60 hover:opacity-100 text-vscode-descriptionForeground hover:text-vscode-foreground",
-											"transition-all duration-150",
-											"hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)]",
-											"focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder",
-											"active:bg-[rgba(255,255,255,0.1)]",
+											"text-vscode-descriptionForeground hover:text-vscode-foreground",
+											"transition-all duration-1000",
 											"cursor-pointer",
+											hasInputContent
+												? "opacity-50 hover:opacity-100 delay-750 pointer-events-auto"
+												: "opacity-0 pointer-events-none duration-200 delay-0",
+											hasInputContent &&
+												"hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)]",
+											"focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder",
+											hasInputContent && "active:bg-[rgba(255,255,255,0.1)]",
 										)}>
 										<WandSparkles className={cn("w-4 h-4", isEnhancingPrompt && "animate-spin")} />
 									</button>
@@ -1254,12 +1262,16 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 											"relative inline-flex items-center justify-center",
 											"bg-transparent border-none p-1.5",
 											"rounded-md min-w-[28px] min-h-[28px]",
-											"opacity-60 hover:opacity-100 text-vscode-descriptionForeground hover:text-vscode-foreground",
-											"transition-all duration-150",
-											"hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)]",
+											"text-vscode-descriptionForeground hover:text-vscode-foreground",
+											"transition-all duration-200",
+											hasInputContent
+												? "opacity-100 hover:opacity-100 pointer-events-auto"
+												: "opacity-0 pointer-events-none",
+											hasInputContent &&
+												"hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)]",
 											"focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder",
-											"active:bg-[rgba(255,255,255,0.1)]",
-											"cursor-pointer",
+											hasInputContent && "active:bg-[rgba(255,255,255,0.1)]",
+											hasInputContent && "cursor-pointer",
 										)}>
 										<SendHorizontal className="w-4 h-4" />
 									</button>
@@ -1363,7 +1375,6 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								</button>
 							</StandardTooltip>
 						)}
-						{!isEditMode ? <SlashCommandsPopover /> : null}
 						{/* {!isEditMode ? <IndexingStatusBadge /> : null} */}
 						<StandardTooltip content={t("chat:addImages")}>
 							<button

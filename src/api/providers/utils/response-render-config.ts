@@ -24,5 +24,5 @@ export function getApiResponseRenderMode() {
 		.getConfiguration("zgsm")
 		.get<string>("apiResponseRenderMode", "medium") as "fast" | "medium" | "slow" | "noLimit"
 
-	return renderModes[apiResponseRenderMode] || renderModes["medium"]
+	return renderModes[apiResponseRenderMode] || renderModes["fast"]
 }
