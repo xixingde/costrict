@@ -398,6 +398,9 @@
 		"noResults": "No results",
 		"problems": "Problems",
 		"terminal": "Terminal",
-		"url": "Paste URL to fetch contents"
+		"url": "Paste URL to fetch contents",
+		"gitCommits": "Git Commits",
+		"addFile": "Add File",
+		"addFolder": "Add Folder"
 	}
 }

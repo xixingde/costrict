@@ -395,7 +395,10 @@
 		"noResults": "无结果",
 		"problems": "问题",
 		"terminal": "终端",
-		"url": "粘贴URL以获取内容"
+		"url": "粘贴URL以获取内容",
+		"gitCommits": "Git提交",
+		"addFile": "添加文件",
+		"addFolder": "添加文件夹"
 	},
 	"queuedMessages": {
 		"title": "队列消息:",
