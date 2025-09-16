@@ -46,7 +46,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 	private chatType?: "user" | "system"
 	private headers = {}
 	private modelInfo = {} as ModelInfo
-	private apiResponseRenderModeInfo = renderModes.medium
+	private apiResponseRenderModeInfo = renderModes.fast
 	private logger: ILogger
 	private curStream: any = null
 
@@ -104,6 +104,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 		// Performance monitoring log
 		const requestId = uuidv7()
 		await this.fetchModel()
+		this.apiResponseRenderModeInfo = getApiResponseRenderMode()
 		// 1. Cache calculation results and configuration
 		const { info: modelInfo, reasoning } = this.getModel()
 		const modelUrl = this.baseURL || ZgsmAuthConfig.getInstance().getDefaultApiBaseUrl()
