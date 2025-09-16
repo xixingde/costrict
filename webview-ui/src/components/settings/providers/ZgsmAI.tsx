@@ -25,6 +25,9 @@ import { R1FormatSetting } from "../R1FormatSetting"
 import { ThinkingBudget } from "../ThinkingBudget"
 import { SetCachedStateField } from "../types"
 import { isValidUrl } from "@/utils/validate"
+import { vscode } from "@/utils/vscode"
+import { cn } from "@/lib/utils"
+import { delay } from "lodash-es"
 
 type OpenAICompatibleProps = {
 	fromWelcomeView?: boolean
@@ -34,6 +37,7 @@ type OpenAICompatibleProps = {
 	modelValidationError?: string
 	useZgsmCustomConfig?: boolean
 	setCachedStateField: SetCachedStateField<"useZgsmCustomConfig">
+	refetchRouterModels?: () => void
 }
 
 export const ZgsmAI = ({
@@ -44,9 +48,10 @@ export const ZgsmAI = ({
 	organizationAllowList,
 	modelValidationError,
 	useZgsmCustomConfig,
+	refetchRouterModels,
 }: OpenAICompatibleProps) => {
 	const { t } = useAppTranslation()
-
+	const [refetchingModels, setRefetchingModels] = useState(false)
 	const [azureApiVersionSelected, setAzureApiVersionSelected] = useState(!!apiConfiguration?.azureApiVersion)
 	const [openAiLegacyFormatSelected, setOpenAiLegacyFormatSelected] = useState(!!apiConfiguration?.openAiLegacyFormat)
 
@@ -176,6 +181,22 @@ export const ZgsmAI = ({
 						organizationAllowList={organizationAllowList}
 						errorMessage={modelValidationError}
 					/>
+					<Button
+						variant="outline"
+						disabled={refetchingModels}
+						onClick={() => {
+							vscode.postMessage({ type: "flushRouterModels", text: "zgsm" })
+							setRefetchingModels(true)
+							refetchRouterModels?.()
+							delay(() => {
+								setRefetchingModels(false)
+							}, 1000)
+						}}>
+						<div className="flex items-center gap-2">
+							<span className={cn("codicon codicon-refresh", refetchingModels ? "animate-spin" : "")} />
+							{t("settings:providers.refreshModels.label")}
+						</div>
+					</Button>
 					<div>
 						<VSCodeCheckbox
 							checked={useZgsmCustomConfig}
