@@ -100,7 +100,7 @@
 			{
 				"command": "zgsm.plusButtonClicked",
 				"title": "%command.newTask.title%",
-				"icon": "$(add)"
+				"icon": "$(edit)"
 			},
 			{
 				"command": "zgsm.promptsButtonClicked",
