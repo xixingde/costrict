@@ -43,6 +43,7 @@ import {
 } from "./activate"
 import { initializeI18n } from "./i18n"
 import { getCommand } from "./utils/commands"
+import { activateCoworkflowIntegration, deactivateCoworkflowIntegration } from "./integrations/coworkflow"
 
 /**
  * Built using https://github.com/microsoft/vscode-webview-ui-toolkit
@@ -281,6 +282,9 @@ export async function activate(context: vscode.ExtensionContext) {
 	registerCodeActions(context)
 	registerTerminalActions(context)
 
+	// Activate coworkflow integration
+	activateCoworkflowIntegration(context)
+
 	// Allows other extensions to activate once Costrict is ready.
 	vscode.commands.executeCommand(`${Package.name}.activationCompleted`)
 
@@ -377,6 +381,9 @@ export async function deactivate() {
 	// if (bridge) {
 	// 	await bridge.disconnect()
 	// }
+
+	// Deactivate coworkflow integration
+	deactivateCoworkflowIntegration()
 
 	await McpServerManager.cleanup(extensionContext)
 	TelemetryService.instance.shutdown()

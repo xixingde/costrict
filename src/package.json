@@ -235,6 +235,31 @@
 			{
 				"command": "zgsm.view.userHelperDoc",
 				"title": "%command.view.userHelperDoc.title%"
+			},
+			{
+				"command": "coworkflow.updateSection",
+				"title": "Update Section",
+				"category": "Coworkflow"
+			},
+			{
+				"command": "coworkflow.runTask",
+				"title": "Run Task",
+				"category": "Coworkflow"
+			},
+			{
+				"command": "coworkflow.retryTask",
+				"title": "Retry Task",
+				"category": "Coworkflow"
+			},
+			{
+				"command": "coworkflow.refreshCodeLens",
+				"title": "Refresh CodeLens",
+				"category": "Coworkflow"
+			},
+			{
+				"command": "coworkflow.refreshDecorations",
+				"title": "Refresh Decorations",
+				"category": "Coworkflow"
 			}
 		],
 		"menus": {
