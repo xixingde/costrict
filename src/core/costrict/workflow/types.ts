@@ -17,7 +17,7 @@ export type CoworkflowDocumentType = "requirements" | "design" | "tasks"
 /**
  * CodeLens action types for different operations
  */
-export type CoworkflowActionType = "update" | "run" | "retry"
+export type CoworkflowActionType = "update" | "run" | "retry" | "loading"
 
 /**
  * Task status model representing a task item in tasks.md
@@ -214,4 +214,166 @@ export interface ICoworkflowErrorHandler {
 	logError(error: CoworkflowError): void
 	/** Show user notification for an error */
 	showErrorNotification(error: CoworkflowError): void
+}
+
+/**
+ * 扩展的层级任务状态接口
+ * 在原有 TaskStatus 基础上添加层级信息
+ */
+export interface HierarchicalTaskStatus extends TaskStatus {
+	/** 层级深度（0为根级别） */
+	hierarchyLevel: number
+	/** 父任务的行号（如果有） */
+	parentLine?: number
+	/** 子任务的行号列表 */
+	childrenLines: number[]
+	/** 子内容的行号列表（包括普通文本、列表项等） */
+	childContentLines: number[]
+	/** 层级路径（如 [0, 1, 2] 表示第1个根任务的第2个子任务的第3个子任务） */
+	hierarchyPath: number[]
+	/** 完整的层级ID（如 "1.2.3"） */
+	hierarchicalId: string
+}
+
+/**
+ * 子内容项接口
+ * 表示任务下的非任务内容（如普通文本、列表项等）
+ */
+export interface TaskChildContent {
+	/** 行号 */
+	line: number
+	/** 文本范围 */
+	range: vscode.Range
+	/** 内容文本 */
+	text: string
+	/** 缩进层级 */
+	indentLevel: number
+	/** 父任务行号 */
+	parentTaskLine: number
+	/** 父任务状态（用于继承装饰） */
+	parentTaskStatus: TaskStatusType
+}
+
+/**
+ * 层级节点结构
+ * 用于构建任务的层级关系树
+ */
+export interface HierarchyNode {
+	/** 任务状态信息 */
+	task: HierarchicalTaskStatus
+	/** 父节点引用 */
+	parent: HierarchyNode | null
+	/** 子节点列表 */
+	children: HierarchyNode[]
+	/** 层级深度 */
+	level: number
+}
+
+/**
+ * 缩进风格配置
+ * 用于智能检测和适应项目的缩进风格
+ */
+export interface IndentStyle {
+	/** 缩进类型：空格或制表符 */
+	type: "space" | "tab"
+	/** 缩进大小：空格数量或制表符数量 */
+	size: number
+}
+
+/**
+ * 层级装饰配置
+ * 定义层级装饰的视觉样式和行为
+ */
+export interface HierarchyDecorationConfig {
+	/** 最大支持层级深度 */
+	maxDepth: number
+	/** 左边框宽度配置 */
+	borderWidth: {
+		/** 基础宽度（px） */
+		base: number
+		/** 每级递增（px） */
+		increment: number
+	}
+	/** 颜色配置 */
+	colors: {
+		/** 不同层级的未开始颜色 */
+		notStarted: string[]
+		/** 不同层级的进行中颜色 */
+		inProgress: string[]
+		/** 不同层级的已完成颜色 */
+		completed: string[]
+	}
+	/** 缩进可视化配置 */
+	indentVisualization: {
+		/** 是否启用缩进可视化 */
+		enabled: boolean
+		/** 可视化样式 */
+		style: "line" | "block" | "gradient"
+	}
+}
+
+/**
+ * 层级装饰策略接口
+ * 定义如何应用层级装饰的策略
+ */
+export interface IHierarchyDecorationStrategy {
+	/**
+	 * 应用层级装饰
+	 * @param document 文档对象
+	 * @param hierarchyTree 层级关系树
+	 * @param editor 编辑器实例
+	 */
+	applyDecorations(document: vscode.TextDocument, hierarchyTree: HierarchyNode[], editor: vscode.TextEditor): void
+}
+
+/**
+ * 层级检测器接口
+ * 定义层级识别和解析的核心功能
+ */
+export interface IHierarchyDetector {
+	/**
+	 * 检测任务的层级深度
+	 * @param line 文本行内容
+	 * @returns 层级深度（-1表示非任务行，0为根级别）
+	 */
+	detectHierarchyLevel(line: string): number
+
+	/**
+	 * 构建层级关系树
+	 * @param tasks 层级任务状态列表
+	 * @returns 层级关系树的根节点列表
+	 */
+	buildHierarchyTree(tasks: HierarchicalTaskStatus[]): HierarchyNode[]
+
+	/**
+	 * 分析文档的缩进风格
+	 * @param document 文档对象
+	 * @returns 缩进风格配置
+	 */
+	analyzeIndentStyle(document: vscode.TextDocument): IndentStyle
+}
+
+/**
+ * 扩展的装饰提供器接口
+ * 在原有基础上添加层级装饰支持
+ */
+export interface IHierarchicalCoworkflowDecorationProvider extends ICoworkflowDecorationProvider {
+	/**
+	 * 解析文档中的层级任务状态
+	 * @param document 文档对象
+	 * @returns 层级任务状态列表
+	 */
+	parseHierarchicalTaskStatuses(document: vscode.TextDocument): HierarchicalTaskStatus[]
+
+	/**
+	 * 更新层级装饰配置
+	 * @param config 新的层级装饰配置
+	 */
+	updateHierarchyConfig(config: HierarchyDecorationConfig): void
+
+	/**
+	 * 获取当前层级装饰配置
+	 * @returns 当前配置
+	 */
+	getHierarchyConfig(): HierarchyDecorationConfig
 }

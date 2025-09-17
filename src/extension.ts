@@ -43,7 +43,7 @@ import {
 } from "./activate"
 import { initializeI18n } from "./i18n"
 import { getCommand } from "./utils/commands"
-import { activateCoworkflowIntegration, deactivateCoworkflowIntegration } from "./integrations/coworkflow"
+import { activateCoworkflowIntegration, deactivateCoworkflowIntegration } from "./core/costrict/workflow"
 
 /**
  * Built using https://github.com/microsoft/vscode-webview-ui-toolkit

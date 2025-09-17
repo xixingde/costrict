@@ -237,27 +237,27 @@
 				"title": "%command.view.userHelperDoc.title%"
 			},
 			{
-				"command": "coworkflow.updateSection",
+				"command": "zgsm.coworkflow.updateSection",
 				"title": "Update Section",
 				"category": "Coworkflow"
 			},
 			{
-				"command": "coworkflow.runTask",
+				"command": "zgsm.coworkflow.runTask",
 				"title": "Run Task",
 				"category": "Coworkflow"
 			},
 			{
-				"command": "coworkflow.retryTask",
+				"command": "zgsm.coworkflow.retryTask",
 				"title": "Retry Task",
 				"category": "Coworkflow"
 			},
 			{
-				"command": "coworkflow.refreshCodeLens",
+				"command": "zgsm.coworkflow.refreshCodeLens",
 				"title": "Refresh CodeLens",
 				"category": "Coworkflow"
 			},
 			{
-				"command": "coworkflow.refreshDecorations",
+				"command": "zgsm.coworkflow.refreshDecorations",
 				"title": "Refresh Decorations",
 				"category": "Coworkflow"
 			}

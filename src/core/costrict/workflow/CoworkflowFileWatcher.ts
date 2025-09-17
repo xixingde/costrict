@@ -28,7 +28,7 @@ export class CoworkflowFileWatcher implements ICoworkflowFileWatcher {
 		this.config = {
 			enabled: true,
 			debounceDelay: 300,
-			watchPatterns: ["requirements.md", "design.md", "tasks.md"],
+			watchPatterns: ["**/requirements.md", "**/design.md", "**/tasks.md"],
 			...config,
 		}
 		this.errorHandler = new CoworkflowErrorHandler()

@@ -103,6 +103,10 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 		// Performance monitoring log
 		const requestId = uuidv7()
 		await this.fetchModel()
+		const fromWorkflow =
+			metadata?.mode === "workflow" ||
+			metadata?.rooTaskMode === "workflow" ||
+			metadata?.parentTaskMode === "workflow"
 		this.apiResponseRenderModeInfo = getApiResponseRenderMode()
 		// 1. Cache calculation results and configuration
 		const { info: modelInfo, reasoning } = this.getModel()
@@ -161,7 +165,13 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 				reasoning,
 				modelInfo,
 			)
-
+			if (fromWorkflow) {
+				Object.assign(requestOptions, {
+					extra_body: {
+						prompt_mode: "workflow",
+					},
+				})
+			}
 			let stream
 			try {
 				const { data: _stream, response } = await this.client.chat.completions
@@ -197,7 +207,13 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 				enabledLegacyFormat,
 				modelInfo,
 			)
-
+			if (fromWorkflow) {
+				Object.assign(requestOptions, {
+					extra_body: {
+						prompt_mode: "workflow",
+					},
+				})
+			}
 			let response
 			try {
 				response = await this.client.chat.completions.create(

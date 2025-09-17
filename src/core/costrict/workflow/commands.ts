@@ -5,6 +5,7 @@
 import * as vscode from "vscode"
 import { CoworkflowCodeLens, CoworkflowCommandContext } from "./types"
 import { CoworkflowErrorHandler } from "./CoworkflowErrorHandler"
+import { getCommand } from "../../../utils/commands"
 
 /**
  * Command identifiers for coworkflow operations
@@ -65,17 +66,22 @@ export function registerCoworkflowCommands(context: vscode.ExtensionContext): vs
 		disposables.push(vscode.commands.registerCommand(COWORKFLOW_COMMANDS.UPDATE_SECTION, handleUpdateSection))
 
 		// Register run task command
-		disposables.push(vscode.commands.registerCommand(COWORKFLOW_COMMANDS.RUN_TASK, handleRunTask))
+		disposables.push(vscode.commands.registerCommand(getCommand(COWORKFLOW_COMMANDS.RUN_TASK), handleRunTask))
 
 		// Register retry task command
-		disposables.push(vscode.commands.registerCommand(COWORKFLOW_COMMANDS.RETRY_TASK, handleRetryTask))
+		disposables.push(vscode.commands.registerCommand(getCommand(COWORKFLOW_COMMANDS.RETRY_TASK), handleRetryTask))
 
 		// Register refresh CodeLens command
-		disposables.push(vscode.commands.registerCommand(COWORKFLOW_COMMANDS.REFRESH_CODELENS, handleRefreshCodeLens))
+		disposables.push(
+			vscode.commands.registerCommand(getCommand(COWORKFLOW_COMMANDS.REFRESH_CODELENS), handleRefreshCodeLens),
+		)
 
 		// Register refresh decorations command
 		disposables.push(
-			vscode.commands.registerCommand(COWORKFLOW_COMMANDS.REFRESH_DECORATIONS, handleRefreshDecorations),
+			vscode.commands.registerCommand(
+				getCommand(COWORKFLOW_COMMANDS.REFRESH_DECORATIONS),
+				handleRefreshDecorations,
+			),
 		)
 	} catch (error) {
 		const coworkflowError = errorHandler.createError(

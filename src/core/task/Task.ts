@@ -2689,6 +2689,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		const metadata: ApiHandlerCreateMessageMetadata = {
 			mode: mode,
+			rooTaskMode: this?.rootTask?._taskMode,
+			parentTaskMode: this?.parentTask?._taskMode,
 			taskId: this.taskId,
 			language: state?.language,
 			instanceId: this.instanceId,

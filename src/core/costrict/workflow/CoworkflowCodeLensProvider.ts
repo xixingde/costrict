@@ -4,8 +4,15 @@
 
 import * as vscode from "vscode"
 import * as path from "path"
-import { ICoworkflowCodeLensProvider, CoworkflowCodeLens, CoworkflowDocumentType, CoworkflowActionType } from "./types"
+import {
+	ICoworkflowCodeLensProvider,
+	CoworkflowCodeLens,
+	CoworkflowDocumentType,
+	CoworkflowActionType,
+	CoworkflowCommandContext,
+} from "./types"
 import { CoworkflowErrorHandler } from "./CoworkflowErrorHandler"
+import { getCommand } from "../../../utils/commands"
 
 export class CoworkflowCodeLensProvider implements ICoworkflowCodeLensProvider {
 	private onDidChangeCodeLensesEmitter = new vscode.EventEmitter<void>()
@@ -88,12 +95,48 @@ export class CoworkflowCodeLensProvider implements ICoworkflowCodeLensProvider {
 				return codeLens
 			}
 
+			// Get the document URI, with fallbacks for different scenarios
+			let documentUri: vscode.Uri
+			try {
+				const activeEditor = vscode.window.activeTextEditor
+				if (activeEditor && this.getDocumentType(activeEditor.document.uri)) {
+					documentUri = activeEditor.document.uri
+				} else {
+					// Fallback: try to find the document from visible editors
+					const visibleEditor = vscode.window.visibleTextEditors?.find(
+						(editor) => this.getDocumentType(editor.document.uri) === coworkflowCodeLens.documentType,
+					)
+					documentUri = visibleEditor?.document.uri || vscode.Uri.file("")
+				}
+			} catch {
+				// Final fallback for test environments or edge cases
+				documentUri = vscode.Uri.file("")
+			}
+
 			// Set the command based on action type
 			const commandId = this.getCommandId(coworkflowCodeLens.actionType)
-			codeLens.command = {
-				title: this.getActionTitle(coworkflowCodeLens.actionType),
-				command: commandId,
-				arguments: [coworkflowCodeLens],
+
+			// 只为需要响应点击的操作设置命令
+			if (commandId) {
+				// Create a minimal command context to avoid circular references
+				const commandContext: CoworkflowCommandContext = {
+					uri: documentUri,
+					documentType: coworkflowCodeLens.documentType,
+					actionType: coworkflowCodeLens.actionType,
+					context: coworkflowCodeLens.context,
+				}
+
+				codeLens.command = {
+					title: this.getActionTitle(coworkflowCodeLens.actionType),
+					command: commandId,
+					arguments: [commandContext],
+				}
+			} else {
+				// loading 状态等不需要命令，只设置标题
+				codeLens.command = {
+					title: this.getActionTitle(coworkflowCodeLens.actionType),
+					command: "",
+				}
 			}
 
 			return codeLens
@@ -371,11 +414,14 @@ export class CoworkflowCodeLensProvider implements ICoworkflowCodeLensProvider {
 						const actions: CoworkflowActionType[] = []
 						try {
 							if (status === " ") {
+								// 未开始任务 - 只显示 "run"
 								actions.push("run")
 							} else if (status === "-") {
-								actions.push("retry")
+								// 进行中任务 - 显示 loading 状态
+								actions.push("loading")
 							} else if (status === "x") {
-								actions.push("retry") // Allow re-running completed tasks
+								// 已完成任务 - 只显示 "retry"
+								actions.push("retry")
 							} else {
 								// Unknown status, default to run
 								this.errorHandler.logError(
@@ -457,13 +503,17 @@ export class CoworkflowCodeLensProvider implements ICoworkflowCodeLensProvider {
 	private getCommandId(actionType: CoworkflowActionType): string {
 		switch (actionType) {
 			case "update":
-				return "coworkflow.updateSection"
+				return getCommand("coworkflow.updateSection")
 			case "run":
-				return "coworkflow.runTask"
+				return getCommand("coworkflow.runTask")
 			case "retry":
-				return "coworkflow.retryTask"
+				return getCommand("coworkflow.retryTask")
+			case "loading":
+				// loading 状态不需要响应点击，返回空字符串
+				return ""
 			default:
-				return "coworkflow.unknown"
+				// 未知状态也不需要命令
+				return ""
 		}
 	}
 
@@ -475,6 +525,8 @@ export class CoworkflowCodeLensProvider implements ICoworkflowCodeLensProvider {
 				return "$(play) Run"
 			case "retry":
 				return "$(refresh) Retry"
+			case "loading":
+				return "$(loading~spin) Running..."
 			default:
 				return "Unknown"
 		}
