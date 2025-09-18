@@ -25,7 +25,7 @@ import { ClineProvider } from "./ClineProvider"
 import { handleCheckpointRestoreOperation } from "./checkpointRestoreHandler"
 import { changeLanguage, t } from "../../i18n"
 import { Package } from "../../shared/package"
-import { RouterName, toRouterName, ModelRecord } from "../../shared/api"
+import { type RouterName, type ModelRecord, toRouterName } from "../../shared/api"
 import { MessageEnhancer } from "./messageEnhancer"
 
 import {
@@ -815,16 +815,19 @@ export const webviewMessageHandler = async (
 		case "requestRouterModels":
 			const { apiConfiguration } = await provider.getState()
 
-			const routerModels: Partial<Record<RouterName, ModelRecord>> = {
+			const routerModels: Record<RouterName, ModelRecord> = {
+				zgsm: {},
 				openrouter: {},
-				requesty: {},
-				glama: {},
-				unbound: {},
+				"vercel-ai-gateway": {},
+				huggingface: {},
 				litellm: {},
+				deepinfra: {},
+				"io-intelligence": {},
+				requesty: {},
+				unbound: {},
+				glama: {},
 				ollama: {},
 				lmstudio: {},
-				deepinfra: {},
-				zgsm: {},
 			}
 
 			const safeGetModels = async (options: GetModelsOptions): Promise<ModelRecord> => {
@@ -835,11 +838,12 @@ export const webviewMessageHandler = async (
 						`Failed to fetch models in webviewMessageHandler requestRouterModels for ${options.provider}:`,
 						error,
 					)
-					throw error // Re-throw to be caught by Promise.allSettled
+
+					throw error // Re-throw to be caught by Promise.allSettled.
 				}
 			}
 
-			const modelFetchPromises: Array<{ key: RouterName; options: GetModelsOptions }> = [
+			const modelFetchPromises: { key: RouterName; options: GetModelsOptions }[] = [
 				{
 					key: "zgsm",
 					options: {
@@ -871,8 +875,9 @@ export const webviewMessageHandler = async (
 				},
 			]
 
-			// Add IO Intelligence if API key is provided
+			// Add IO Intelligence if API key is provided.
 			const ioIntelligenceApiKey = apiConfiguration.ioIntelligenceApiKey
+
 			if (ioIntelligenceApiKey) {
 				modelFetchPromises.push({
 					key: "io-intelligence",
@@ -880,11 +885,12 @@ export const webviewMessageHandler = async (
 				})
 			}
 
-			// Don't fetch Ollama and LM Studio models by default anymore
-			// They have their own specific handlers: requestOllamaModels and requestLmStudioModels
+			// Don't fetch Ollama and LM Studio models by default anymore.
+			// They have their own specific handlers: requestOllamaModels and requestLmStudioModels.
 
 			const litellmApiKey = apiConfiguration.litellmApiKey || message?.values?.litellmApiKey
 			const litellmBaseUrl = apiConfiguration.litellmBaseUrl || message?.values?.litellmBaseUrl
+
 			if (litellmApiKey && litellmBaseUrl) {
 				modelFetchPromises.push({
 					key: "litellm",
@@ -895,6 +901,7 @@ export const webviewMessageHandler = async (
 			const results = await Promise.allSettled(
 				modelFetchPromises.map(async ({ key, options }) => {
 					const models = await safeGetModels(options)
+
 					if (key === "zgsm") {
 						const openAiModels = [] as string[]
 						const fullResponseData = [] as ModelInfo[]
@@ -908,24 +915,18 @@ export const webviewMessageHandler = async (
 							fullResponseData,
 						})
 					}
-					return { key, models } // key is RouterName here
+
+					return { key, models } // The key is `ProviderName` here.
 				}),
 			)
 
-			const fetchedRouterModels: Partial<Record<RouterName, ModelRecord>> = {
-				...routerModels,
-				// Initialize ollama and lmstudio with empty objects since they use separate handlers
-				ollama: {},
-				lmstudio: {},
-			}
-
 			results.forEach((result, index) => {
-				const routerName = modelFetchPromises[index].key // Get RouterName using index
+				const routerName = modelFetchPromises[index].key
 
 				if (result.status === "fulfilled") {
-					fetchedRouterModels[routerName] = result.value.models
+					routerModels[routerName] = result.value.models
 
-					// Ollama and LM Studio settings pages still need these events
+					// Ollama and LM Studio settings pages still need these events.
 					if (routerName === "ollama" && Object.keys(result.value.models).length > 0) {
 						provider.postMessageToWebview({
 							type: "ollamaModels",
@@ -938,11 +939,11 @@ export const webviewMessageHandler = async (
 						})
 					}
 				} else {
-					// Handle rejection: Post a specific error message for this provider
+					// Handle rejection: Post a specific error message for this provider.
 					const errorMessage = result.reason instanceof Error ? result.reason.message : String(result.reason)
 					console.error(`Error fetching models for ${routerName}:`, result.reason)
 
-					fetchedRouterModels[routerName] = {} // Ensure it's an empty object in the main routerModels message
+					routerModels[routerName] = {} // Ensure it's an empty object in the main routerModels message.
 
 					provider.postMessageToWebview({
 						type: "singleRouterModelFetchResponse",
@@ -953,17 +954,13 @@ export const webviewMessageHandler = async (
 				}
 			})
 
-			provider.postMessageToWebview({
-				type: "routerModels",
-				routerModels: fetchedRouterModels as Record<RouterName, ModelRecord>,
-			})
-
+			provider.postMessageToWebview({ type: "routerModels", routerModels })
 			break
 		case "requestOllamaModels": {
-			// Specific handler for Ollama models only
+			// Specific handler for Ollama models only.
 			const { apiConfiguration: ollamaApiConfig } = await provider.getState()
 			try {
-				// Flush cache first to ensure fresh models
+				// Flush cache first to ensure fresh models.
 				await flushModels("ollama")
 
 				const ollamaModels = await getModels({
@@ -973,10 +970,7 @@ export const webviewMessageHandler = async (
 				})
 
 				if (Object.keys(ollamaModels).length > 0) {
-					provider.postMessageToWebview({
-						type: "ollamaModels",
-						ollamaModels: ollamaModels,
-					})
+					provider.postMessageToWebview({ type: "ollamaModels", ollamaModels: ollamaModels })
 				}
 			} catch (error) {
 				// Silently fail - user hasn't configured Ollama yet
@@ -985,10 +979,10 @@ export const webviewMessageHandler = async (
 			break
 		}
 		case "requestLmStudioModels": {
-			// Specific handler for LM Studio models only
+			// Specific handler for LM Studio models only.
 			const { apiConfiguration: lmStudioApiConfig } = await provider.getState()
 			try {
-				// Flush cache first to ensure fresh models
+				// Flush cache first to ensure fresh models.
 				await flushModels("lmstudio")
 
 				const lmStudioModels = await getModels({
@@ -1003,7 +997,7 @@ export const webviewMessageHandler = async (
 					})
 				}
 			} catch (error) {
-				// Silently fail - user hasn't configured LM Studio yet
+				// Silently fail - user hasn't configured LM Studio yet.
 				console.debug("LM Studio models fetch failed:", error)
 			}
 			break
@@ -1026,19 +1020,18 @@ export const webviewMessageHandler = async (
 			provider.postMessageToWebview({ type: "vsCodeLmModels", vsCodeLmModels })
 			break
 		case "requestHuggingFaceModels":
+			// TODO: Why isn't this handled by `requestRouterModels` above?
 			try {
 				const { getHuggingFaceModelsWithMetadata } = await import("../../api/providers/fetchers/huggingface")
 				const huggingFaceModelsResponse = await getHuggingFaceModelsWithMetadata()
+
 				provider.postMessageToWebview({
 					type: "huggingFaceModels",
 					huggingFaceModels: huggingFaceModelsResponse.models,
 				})
 			} catch (error) {
 				console.error("Failed to fetch Hugging Face models:", error)
-				provider.postMessageToWebview({
-					type: "huggingFaceModels",
-					huggingFaceModels: [],
-				})
+				provider.postMessageToWebview({ type: "huggingFaceModels", huggingFaceModels: [] })
 			}
 			break
 		case "openImage":
