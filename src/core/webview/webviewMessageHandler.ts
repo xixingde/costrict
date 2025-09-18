@@ -52,7 +52,7 @@ import { getZgsmModels } from "../../api/providers/fetchers/zgsm"
 import { getVsCodeLmModels } from "../../api/providers/vscode-lm"
 import { openMention } from "../mentions"
 import { getWorkspacePath } from "../../utils/path"
-import { Mode, defaultModeSlug } from "../../shared/modes"
+import { Mode, defaultModeSlug, ZgsmCodeMode } from "../../shared/modes"
 import { getModels, flushModels } from "../../api/providers/fetchers/modelCache"
 import { GetModelsOptions } from "../../shared/api"
 import { generateSystemPrompt } from "./generateSystemPrompt"
@@ -1540,6 +1540,10 @@ export const webviewMessageHandler = async (
 			break
 		case "mode":
 			await provider.handleModeSwitch(message.text as Mode)
+			break
+		case "zgsmCodeMode":
+			await provider.setZgsmCodeMode(message.text as ZgsmCodeMode)
+			// await provider.handleModeSwitch(message.text as Mode)
 			break
 		case "updateSupportPrompt":
 			try {

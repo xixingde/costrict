@@ -50,7 +50,7 @@ import { findLast } from "../../shared/array"
 import { supportPrompt, type SupportPromptType } from "../../shared/support-prompt"
 import { GlobalFileNames } from "../../shared/globalFileNames"
 import type { ExtensionMessage, ExtensionState, MarketplaceInstalledMetadata } from "../../shared/ExtensionMessage"
-import { Mode, defaultModeSlug, getModeBySlug } from "../../shared/modes"
+import { Mode, defaultModeSlug, getModeBySlug, ZgsmCodeMode } from "../../shared/modes"
 import { experimentDefault } from "../../shared/experiments"
 import { formatLanguage } from "../../shared/language"
 import { WebviewMessage } from "../../shared/WebviewMessage"
@@ -1920,6 +1920,7 @@ export class ClineProvider
 			listApiConfigMeta: listApiConfigMeta ?? [],
 			pinnedApiConfigs: pinnedApiConfigs ?? {},
 			mode: mode ?? defaultModeSlug,
+			zgsmCodeMode: undefined,
 			customModePrompts: customModePrompts ?? {},
 			customSupportPrompts: customSupportPrompts ?? {},
 			enhancementApiConfigId,
@@ -2730,6 +2731,11 @@ export class ClineProvider
 
 	public async setMode(mode: string): Promise<void> {
 		await this.setValues({ mode })
+	}
+
+	public async setZgsmCodeMode(zgsmCodeMode: ZgsmCodeMode): Promise<void> {
+		await this.setValues({ zgsmCodeMode })
+		await this.postStateToWebview()
 	}
 
 	// Provider Profiles

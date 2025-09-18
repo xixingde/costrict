@@ -49,9 +49,11 @@ export const globalSettingsSchema = z.object({
 
 	condensingApiConfigId: z.string().optional(),
 	customCondensingPrompt: z.string().optional(),
-
+	// zgsm
 	useZgsmCustomConfig: z.boolean().optional(),
 	zgsmCodebaseIndexEnabled: z.boolean().optional(),
+	zgsmCodeMode: z.union([z.literal("vibe"), z.literal("workflow")]).optional(),
+
 	autoApprovalEnabled: z.boolean().optional(),
 	alwaysAllowReadOnly: z.boolean().optional(),
 	alwaysAllowReadOnlyOutsideWorkspace: z.boolean().optional(),
@@ -251,7 +253,7 @@ export const isGlobalStateKey = (key: string): key is Keys<GlobalState> =>
 export const EVALS_SETTINGS: RooCodeSettings = {
 	apiProvider: "openrouter",
 	openRouterUseMiddleOutTransform: false,
-
+	zgsmCodeMode: "vibe",
 	lastShownAnnouncementId: "jul-09-2025-3-23-0",
 
 	pinnedApiConfigs: {},
