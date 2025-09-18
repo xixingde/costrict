@@ -30,8 +30,9 @@ class HierarchyDetector implements IHierarchyDetector {
 	 * 检测任务的层级深度
 	 */
 	detectHierarchyLevel(line: string): number {
+		const trimmedLine = line.trimEnd()
 		for (const pattern of this.INDENT_PATTERNS) {
-			const match = pattern.exec(line)
+			const match = pattern.exec(trimmedLine)
 			if (match) {
 				const indentStr = match[1]
 				// 计算缩进级别：2个空格或1个Tab = 1级
@@ -349,7 +350,7 @@ export class CoworkflowDecorationProvider implements IHierarchicalCoworkflowDeco
 	}
 
 	public updateDecorations(document: vscode.TextDocument): void {
-		// Only process tasks.md files in .coworkflow directories
+		// Only process tasks.md files in .cospec directories
 		if (!this.isTasksDocument(document)) {
 			return
 		}
@@ -480,9 +481,18 @@ export class CoworkflowDecorationProvider implements IHierarchicalCoworkflowDeco
 	}
 
 	private isTasksDocument(document: vscode.TextDocument): boolean {
-		const fileName = document.uri.path.split("/").pop()
-		const parentDir = document.uri.path.split("/").slice(-2, -1)[0]
-		return fileName === "tasks.md" && parentDir === ".coworkflow"
+		const path = document.uri.path
+		const fileName = path.split("/").pop()
+		const parentDir = path.split("/")
+		console.log("[isTasksDocument]", `\n${path} \n${fileName} \n${parentDir}`)
+
+		// Check if file is within .cospec directory
+		if (!parentDir.includes(".cospec")) {
+			return false
+		}
+
+		// Only apply decorations to files named exactly "tasks.md"
+		return fileName === "tasks.md"
 	}
 
 	private isValidTasksDocument(document: vscode.TextDocument): boolean {

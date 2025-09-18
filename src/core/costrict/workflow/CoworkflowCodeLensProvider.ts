@@ -8,6 +8,7 @@ import {
 	ICoworkflowCodeLensProvider,
 	CoworkflowCodeLens,
 	CoworkflowDocumentType,
+	CoworkflowDocumentInfo,
 	CoworkflowActionType,
 	CoworkflowCommandContext,
 } from "./types"
@@ -18,9 +19,15 @@ export class CoworkflowCodeLensProvider implements ICoworkflowCodeLensProvider {
 	private onDidChangeCodeLensesEmitter = new vscode.EventEmitter<void>()
 	public readonly onDidChangeCodeLenses = this.onDidChangeCodeLensesEmitter.event
 	private errorHandler: CoworkflowErrorHandler
+	private fileWatcher?: import("./CoworkflowFileWatcher").CoworkflowFileWatcher
 
-	constructor() {
+	constructor(fileWatcher?: import("./CoworkflowFileWatcher").CoworkflowFileWatcher) {
 		this.errorHandler = new CoworkflowErrorHandler()
+		this.fileWatcher = fileWatcher
+	}
+
+	public setFileWatcher(fileWatcher: import("./CoworkflowFileWatcher").CoworkflowFileWatcher): void {
+		this.fileWatcher = fileWatcher
 	}
 
 	public dispose(): void {
@@ -157,11 +164,18 @@ export class CoworkflowCodeLensProvider implements ICoworkflowCodeLensProvider {
 	}
 
 	public getDocumentType(uri: vscode.Uri): CoworkflowDocumentType | undefined {
+		// Use FileWatcher's enhanced document detection if available
+		if (this.fileWatcher) {
+			const documentInfo = this.fileWatcher.getDocumentInfoFromUri(uri)
+			return documentInfo?.type
+		}
+
+		// Fallback to legacy logic for backward compatibility
 		const fileName = path.basename(uri.fsPath)
 		const parentDir = path.basename(path.dirname(uri.fsPath))
 
-		// Check if this is in a .coworkflow directory
-		if (parentDir !== ".coworkflow") {
+		// Check if this is in a .cospec directory
+		if (parentDir !== ".cospec") {
 			return undefined
 		}
 
@@ -200,20 +214,41 @@ export class CoworkflowCodeLensProvider implements ICoworkflowCodeLensProvider {
 				)
 			}
 
-			// Check for basic markdown structure
+			// Get document type to apply appropriate validation
+			const documentType = this.getDocumentType(document.uri)
 			const lines = text.split("\n")
-			const hasHeaders = lines.some((line) => line.trim().startsWith("#"))
 
-			if (!hasHeaders) {
-				this.errorHandler.logError(
-					this.errorHandler.createError(
-						"parsing_error",
-						"info",
-						"Document does not appear to contain markdown headers",
-						undefined,
-						document.uri,
-					),
-				)
+			// Apply different validation based on document type
+			if (documentType === "tasks") {
+				// For tasks.md, check for task items (- [ ], - [x], - [-])
+				const hasTaskItems = lines.some((line) => /^\s*-\s+\[([ x-])\]\s+/.test(line.trim()))
+
+				if (!hasTaskItems) {
+					this.errorHandler.logError(
+						this.errorHandler.createError(
+							"parsing_error",
+							"info",
+							"Tasks document does not appear to contain task items",
+							undefined,
+							document.uri,
+						),
+					)
+				}
+			} else {
+				// For other documents, check for markdown headers
+				const hasHeaders = lines.some((line) => line.trim().startsWith("#"))
+
+				if (!hasHeaders) {
+					this.errorHandler.logError(
+						this.errorHandler.createError(
+							"parsing_error",
+							"info",
+							"Document does not appear to contain markdown headers",
+							undefined,
+							document.uri,
+						),
+					)
+				}
 			}
 
 			return true
@@ -268,12 +303,12 @@ export class CoworkflowCodeLensProvider implements ICoworkflowCodeLensProvider {
 			const text = document.getText()
 			const lines = text.split("\n")
 
-			// Look for requirement section headers (### Requirement N)
-			const requirementHeaderRegex = /^###\s+Requirement\s+\d+/
+			// Look for all markdown headers (# ## ### #### etc.)
+			const headerRegex = /^#{1,6}\s+.+/
 
 			lines.forEach((line, index) => {
 				try {
-					if (requirementHeaderRegex.test(line)) {
+					if (headerRegex.test(line)) {
 						const range = new vscode.Range(index, 0, index, line.length)
 						const codeLens = new vscode.CodeLens(range) as CoworkflowCodeLens
 						codeLens.documentType = "requirements"
@@ -318,12 +353,12 @@ export class CoworkflowCodeLensProvider implements ICoworkflowCodeLensProvider {
 			const text = document.getText()
 			const lines = text.split("\n")
 
-			// Look for major section headers (## Section Name)
-			const sectionHeaderRegex = /^##\s+[^#]/
+			// Look for all markdown headers (# ## ### #### etc.)
+			const headerRegex = /^#{1,6}\s+.+/
 
 			lines.forEach((line, index) => {
 				try {
-					if (sectionHeaderRegex.test(line)) {
+					if (headerRegex.test(line)) {
 						const range = new vscode.Range(index, 0, index, line.length)
 						const codeLens = new vscode.CodeLens(range) as CoworkflowCodeLens
 						codeLens.documentType = "design"

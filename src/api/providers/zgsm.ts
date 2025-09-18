@@ -104,6 +104,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 		const requestId = uuidv7()
 		await this.fetchModel()
 		const fromWorkflow =
+			metadata?.zgsmWorkflowMode ||
 			metadata?.mode === "workflow" ||
 			metadata?.rooTaskMode === "workflow" ||
 			metadata?.parentTaskMode === "workflow"

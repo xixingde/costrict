@@ -8,6 +8,7 @@ import {
 	ICoworkflowFileWatcher,
 	CoworkflowFileContext,
 	CoworkflowDocumentType,
+	CoworkflowDocumentInfo,
 	CoworkflowWatcherConfig,
 	CoworkflowFileChangeEvent,
 } from "./types"
@@ -29,9 +30,8 @@ export class CoworkflowFileWatcher implements ICoworkflowFileWatcher {
 			enabled: true,
 			debounceDelay: 300,
 			watchPatterns: [
-				"**/.coworkflow/**/requirements.md",
-				"**/.coworkflow/**/design.md",
-				"**/.coworkflow/**/tasks.md",
+				"**/{requirements,design,tasks}.md", // Root level files
+				"**/**/{requirements,design,tasks}.md", // Same three files in subdirectories
 			],
 			...config,
 		}
@@ -74,8 +74,8 @@ export class CoworkflowFileWatcher implements ICoworkflowFileWatcher {
 
 	public onFileChanged(uri: vscode.Uri): void {
 		try {
-			const documentType = this.getDocumentTypeFromUri(uri)
-			if (!documentType) {
+			const documentInfo = this.getDocumentInfoFromUri(uri)
+			if (!documentInfo) {
 				return
 			}
 
@@ -84,13 +84,14 @@ export class CoworkflowFileWatcher implements ICoworkflowFileWatcher {
 			const context = this.fileContexts.get(key)
 			if (context) {
 				context.lastModified = new Date()
+				context.documentInfo = documentInfo
 			}
 
 			// Emit change event
 			this.onFileChangedEmitter.fire({
 				uri,
 				changeType: vscode.FileChangeType.Changed,
-				documentType,
+				documentType: documentInfo.type,
 			})
 		} catch (error) {
 			const coworkflowError = this.errorHandler.createError(
@@ -118,7 +119,7 @@ export class CoworkflowFileWatcher implements ICoworkflowFileWatcher {
 				return undefined
 			}
 
-			const coworkflowPath = path.join(workspaceFolder.uri.fsPath, ".coworkflow")
+			const coworkflowPath = path.join(workspaceFolder.uri.fsPath, ".cospec")
 			return coworkflowPath
 		} catch (error) {
 			const coworkflowError = this.errorHandler.createError(
@@ -186,7 +187,7 @@ export class CoworkflowFileWatcher implements ICoworkflowFileWatcher {
 			return
 		}
 
-		// Check if .coworkflow directory exists
+		// Check if .cospec directory exists
 		vscode.workspace.fs.stat(vscode.Uri.file(coworkflowPath)).then(
 			(stat) => {
 				// Verify it's actually a directory
@@ -194,7 +195,7 @@ export class CoworkflowFileWatcher implements ICoworkflowFileWatcher {
 					const error = this.errorHandler.createError(
 						"file_system_error",
 						"warning",
-						".coworkflow exists but is not a directory",
+						".cospec exists but is not a directory",
 						undefined,
 						vscode.Uri.file(coworkflowPath),
 					)
@@ -213,7 +214,7 @@ export class CoworkflowFileWatcher implements ICoworkflowFileWatcher {
 						this.errorHandler.createError(
 							"not_found_error",
 							"info",
-							".coworkflow directory not found - coworkflow monitoring disabled",
+							".cospec directory not found - coworkflow monitoring disabled",
 							error,
 							vscode.Uri.file(coworkflowPath),
 						),
@@ -223,7 +224,7 @@ export class CoworkflowFileWatcher implements ICoworkflowFileWatcher {
 					const coworkflowError = this.errorHandler.createError(
 						"permission_error",
 						"warning",
-						"Permission denied accessing .coworkflow directory",
+						"Permission denied accessing .cospec directory",
 						error,
 						vscode.Uri.file(coworkflowPath),
 					)
@@ -233,7 +234,7 @@ export class CoworkflowFileWatcher implements ICoworkflowFileWatcher {
 					const coworkflowError = this.errorHandler.createError(
 						"file_system_error",
 						"warning",
-						"Error accessing .coworkflow directory",
+						"Error accessing .cospec directory",
 						error,
 						vscode.Uri.file(coworkflowPath),
 					)
@@ -279,10 +280,11 @@ export class CoworkflowFileWatcher implements ICoworkflowFileWatcher {
 						try {
 							const key = uri.toString()
 							this.fileContexts.delete(key)
+							const documentInfo = this.getDocumentInfoFromUri(uri)
 							this.onFileChangedEmitter.fire({
 								uri,
 								changeType: vscode.FileChangeType.Deleted,
-								documentType: this.getDocumentTypeFromUri(uri),
+								documentType: documentInfo?.type,
 							})
 						} catch (error) {
 							const coworkflowError = this.errorHandler.createError(
@@ -303,66 +305,8 @@ export class CoworkflowFileWatcher implements ICoworkflowFileWatcher {
 					this.fileWatchers.set(pattern, watcher)
 					this.disposables.push(watcher)
 
-					// Initialize file context if file exists
-					vscode.workspace.fs.stat(fileUri).then(
-						(stat) => {
-							try {
-								const documentType = this.getDocumentTypeFromUri(fileUri)
-								if (documentType) {
-									this.fileContexts.set(fileUri.toString(), {
-										uri: fileUri,
-										type: documentType,
-										lastModified: new Date(stat.mtime),
-										isActive: true,
-									})
-								}
-							} catch (error) {
-								const coworkflowError = this.errorHandler.createError(
-									"file_system_error",
-									"warning",
-									`Error initializing file context for ${pattern}`,
-									error as Error,
-									fileUri,
-								)
-								this.errorHandler.handleError(coworkflowError)
-							}
-						},
-						(error) => {
-							// Handle different types of file access errors
-							if (error.code === "FileNotFound" || error.code === "ENOENT") {
-								// File doesn't exist yet, that's normal
-								this.errorHandler.logError(
-									this.errorHandler.createError(
-										"not_found_error",
-										"info",
-										`Coworkflow file ${pattern} not found - will monitor for creation`,
-										error,
-										fileUri,
-									),
-								)
-							} else if (error.code === "EACCES" || error.code === "EPERM") {
-								// Permission error
-								const coworkflowError = this.errorHandler.createError(
-									"permission_error",
-									"warning",
-									`Permission denied accessing ${pattern}`,
-									error,
-									fileUri,
-								)
-								this.errorHandler.handleError(coworkflowError)
-							} else {
-								// Other file system error
-								const coworkflowError = this.errorHandler.createError(
-									"file_system_error",
-									"warning",
-									`Error accessing coworkflow file ${pattern}`,
-									error,
-									fileUri,
-								)
-								this.errorHandler.handleError(coworkflowError)
-							}
-						},
-					)
+					// Initialize file contexts for existing files that match the pattern
+					this.initializeExistingFiles(coworkflowPath, pattern)
 				} catch (error) {
 					const coworkflowError = this.errorHandler.createError(
 						"file_system_error",
@@ -384,17 +328,124 @@ export class CoworkflowFileWatcher implements ICoworkflowFileWatcher {
 		}
 	}
 
-	private getDocumentTypeFromUri(uri: vscode.Uri): CoworkflowDocumentType | undefined {
-		const fileName = path.basename(uri.fsPath)
-		switch (fileName) {
-			case "requirements.md":
-				return "requirements"
-			case "design.md":
-				return "design"
-			case "tasks.md":
-				return "tasks"
-			default:
+	public getDocumentInfoFromUri(uri: vscode.Uri): CoworkflowDocumentInfo | undefined {
+		try {
+			const coworkflowPath = this.getCoworkflowPath()
+			if (!coworkflowPath) {
 				return undefined
+			}
+
+			const coworkflowUri = vscode.Uri.file(coworkflowPath)
+			const relativePath = path.relative(coworkflowUri.fsPath, uri.fsPath)
+
+			// Check if file is within .cospec directory
+			if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+				return undefined
+			}
+
+			const fileName = path.basename(uri.fsPath)
+			const baseName = path.basename(fileName, ".md")
+			const subdirectory = path.dirname(relativePath)
+
+			// Only allow the three specific file names
+			if (!["requirements.md", "design.md", "tasks.md"].includes(fileName)) {
+				return undefined
+			}
+
+			// Determine document type based on filename
+			let documentType: CoworkflowDocumentType
+			switch (fileName) {
+				case "requirements.md":
+					documentType = "requirements"
+					break
+				case "design.md":
+					documentType = "design"
+					break
+				case "tasks.md":
+					documentType = "tasks"
+					break
+				default:
+					return undefined // This should never happen due to the check above
+			}
+
+			return {
+				type: documentType,
+				relativePath,
+				baseName,
+				subdirectory: subdirectory === "." ? "" : subdirectory,
+			}
+		} catch (error) {
+			const coworkflowError = this.errorHandler.createError(
+				"file_system_error",
+				"warning",
+				"Error getting document info from URI",
+				error as Error,
+				uri,
+			)
+			this.errorHandler.handleError(coworkflowError)
+			return undefined
+		}
+	}
+
+	private getDocumentTypeFromUri(uri: vscode.Uri): CoworkflowDocumentType | undefined {
+		const documentInfo = this.getDocumentInfoFromUri(uri)
+		return documentInfo?.type
+	}
+
+	/**
+	 * Initialize file contexts for existing files that match the pattern
+	 */
+	private async initializeExistingFiles(coworkflowPath: string, pattern: string): Promise<void> {
+		try {
+			// Use workspace.findFiles to find actual files matching the pattern
+			const globPattern = new vscode.RelativePattern(coworkflowPath, pattern)
+			const files = await vscode.workspace.findFiles(globPattern)
+
+			for (const fileUri of files) {
+				try {
+					const stat = await vscode.workspace.fs.stat(fileUri)
+					const documentInfo = this.getDocumentInfoFromUri(fileUri)
+
+					if (documentInfo) {
+						this.fileContexts.set(fileUri.toString(), {
+							uri: fileUri,
+							type: documentInfo.type,
+							documentInfo: documentInfo,
+							lastModified: new Date(stat.mtime),
+							isActive: true,
+						})
+
+						this.errorHandler.logError(
+							this.errorHandler.createError(
+								"file_system_error",
+								"info",
+								`Initialized file context for ${documentInfo.relativePath}`,
+								undefined,
+								fileUri,
+							),
+						)
+					}
+				} catch (error) {
+					this.errorHandler.logError(
+						this.errorHandler.createError(
+							"file_system_error",
+							"warning",
+							`Error initializing file context for ${fileUri.fsPath}`,
+							error as Error,
+							fileUri,
+						),
+					)
+				}
+			}
+		} catch (error) {
+			this.errorHandler.logError(
+				this.errorHandler.createError(
+					"file_system_error",
+					"warning",
+					`Error finding files for pattern ${pattern}`,
+					error as Error,
+				),
+			)
 		}
 	}
 }

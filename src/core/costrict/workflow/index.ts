@@ -42,9 +42,9 @@ export class CoworkflowIntegration {
 			this.disposables.push(this.fileWatcher)
 
 			// Initialize CodeLens provider
-			this.codeLensProvider = new CoworkflowCodeLensProvider()
+			this.codeLensProvider = new CoworkflowCodeLensProvider(this.fileWatcher)
 			const codeLensDisposable = vscode.languages.registerCodeLensProvider(
-				{ scheme: "file", pattern: "**/.coworkflow/*.md" },
+				{ scheme: "file", pattern: "**/.cospec/**/*.md" }, // Updated pattern to support subdirectories
 				this.codeLensProvider,
 			)
 			this.disposables.push(codeLensDisposable)
@@ -70,6 +70,12 @@ export class CoworkflowIntegration {
 
 			// Add all disposables to context
 			context.subscriptions.push(...this.disposables)
+
+			// Initialize decorations for already open documents with a delay
+			// to ensure all components are fully initialized
+			setTimeout(() => {
+				this.initializeExistingDocuments()
+			}, 500)
 
 			this.errorHandler.logError(
 				this.errorHandler.createError("command_error", "info", "Coworkflow integration successfully activated"),
@@ -277,11 +283,28 @@ export class CoworkflowIntegration {
 	 * Check if a document is a coworkflow document
 	 */
 	private isCoworkflowDocument(document: vscode.TextDocument): boolean {
+		if (!this.fileWatcher) {
+			return false
+		}
+
+		// First try to get document info from file watcher
+		const documentInfo = this.fileWatcher.getDocumentInfoFromUri(document.uri)
+		if (documentInfo !== undefined) {
+			return true
+		}
+
+		// Fallback: check if the file path matches coworkflow pattern
 		const path = document.uri.path
 		const fileName = path.split("/").pop()
-		const parentDir = path.split("/").slice(-2, -1)[0]
+		const parentDir = path.split("/")
 
-		return parentDir === ".coworkflow" && ["requirements.md", "design.md", "tasks.md"].includes(fileName || "")
+		// Check if file is within .cospec directory
+		if (!parentDir.includes(".cospec")) {
+			return false
+		}
+
+		// Check if it's one of the supported files
+		return fileName === "tasks.md" || fileName === "requirements.md" || fileName === "design.md"
 	}
 
 	/**
@@ -303,6 +326,30 @@ export class CoworkflowIntegration {
 	 */
 	public getDecorationProvider(): CoworkflowDecorationProvider | undefined {
 		return this.decorationProvider
+	}
+
+	/**
+	 * Initialize decorations for already open documents
+	 */
+	private initializeExistingDocuments(): void {
+		try {
+			// Apply decorations to already open coworkflow documents
+			vscode.workspace.textDocuments.forEach((document) => {
+				if (this.isCoworkflowDocument(document)) {
+					console.log(`CoworkflowIntegration: Initializing decorations for ${document.uri.path}`)
+					this.decorationProvider?.updateDecorations(document)
+				}
+			})
+		} catch (error) {
+			this.errorHandler.handleError(
+				this.errorHandler.createError(
+					"provider_error",
+					"warning",
+					"Error initializing decorations for existing documents",
+					error as Error,
+				),
+			)
+		}
 	}
 
 	/**

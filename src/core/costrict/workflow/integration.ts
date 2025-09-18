@@ -23,9 +23,9 @@ export function activateCoworkflowIntegration(context: vscode.ExtensionContext):
 		context.subscriptions.push(
 			vscode.languages.registerCodeLensProvider(
 				[
-					{ pattern: "**/.coworkflow/**/requirements.md" },
-					{ pattern: "**/.coworkflow/**/design.md" },
-					{ pattern: "**/.coworkflow/**/tasks.md" },
+					{ pattern: "**/.cospec/**/requirements.md" },
+					{ pattern: "**/.cospec/**/design.md" },
+					{ pattern: "**/.cospec/**/tasks.md" },
 				],
 				codeLensProvider,
 			),

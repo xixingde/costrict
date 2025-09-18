@@ -6,6 +6,9 @@ import * as vscode from "vscode"
 import { CoworkflowCodeLens, CoworkflowCommandContext } from "./types"
 import { CoworkflowErrorHandler } from "./CoworkflowErrorHandler"
 import { getCommand } from "../../../utils/commands"
+import { supportPrompt, type SupportPromptType } from "../../../shared/support-prompt"
+import { ClineProvider } from "../../webview/ClineProvider"
+import path from "path"
 
 /**
  * Command identifiers for coworkflow operations
@@ -62,23 +65,27 @@ export function registerCoworkflowCommands(context: vscode.ExtensionContext): vs
 	}
 
 	try {
-		// Register update section command
+		// 1.egister update section command
+		// 应用 supportPromptConfigs 的 WORKFLOW_RQS_UPDATE 更新需求的提示词
+		// 应用 supportPromptConfigs 的 WORKFLOW_DESIGN_UPDATE 更新设计的提示词
 		disposables.push(
 			vscode.commands.registerCommand(getCommand(COWORKFLOW_COMMANDS.UPDATE_SECTION), handleUpdateSection),
 		)
 
-		// Register run task command
+		// 2.Register run task command
+		// 应用 supportPromptConfigs 的 WORKFLOW_TASK_RUN 执行任务的提示词
 		disposables.push(vscode.commands.registerCommand(getCommand(COWORKFLOW_COMMANDS.RUN_TASK), handleRunTask))
 
-		// Register retry task command
+		// 3.Register retry task command
+		// 应用 supportPromptConfigs 的 WORKFLOW_TASK_RETRY 重试任务的提示词
 		disposables.push(vscode.commands.registerCommand(getCommand(COWORKFLOW_COMMANDS.RETRY_TASK), handleRetryTask))
 
-		// Register refresh CodeLens command
+		// 4.Register refresh CodeLens command
 		disposables.push(
 			vscode.commands.registerCommand(getCommand(COWORKFLOW_COMMANDS.REFRESH_CODELENS), handleRefreshCodeLens),
 		)
 
-		// Register refresh decorations command
+		// 5.Register refresh decorations command
 		disposables.push(
 			vscode.commands.registerCommand(
 				getCommand(COWORKFLOW_COMMANDS.REFRESH_DECORATIONS),
@@ -110,6 +117,137 @@ export function registerCoworkflowCommands(context: vscode.ExtensionContext): vs
 }
 
 /**
+ * Get scope path (directory path without filename) from URI
+ */
+function getScopePath(uri: vscode.Uri): string {
+	const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri)
+	if (!workspaceFolder) {
+		return path.dirname(uri.fsPath)
+	}
+
+	const relativePath = path.relative(workspaceFolder.uri.fsPath, uri.fsPath)
+	return path.dirname(relativePath)
+}
+
+/**
+ * Get selected text from the active editor
+ */
+function getSelectedText(): string {
+	const activeEditor = vscode.window.activeTextEditor
+	if (!activeEditor) {
+		return ""
+	}
+
+	const selection = activeEditor.selection
+	if (selection.isEmpty) {
+		// If no selection, return empty string instead of entire document
+		return ""
+	}
+
+	return activeEditor.document.getText(selection)
+}
+
+/**
+ * Get task block content based on CodeLens context
+ */
+function getTaskBlockContent(commandContext: CoworkflowCommandContext): string {
+	const activeEditor = vscode.window.activeTextEditor
+	if (!activeEditor) {
+		return ""
+	}
+
+	// If user has selected text, use that
+	const selection = activeEditor.selection
+	if (!selection.isEmpty) {
+		return activeEditor.document.getText(selection)
+	}
+
+	// If no selection, try to get the task block based on context
+	if (commandContext.context?.lineNumber !== undefined) {
+		const lineNumber = commandContext.context.lineNumber
+		const document = activeEditor.document
+
+		// Get the task line
+		if (lineNumber >= 0 && lineNumber < document.lineCount) {
+			const taskLine = document.lineAt(lineNumber)
+
+			// For tasks.md files, try to get the task and its sub-content
+			if (commandContext.documentType === "tasks") {
+				return getTaskWithSubContent(document, lineNumber)
+			}
+
+			// For other files, just return the line
+			return taskLine.text
+		}
+	}
+
+	return ""
+}
+
+/**
+ * Get task content including sub-items
+ */
+function getTaskWithSubContent(document: vscode.TextDocument, taskLineNumber: number): string {
+	const lines: string[] = []
+	const taskLine = document.lineAt(taskLineNumber)
+	const taskIndent = getIndentLevel(taskLine.text)
+
+	// Add the task line itself
+	lines.push(taskLine.text)
+
+	// Look for sub-content (indented lines following the task)
+	for (let i = taskLineNumber + 1; i < document.lineCount; i++) {
+		const line = document.lineAt(i)
+		const lineText = line.text.trim()
+
+		// Stop if we hit an empty line or a line with same/less indentation that looks like another task
+		if (lineText === "") {
+			continue
+		}
+
+		const lineIndent = getIndentLevel(line.text)
+
+		// If this line has less or equal indentation and looks like a task, stop
+		if (lineIndent <= taskIndent && (lineText.startsWith("- [") || lineText.startsWith("* ["))) {
+			break
+		}
+
+		// If this line has more indentation, it's sub-content
+		if (lineIndent > taskIndent) {
+			lines.push(line.text)
+		} else {
+			// Same or less indentation but not a task - could be section header, stop
+			break
+		}
+	}
+
+	return lines.join("\n")
+}
+
+/**
+ * Get indentation level of a line
+ */
+function getIndentLevel(line: string): number {
+	let indent = 0
+	for (const char of line) {
+		if (char === " ") {
+			indent++
+		} else if (char === "\t") {
+			indent += 4 // Treat tab as 4 spaces
+		} else {
+			break
+		}
+	}
+	return indent
+}
+// 需求：requirements
+const requirementMode = "requirements"
+// 设计：architect
+const designMode = "architect"
+// 任务：task
+const taskMode = "task"
+
+/**
  * Handle update section command
  */
 async function handleUpdateSection(codeLens: CoworkflowCodeLens): Promise<void> {
@@ -129,25 +267,29 @@ async function handleUpdateSection(codeLens: CoworkflowCodeLens): Promise<void> 
 
 		const commandContext = createCommandContext(codeLens)
 
-		// Show information message with detailed context
-		const sectionTitle = commandContext.context?.sectionTitle || "Unknown"
-		const lineNumber =
-			commandContext.context?.lineNumber !== undefined ? ` (line ${commandContext.context.lineNumber + 1})` : ""
-		const message = `Update ${commandContext.documentType} section: ${sectionTitle}${lineNumber}`
+		// Get required parameters for prompt
+		const scope = getScopePath(commandContext.uri)
+		const selectedText = getTaskBlockContent(commandContext)
 
-		const result = await vscode.window.showInformationMessage(message, { modal: false }, "Show Details")
-
-		if (result === "Show Details") {
-			errorHandler.logError(
-				errorHandler.createError(
-					"command_error",
-					"info",
-					`Update section command executed successfully for ${commandContext.documentType}`,
-					undefined,
-					commandContext.uri,
-				),
-			)
+		const mode = commandContext.documentType === "requirements" ? requirementMode : designMode // 需求/设计相关操作使用 architect 模式
+		// Determine prompt type based on document type
+		let promptType: SupportPromptType
+		if (commandContext.documentType === "requirements") {
+			promptType = "WORKFLOW_RQS_UPDATE"
+		} else if (commandContext.documentType === "design") {
+			promptType = "WORKFLOW_DESIGN_UPDATE"
+		} else {
+			throw new Error(`Unsupported document type for update: ${commandContext.documentType}`)
 		}
+
+		// Create the prompt using supportPrompt
+		const prompt = supportPrompt.create(promptType, {
+			scope,
+			selectedText,
+			mode,
+		})
+
+		await ClineProvider.handleWorkflowAction(prompt, mode)
 
 		// Log detailed context for debugging
 		console.log("CoworkflowCommands: Update section requested", {
@@ -155,9 +297,10 @@ async function handleUpdateSection(codeLens: CoworkflowCodeLens): Promise<void> 
 			actionType: commandContext.actionType,
 			uri: commandContext.uri.toString(),
 			context: commandContext.context,
+			scope,
+			selectedTextLength: selectedText.length,
+			promptType,
 		})
-
-		// TODO: Implement actual update logic in later tasks
 	} catch (error) {
 		handleCommandError("Update Section", error, codeLens?.range)
 	}
@@ -183,63 +326,30 @@ async function handleRunTask(codeLens: CoworkflowCodeLens): Promise<void> {
 
 		const commandContext = createCommandContext(codeLens)
 
-		// Validate task context
-		if (!commandContext.context?.taskId) {
-			errorHandler.logError(
-				errorHandler.createError(
-					"command_error",
-					"warning",
-					"Task ID not found - proceeding with generic task execution",
-					undefined,
-					commandContext.uri,
-				),
-			)
-		}
+		// // Validate task context
+		// if (!commandContext.context?.taskId) {
+		// 	errorHandler.logError(
+		// 		errorHandler.createError(
+		// 			"command_error",
+		// 			"warning",
+		// 			"Task ID not found - proceeding with generic task execution",
+		// 			undefined,
+		// 			commandContext.uri,
+		// 		),
+		// 	)
+		// }
 
-		// Show information message with detailed context
-		const taskId = commandContext.context?.taskId || "Unknown"
-		const taskTitle = commandContext.context?.sectionTitle || "Unknown"
-		const lineNumber =
-			commandContext.context?.lineNumber !== undefined ? ` (line ${commandContext.context.lineNumber + 1})` : ""
-		const message = `Run task: ${taskId} - ${taskTitle}${lineNumber}`
+		// Get required parameters for prompt
+		const scope = getScopePath(commandContext.uri)
+		const selectedText = getTaskBlockContent(commandContext)
 
-		const result = await vscode.window.showInformationMessage(message, { modal: false }, "Show Details", "Cancel")
-
-		if (result === "Cancel") {
-			errorHandler.logError(
-				errorHandler.createError(
-					"command_error",
-					"info",
-					"Task execution cancelled by user",
-					undefined,
-					commandContext.uri,
-				),
-			)
-			return
-		}
-
-		if (result === "Show Details") {
-			errorHandler.logError(
-				errorHandler.createError(
-					"command_error",
-					"info",
-					`Run task command executed successfully for task ${taskId}`,
-					undefined,
-					commandContext.uri,
-				),
-			)
-		}
-
-		// Log detailed context for debugging
-		console.log("CoworkflowCommands: Run task requested", {
-			documentType: commandContext.documentType,
-			actionType: commandContext.actionType,
-			uri: commandContext.uri.toString(),
-			taskId,
-			context: commandContext.context,
+		// Create the prompt using supportPrompt
+		const prompt = supportPrompt.create("WORKFLOW_TASK_RUN", {
+			scope,
+			selectedText,
+			mode: taskMode,
 		})
-
-		// TODO: Implement actual task execution logic in later tasks
+		await ClineProvider.handleWorkflowAction(prompt, taskMode)
 	} catch (error) {
 		handleCommandError("Run Task", error, codeLens?.range)
 	}
@@ -265,72 +375,30 @@ async function handleRetryTask(codeLens: CoworkflowCodeLens): Promise<void> {
 
 		const commandContext = createCommandContext(codeLens)
 
-		// Validate task context
-		if (!commandContext.context?.taskId) {
-			errorHandler.logError(
-				errorHandler.createError(
-					"command_error",
-					"warning",
-					"Task ID not found - proceeding with generic task retry",
-					undefined,
-					commandContext.uri,
-				),
-			)
-		}
+		// // Validate task context
+		// if (!commandContext.context?.taskId) {
+		// 	errorHandler.logError(
+		// 		errorHandler.createError(
+		// 			"command_error",
+		// 			"warning",
+		// 			"Task ID not found - proceeding with generic task execution",
+		// 			undefined,
+		// 			commandContext.uri,
+		// 		),
+		// 	)
+		// }
 
-		// Show confirmation dialog for retry
-		const taskId = commandContext.context?.taskId || "Unknown"
-		const taskTitle = commandContext.context?.sectionTitle || "Unknown"
-		const lineNumber =
-			commandContext.context?.lineNumber !== undefined ? ` (line ${commandContext.context.lineNumber + 1})` : ""
-		const message = `Retry task: ${taskId} - ${taskTitle}${lineNumber}`
+		// Get required parameters for prompt
+		const scope = getScopePath(commandContext.uri)
+		const selectedText = getTaskBlockContent(commandContext)
 
-		const result = await vscode.window.showWarningMessage(
-			message,
-			{ modal: true },
-			"Retry",
-			"Show Details",
-			"Cancel",
-		)
-
-		if (result === "Cancel") {
-			errorHandler.logError(
-				errorHandler.createError(
-					"command_error",
-					"info",
-					"Task retry cancelled by user",
-					undefined,
-					commandContext.uri,
-				),
-			)
-			return
-		}
-
-		if (result === "Show Details") {
-			errorHandler.logError(
-				errorHandler.createError(
-					"command_error",
-					"info",
-					`Retry task command executed successfully for task ${taskId}`,
-					undefined,
-					commandContext.uri,
-				),
-			)
-		}
-
-		if (result === "Retry") {
-			// Log detailed context for debugging
-			console.log("CoworkflowCommands: Retry task requested", {
-				documentType: commandContext.documentType,
-				actionType: commandContext.actionType,
-				uri: commandContext.uri.toString(),
-				taskId,
-				context: commandContext.context,
-			})
-
-			// TODO: Implement actual task retry logic in later tasks
-			vscode.window.showInformationMessage(`Task ${taskId} retry initiated`)
-		}
+		// Create the prompt using supportPrompt
+		const prompt = supportPrompt.create("WORKFLOW_TASK_RETRY", {
+			scope,
+			selectedText,
+			mode: taskMode,
+		})
+		await ClineProvider.handleWorkflowAction(prompt, taskMode)
 	} catch (error) {
 		handleCommandError("Retry Task", error, codeLens?.range)
 	}
@@ -453,7 +521,7 @@ function createCommandContext(codeLens: CoworkflowCodeLens): CoworkflowCommandCo
 
 		// Validate that the active editor is a coworkflow document
 		if (!isCoworkflowDocument(activeEditor.document.uri)) {
-			throw new Error("Active editor is not a coworkflow document - expected .coworkflow/*.md file")
+			throw new Error("Active editor is not a coworkflow document - expected .cospec/*.md file")
 		}
 
 		// Validate CodeLens range is within document bounds
@@ -545,11 +613,18 @@ function handleCommandError(commandName: string, error: unknown, range?: vscode.
 
 /**
  * Utility function to check if a URI is a coworkflow document
+ * Supports the three fixed files (requirements.md, design.md, tasks.md) in root and subdirectories
  */
 export function isCoworkflowDocument(uri: vscode.Uri): boolean {
 	const path = uri.path
 	const fileName = path.split("/").pop()
-	const parentDir = path.split("/").slice(-2, -1)[0]
+	const parentDir = path.split("/")
 
-	return parentDir === ".coworkflow" && ["requirements.md", "design.md", "tasks.md"].includes(fileName || "")
+	// Check if file is within .cospec directory
+	if (!parentDir.includes(".cospec")) {
+		return false
+	}
+
+	// Only allow the three specific file names
+	return ["requirements.md", "design.md", "tasks.md"].includes(fileName || "")
 }

@@ -11,8 +11,23 @@ export type TaskStatusType = "not_started" | "in_progress" | "completed"
 
 /**
  * Document types supported by coworkflow
+ * Supports both legacy fixed types and flexible subdirectory-based types
  */
-export type CoworkflowDocumentType = "requirements" | "design" | "tasks"
+export type CoworkflowDocumentType = "requirements" | "design" | "tasks" | "subdirectory" // For markdown files in subdirectories like specs/
+
+/**
+ * Extended document information for subdirectory files
+ */
+export interface CoworkflowDocumentInfo {
+	/** Document type */
+	type: CoworkflowDocumentType
+	/** Relative path from .cospec directory */
+	relativePath: string
+	/** File name without extension */
+	baseName: string
+	/** Subdirectory path (empty for root files) */
+	subdirectory: string
+}
 
 /**
  * CodeLens action types for different operations
@@ -62,6 +77,8 @@ export interface CoworkflowFileContext {
 	uri: vscode.Uri
 	/** Type of coworkflow document */
 	type: CoworkflowDocumentType
+	/** Extended document information */
+	documentInfo: CoworkflowDocumentInfo
 	/** Last modification timestamp */
 	lastModified: Date
 	/** Whether the file is currently active/monitored */
@@ -92,6 +109,8 @@ export interface ICoworkflowFileWatcher extends vscode.Disposable {
 	getCoworkflowPath(): string | undefined
 	/** Check if a file is being monitored */
 	isMonitoring(uri: vscode.Uri): boolean
+	/** Get document information from URI */
+	getDocumentInfoFromUri(uri: vscode.Uri): CoworkflowDocumentInfo | undefined
 }
 
 /**

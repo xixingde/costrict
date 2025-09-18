@@ -714,6 +714,28 @@ export class ClineProvider
 		}
 	}
 
+	public static async handleWorkflowAction(prompt: string, mode: string): Promise<void> {
+		TelemetryService.instance.captureCodeActionUsed(prompt)
+
+		const visibleProvider = await ClineProvider.getInstance()
+
+		if (!visibleProvider) {
+			return
+		}
+		await visibleProvider.setMode(mode)
+
+		try {
+			await visibleProvider.createTask(prompt)
+		} catch (error) {
+			if (error instanceof OrganizationAllowListViolationError) {
+				// Errors from terminal commands seem to get swallowed / ignored.
+				vscode.window.showErrorMessage(error.message)
+			}
+
+			throw error
+		}
+	}
+
 	async resolveWebviewView(webviewView: vscode.WebviewView | vscode.WebviewPanel) {
 		this.view = webviewView
 		const inTabMode = "onDidChangeViewState" in webviewView
