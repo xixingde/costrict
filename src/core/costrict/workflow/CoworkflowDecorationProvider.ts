@@ -34,10 +34,10 @@ class HierarchyDetector implements IHierarchyDetector {
 			const match = pattern.exec(line)
 			if (match) {
 				const indentStr = match[1]
-				// 计算缩进级别：4个空格或1个Tab = 1级
+				// 计算缩进级别：2个空格或1个Tab = 1级
 				const spaceCount = (indentStr.match(/\s/g) || []).length
 				const tabCount = (indentStr.match(/\t/g) || []).length
-				return Math.floor(spaceCount / 4) + tabCount
+				return Math.floor(spaceCount / 2) + tabCount
 			}
 		}
 		return -1 // 非任务行
@@ -103,7 +103,7 @@ class HierarchyDetector implements IHierarchyDetector {
 		} else {
 			// 计算最常见的空格缩进大小
 			const spaceCounts = spaceIndents.map((s) => s.length)
-			const commonSize = this.findMostCommon(spaceCounts) || 4
+			const commonSize = this.findMostCommon(spaceCounts) || 2
 			return { type: "space", size: commonSize }
 		}
 	}
@@ -257,7 +257,7 @@ class IndependentHierarchyDecorationStrategy implements IHierarchyDecorationStra
 const DEFAULT_HIERARCHY_CONFIG: HierarchyDecorationConfig = {
 	maxDepth: 10,
 	borderWidth: {
-		base: 3,
+		base: 2,
 		increment: 1,
 	},
 	colors: {
@@ -781,7 +781,7 @@ export class CoworkflowDecorationProvider implements IHierarchicalCoworkflowDeco
 				// 计算缩进层级
 				const spaceCount = (indentStr.match(/\s/g) || []).length
 				const tabCount = (indentStr.match(/\t/g) || []).length
-				const indentLevel = Math.floor(spaceCount / 4) + tabCount
+				const indentLevel = Math.floor(spaceCount / 2) + tabCount
 
 				// 查找此行应该属于哪个父任务
 				const parentTask = this.findParentTaskForContent(hierarchicalTasks, i, indentLevel)

@@ -7,12 +7,7 @@ import * as vscode from "vscode"
 import { CoworkflowFileWatcher } from "./CoworkflowFileWatcher"
 import { CoworkflowCodeLensProvider } from "./CoworkflowCodeLensProvider"
 import { CoworkflowDecorationProvider } from "./CoworkflowDecorationProvider"
-import {
-	registerCoworkflowCommands,
-	setCommandHandlerDependencies,
-	clearCommandHandlerDependencies,
-	COWORKFLOW_COMMANDS,
-} from "./commands"
+import { registerCoworkflowCommands, setCommandHandlerDependencies, clearCommandHandlerDependencies } from "./commands"
 import { CoworkflowErrorHandler } from "./CoworkflowErrorHandler"
 
 // Re-export classes and constants for external use

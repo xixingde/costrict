@@ -21,7 +21,14 @@ export function activateCoworkflowIntegration(context: vscode.ExtensionContext):
 		// Initialize CodeLens provider
 		const codeLensProvider = new CoworkflowCodeLensProvider()
 		context.subscriptions.push(
-			vscode.languages.registerCodeLensProvider({ pattern: "**/.coworkflow/*.md" }, codeLensProvider),
+			vscode.languages.registerCodeLensProvider(
+				[
+					{ pattern: "**/.coworkflow/**/requirements.md" },
+					{ pattern: "**/.coworkflow/**/design.md" },
+					{ pattern: "**/.coworkflow/**/tasks.md" },
+				],
+				codeLensProvider,
+			),
 		)
 
 		// Initialize decoration provider

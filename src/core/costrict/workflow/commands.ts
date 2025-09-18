@@ -63,7 +63,9 @@ export function registerCoworkflowCommands(context: vscode.ExtensionContext): vs
 
 	try {
 		// Register update section command
-		disposables.push(vscode.commands.registerCommand(COWORKFLOW_COMMANDS.UPDATE_SECTION, handleUpdateSection))
+		disposables.push(
+			vscode.commands.registerCommand(getCommand(COWORKFLOW_COMMANDS.UPDATE_SECTION), handleUpdateSection),
+		)
 
 		// Register run task command
 		disposables.push(vscode.commands.registerCommand(getCommand(COWORKFLOW_COMMANDS.RUN_TASK), handleRunTask))
