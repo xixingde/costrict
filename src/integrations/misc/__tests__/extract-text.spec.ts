@@ -709,3 +709,169 @@ describe("processCarriageReturns", () => {
 		expect(processCarriageReturns(input)).toBe(expected)
 	})
 })
+
+describe("extractTextFromFile with character limit", () => {
+	const fs = require("fs/promises")
+	const path = require("path")
+	const os = require("os")
+
+	let tempDir: string
+	let testFilePath: string
+
+	beforeEach(async () => {
+		tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "extract-text-test-"))
+		testFilePath = path.join(tempDir, "test.txt")
+	})
+
+	afterEach(async () => {
+		try {
+			await fs.rm(tempDir, { recursive: true, force: true })
+		} catch (error) {
+			// Ignore cleanup errors
+		}
+	})
+
+	it("should apply character limit when file content exceeds limit", async () => {
+		// 创建一个包含大量字符的文件
+		const longContent = "a".repeat(1000)
+		await fs.writeFile(testFilePath, longContent)
+
+		const { extractTextFromFile } = await import("../extract-text")
+		const result = await extractTextFromFile(testFilePath, undefined, 100)
+
+		// 应该被字符限制截断
+		expect(result.length).toBeLessThan(longContent.length + 50) // 加上行号和截断信息
+		expect(result).toContain("[...") // 应该包含截断标识
+		expect(result).toContain("characters omitted...]")
+	})
+
+	it("should apply character limit even when line limit is not exceeded", async () => {
+		// 创建少量行但每行很长的文件
+		const longLine = "x".repeat(500)
+		const content = `${longLine}\n${longLine}\n${longLine}`
+		await fs.writeFile(testFilePath, content)
+
+		const { extractTextFromFile } = await import("../extract-text")
+		const result = await extractTextFromFile(testFilePath, 10, 200) // 行数限制10，字符限制200
+
+		// 字符限制应该优先生效
+		expect(result).toContain("characters omitted")
+		expect(result).not.toContain("lines omitted")
+	})
+
+	it("should apply both line and character limits when line limit is exceeded first", async () => {
+		// 创建很多短行的文件
+		const lines = Array.from({ length: 50 }, (_, i) => `line${i + 1}`)
+		const content = lines.join("\n")
+		await fs.writeFile(testFilePath, content)
+
+		const { extractTextFromFile } = await import("../extract-text")
+		const result = await extractTextFromFile(testFilePath, 10, 10000) // 行数限制10，字符限制很大
+
+		// 行数限制应该先生效，应该只显示行数截断信息
+		expect(result).toContain("showing 10 of 50 total lines")
+		expect(result).not.toContain("character limit")
+	})
+
+	it("should show different truncation messages for different scenarios", async () => {
+		// 测试场景1：只有行数限制
+		const lines = Array.from({ length: 20 }, (_, i) => `line${i + 1}`)
+		const content1 = lines.join("\n")
+		await fs.writeFile(testFilePath, content1)
+
+		const { extractTextFromFile } = await import("../extract-text")
+		const result1 = await extractTextFromFile(testFilePath, 5, undefined)
+		expect(result1).toContain("showing 5 of 20 total lines")
+		expect(result1).not.toContain("character limit")
+
+		// 测试场景2：行数限制 + 字符限制都生效
+		const longLines = Array.from({ length: 20 }, (_, i) => `${"x".repeat(100)}_line${i + 1}`)
+		const content2 = longLines.join("\n")
+		await fs.writeFile(testFilePath, content2)
+
+		const result2 = await extractTextFromFile(testFilePath, 5, 200)
+		expect(result2).toContain("showing 5 of 20 total lines")
+		expect(result2).toContain("character limit (200)")
+
+		// 测试场景3：只有字符限制
+		const longContent = "a".repeat(1000)
+		await fs.writeFile(testFilePath, longContent)
+
+		const result3 = await extractTextFromFile(testFilePath, undefined, 100)
+		expect(result3).toContain("characters omitted")
+		expect(result3).toContain("character limit (100)")
+		expect(result3).not.toContain("total lines")
+	})
+
+	it("should not apply character limit when content is within limit", async () => {
+		const shortContent = "short content"
+		await fs.writeFile(testFilePath, shortContent)
+
+		const { extractTextFromFile } = await import("../extract-text")
+		const result = await extractTextFromFile(testFilePath, undefined, 1000)
+
+		// 内容应该完整保留，只添加行号
+		expect(result).toBe("1 | short content\n")
+		expect(result).not.toContain("characters omitted")
+	})
+
+	it("should handle character limit with line limit when both are exceeded", async () => {
+		// 创建很多长行的文件
+		const longLine = "y".repeat(100)
+		const lines = Array.from({ length: 30 }, (_, i) => `${longLine}_${i + 1}`)
+		const content = lines.join("\n")
+		await fs.writeFile(testFilePath, content)
+
+		const { extractTextFromFile } = await import("../extract-text")
+		const result = await extractTextFromFile(testFilePath, 5, 500) // 行数限制5，字符限制500
+
+		// 行数限制先生效，然后字符限制应用到截断后的内容
+		expect(result).toContain("showing 5 of 30 total lines")
+		// 字符限制也应该应用
+		expect(result).toContain("characters omitted")
+	})
+
+	it("should validate maxReadCharacterLimit parameter", async () => {
+		await fs.writeFile(testFilePath, "test content")
+
+		const { extractTextFromFile } = await import("../extract-text")
+
+		// 测试无效的字符限制参数
+		await expect(extractTextFromFile(testFilePath, undefined, 0)).rejects.toThrow(
+			"Invalid maxReadCharacterLimit: 0. Must be a positive integer or undefined for unlimited.",
+		)
+
+		await expect(extractTextFromFile(testFilePath, undefined, -1)).rejects.toThrow(
+			"Invalid maxReadCharacterLimit: -1. Must be a positive integer or undefined for unlimited.",
+		)
+	})
+
+	it("should work correctly when maxReadCharacterLimit is undefined", async () => {
+		const content = "test content without limit"
+		await fs.writeFile(testFilePath, content)
+
+		const { extractTextFromFile } = await import("../extract-text")
+		const result = await extractTextFromFile(testFilePath, undefined, undefined)
+
+		// 应该返回完整内容加行号
+		expect(result).toBe("1 | test content without limit\n")
+	})
+
+	it("should apply character limit to line-limited content correctly", async () => {
+		// 创建内容，行数超限但字符数在限制内
+		const lines = Array.from({ length: 20 }, (_, i) => `line${i + 1}`)
+		const content = lines.join("\n")
+		await fs.writeFile(testFilePath, content)
+
+		const { extractTextFromFile } = await import("../extract-text")
+		const result = await extractTextFromFile(testFilePath, 5, 200) // 行数限制5，字符限制200
+
+		// 行数限制先生效
+		expect(result).toContain("showing 5 of 20 total lines")
+
+		// 然后字符限制应用到结果上
+		if (result.length > 200) {
+			expect(result).toContain("characters omitted")
+		}
+	})
+})
