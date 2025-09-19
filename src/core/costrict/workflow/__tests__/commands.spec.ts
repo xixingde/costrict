@@ -42,6 +42,9 @@ vi.mock("vscode", () => ({
 	TextEditorRevealType: {
 		InCenter: 1,
 	},
+	env: {
+		uriScheme: "vscode",
+	},
 }))
 
 // Mock supportPrompt
@@ -52,12 +55,17 @@ vi.mock("../../../../shared/support-prompt", () => ({
 }))
 
 // Mock path module
-vi.mock("path", () => ({
-	default: {
-		dirname: vi.fn((p: string) => p.split("/").slice(0, -1).join("/")),
-		relative: vi.fn((from: string, to: string) => to.replace(from, "").replace(/^\//, "")),
-	},
-}))
+vi.mock("path", async (importOriginal) => {
+	const actual = (await importOriginal()) as any
+	return {
+		...actual,
+		default: {
+			dirname: vi.fn((p: string) => p.split("/").slice(0, -1).join("/")),
+			relative: vi.fn((from: string, to: string) => to.replace(from, "").replace(/^\//, "")),
+			join: vi.fn((...paths: string[]) => paths.join("/")),
+		},
+	}
+})
 
 describe("Coworkflow Commands", () => {
 	let mockContext: vscode.ExtensionContext

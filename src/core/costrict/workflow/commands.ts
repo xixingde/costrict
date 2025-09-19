@@ -3,11 +3,12 @@
  */
 
 import * as vscode from "vscode"
-import { CoworkflowCodeLens, CoworkflowCommandContext } from "./types"
+import { CoworkflowCodeLens, CoworkflowCommandContext, ContentExtractionContext } from "./types"
 import { CoworkflowErrorHandler } from "./CoworkflowErrorHandler"
 import { getCommand } from "../../../utils/commands"
 import { supportPrompt, type SupportPromptType } from "../../../shared/support-prompt"
 import { ClineProvider } from "../../webview/ClineProvider"
+import { SectionContentExtractor, createContentExtractionContext } from "./SectionContentExtractor"
 import path from "path"
 
 /**
@@ -32,6 +33,7 @@ interface CommandHandlerDependencies {
 
 let dependencies: CommandHandlerDependencies = {}
 let errorHandler: CoworkflowErrorHandler
+let sectionContentExtractor: SectionContentExtractor
 
 /**
  * Set command handler dependencies
@@ -40,6 +42,9 @@ export function setCommandHandlerDependencies(deps: CommandHandlerDependencies):
 	dependencies = deps
 	if (!errorHandler) {
 		errorHandler = new CoworkflowErrorHandler()
+	}
+	if (!sectionContentExtractor) {
+		sectionContentExtractor = new SectionContentExtractor()
 	}
 }
 
@@ -50,6 +55,9 @@ export function clearCommandHandlerDependencies(): void {
 	dependencies = {}
 	if (errorHandler) {
 		errorHandler.dispose()
+	}
+	if (sectionContentExtractor) {
+		sectionContentExtractor.cleanup()
 	}
 }
 
@@ -149,8 +157,56 @@ function getSelectedText(): string {
 
 /**
  * Get task block content based on CodeLens context
+ * Enhanced with section extraction support
  */
-function getTaskBlockContent(commandContext: CoworkflowCommandContext): string {
+async function getTaskBlockContent(commandContext: CoworkflowCommandContext): Promise<string> {
+	const activeEditor = vscode.window.activeTextEditor
+	if (!activeEditor) {
+		return ""
+	}
+
+	try {
+		// Initialize section content extractor if not available
+		if (!sectionContentExtractor) {
+			sectionContentExtractor = new SectionContentExtractor()
+		}
+
+		// Get selected text if any
+		const selection = activeEditor.selection
+		const selectedText = !selection.isEmpty ? activeEditor.document.getText(selection) : undefined
+
+		// Create extraction context
+		const extractionContext = createContentExtractionContext(commandContext, activeEditor.document, selectedText)
+
+		// Use enhanced content extraction
+		const result = await sectionContentExtractor.extractContentForCodeLens(extractionContext)
+
+		if (result.success && result.content.trim()) {
+			// Log extraction type for debugging
+			console.log(`CoworkflowCommands: Content extracted using ${result.type} method`, {
+				documentType: commandContext.documentType,
+				lineNumber: commandContext.context?.lineNumber,
+				contentLength: result.content.length,
+				hasSection: !!result.section,
+			})
+
+			return result.content
+		}
+
+		// Fallback to legacy method if enhanced extraction fails
+		console.warn("CoworkflowCommands: Enhanced extraction failed, using fallback", result.error)
+		return getTaskBlockContentLegacy(commandContext)
+	} catch (error) {
+		// Log error and fallback to legacy method
+		console.error("CoworkflowCommands: Error in enhanced content extraction", error)
+		return getTaskBlockContentLegacy(commandContext)
+	}
+}
+
+/**
+ * Legacy task block content extraction (fallback)
+ */
+function getTaskBlockContentLegacy(commandContext: CoworkflowCommandContext): string {
 	const activeEditor = vscode.window.activeTextEditor
 	if (!activeEditor) {
 		return ""
@@ -241,11 +297,11 @@ function getIndentLevel(line: string): number {
 	return indent
 }
 // 需求：requirements
-const requirementMode = "requirements"
+const requirementMode = "architect"
 // 设计：architect
-const designMode = "architect"
+const designMode = "task"
 // 任务：task
-const taskMode = "task"
+const taskMode = "code"
 
 /**
  * Handle update section command
@@ -269,7 +325,7 @@ async function handleUpdateSection(codeLens: CoworkflowCodeLens): Promise<void> 
 
 		// Get required parameters for prompt
 		const scope = getScopePath(commandContext.uri)
-		const selectedText = getTaskBlockContent(commandContext)
+		const selectedText = await getTaskBlockContent(commandContext)
 
 		const mode = commandContext.documentType === "requirements" ? requirementMode : designMode // 需求/设计相关操作使用 architect 模式
 		// Determine prompt type based on document type
@@ -341,7 +397,7 @@ async function handleRunTask(codeLens: CoworkflowCodeLens): Promise<void> {
 
 		// Get required parameters for prompt
 		const scope = getScopePath(commandContext.uri)
-		const selectedText = getTaskBlockContent(commandContext)
+		const selectedText = await getTaskBlockContent(commandContext)
 
 		// Create the prompt using supportPrompt
 		const prompt = supportPrompt.create("WORKFLOW_TASK_RUN", {
@@ -390,7 +446,7 @@ async function handleRetryTask(codeLens: CoworkflowCodeLens): Promise<void> {
 
 		// Get required parameters for prompt
 		const scope = getScopePath(commandContext.uri)
-		const selectedText = getTaskBlockContent(commandContext)
+		const selectedText = await getTaskBlockContent(commandContext)
 
 		// Create the prompt using supportPrompt
 		const prompt = supportPrompt.create("WORKFLOW_TASK_RETRY", {

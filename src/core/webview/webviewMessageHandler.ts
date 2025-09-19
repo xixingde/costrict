@@ -1543,7 +1543,6 @@ export const webviewMessageHandler = async (
 			break
 		case "zgsmCodeMode":
 			await provider.setZgsmCodeMode(message.text as ZgsmCodeMode)
-			// await provider.handleModeSwitch(message.text as Mode)
 			break
 		case "updateSupportPrompt":
 			try {

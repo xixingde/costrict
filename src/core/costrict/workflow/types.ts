@@ -396,3 +396,231 @@ export interface IHierarchicalCoworkflowDecorationProvider extends ICoworkflowDe
 	 */
 	getHierarchyConfig(): HierarchyDecorationConfig
 }
+
+/**
+ * 章节提取相关的类型定义
+ */
+
+/**
+ * 章节信息接口（从 MarkdownSectionExtractor 导入）
+ */
+export interface MarkdownSection {
+	/** 章节标题（包含 # 符号） */
+	title: string
+	/** 章节标题（不包含 # 符号） */
+	cleanTitle: string
+	/** 标题行号（0-based） */
+	headerLine: number
+	/** 标题级别（1-6） */
+	level: number
+	/** 章节开始行号（标题行） */
+	startLine: number
+	/** 章节结束行号（不包含） */
+	endLine: number
+	/** 章节完整内容（包含标题） */
+	content: string
+	/** 章节内容（不包含标题） */
+	bodyContent: string
+	/** 文本范围 */
+	range: vscode.Range
+}
+
+/**
+ * 章节提取选项
+ */
+export interface SectionExtractionOptions {
+	/** 是否包含标题行 */
+	includeHeader?: boolean
+	/** 是否包含子章节 */
+	includeSubsections?: boolean
+	/** 最大提取深度（相对于当前章节） */
+	maxDepth?: number
+	/** 是否去除空行 */
+	trimEmptyLines?: boolean
+	/** 超时时间（毫秒） */
+	timeout?: number
+}
+
+/**
+ * 内容提取上下文
+ */
+export interface ContentExtractionContext {
+	/** 文档对象 */
+	document: vscode.TextDocument
+	/** 文档类型 */
+	documentType: CoworkflowDocumentType
+	/** 行号（可选） */
+	lineNumber?: number
+	/** 用户选择的文本（可选） */
+	selectedText?: string
+	/** 是否强制提取章节 */
+	forceSection?: boolean
+}
+
+/**
+ * 提取结果
+ */
+export interface ExtractionResult {
+	/** 提取的内容 */
+	content: string
+	/** 提取类型 */
+	type: "selection" | "section" | "line" | "fallback"
+	/** 章节信息（如果适用） */
+	section?: MarkdownSection
+	/** 是否成功 */
+	success: boolean
+	/** 错误信息（如果有） */
+	error?: string
+}
+
+/**
+ * 提取策略配置
+ */
+export interface ExtractionStrategy {
+	/** requirements.md 的提取选项 */
+	requirements: SectionExtractionOptions
+	/** design.md 的提取选项 */
+	design: SectionExtractionOptions
+	/** tasks.md 的提取选项 */
+	tasks: SectionExtractionOptions
+	/** 默认提取选项 */
+	default: SectionExtractionOptions
+}
+
+/**
+ * 扩展的 CoworkflowCommandContext 接口
+ * 添加章节提取相关的上下文信息
+ */
+export interface EnhancedCoworkflowCommandContext extends CoworkflowCommandContext {
+	/** 章节信息（如果适用） */
+	section?: MarkdownSection
+	/** 提取结果 */
+	extractionResult?: ExtractionResult
+	/** 是否启用章节提取 */
+	enableSectionExtraction?: boolean
+}
+
+/**
+ * 章节提取器接口
+ */
+export interface IMarkdownSectionExtractor {
+	/**
+	 * 提取文档中的所有章节
+	 * @param document VS Code 文档对象
+	 * @returns 章节信息数组
+	 */
+	extractSections(document: vscode.TextDocument): MarkdownSection[]
+
+	/**
+	 * 获取指定标题行的完整章节内容
+	 * @param document VS Code 文档对象
+	 * @param headerLine 标题行号（0-based）
+	 * @param options 提取选项
+	 * @returns 章节内容字符串
+	 */
+	getSectionContent(document: vscode.TextDocument, headerLine: number, options?: SectionExtractionOptions): string
+
+	/**
+	 * 检测标题级别
+	 * @param line 文本行
+	 * @returns 标题级别（1-6），如果不是标题返回 -1
+	 */
+	detectHeaderLevel(line: string): number
+
+	/**
+	 * 查找章节边界
+	 * @param lines 文档行数组
+	 * @param startLine 起始行号
+	 * @param headerLevel 标题级别
+	 * @param options 提取选项
+	 * @returns 章节边界信息
+	 */
+	findSectionBoundary(
+		lines: string[],
+		startLine: number,
+		headerLevel: number,
+		options?: SectionExtractionOptions,
+	): { startLine: number; endLine: number }
+
+	/**
+	 * 清理缓存
+	 */
+	clearCache(): void
+
+	/**
+	 * 获取缓存统计信息
+	 */
+	getCacheStats(): { size: number; lastCleanup: Date }
+}
+
+/**
+ * 智能内容提取器接口
+ */
+export interface ISectionContentExtractor {
+	/**
+	 * 为 CodeLens 提取内容
+	 * @param context 提取上下文
+	 * @returns 提取结果
+	 */
+	extractContentForCodeLens(context: ContentExtractionContext): Promise<ExtractionResult>
+
+	/**
+	 * 判断是否需要提取章节
+	 * @param context 提取上下文
+	 * @returns 是否需要提取章节
+	 */
+	shouldExtractSection(context: ContentExtractionContext): boolean
+
+	/**
+	 * 获取性能指标
+	 */
+	getPerformanceMetrics(): Map<string, number>
+
+	/**
+	 * 清理缓存和指标
+	 */
+	cleanup(): void
+
+	/**
+	 * 更新提取策略
+	 */
+	updateStrategy(strategy: Partial<ExtractionStrategy>): void
+
+	/**
+	 * 获取当前提取策略
+	 */
+	getStrategy(): ExtractionStrategy
+
+	/**
+	 * 获取章节提取器实例
+	 */
+	getSectionExtractor(): IMarkdownSectionExtractor
+}
+
+/**
+ * 章节提取配置
+ */
+export interface SectionExtractionConfig {
+	/** 是否启用章节提取 */
+	enabled: boolean
+	/** 默认提取策略 */
+	defaultStrategy: ExtractionStrategy
+	/** 性能监控配置 */
+	performance: {
+		/** 是否启用性能监控 */
+		enabled: boolean
+		/** 性能指标保留时间（毫秒） */
+		retentionTime: number
+		/** 慢查询阈值（毫秒） */
+		slowQueryThreshold: number
+	}
+	/** 缓存配置 */
+	cache: {
+		/** 是否启用缓存 */
+		enabled: boolean
+		/** 缓存大小限制 */
+		maxSize: number
+		/** 缓存过期时间（毫秒） */
+		ttl: number
+	}
+}
