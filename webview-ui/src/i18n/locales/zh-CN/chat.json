@@ -204,8 +204,8 @@
 	},
 	"commandOutput": "命令输出",
 	"commandExecution": {
-		"running": "正在运行",
 		"abort": "中止",
+		"running": "运行中",
 		"pid": "PID: {{pid}}",
 		"exitStatus": "已退出，状态码 {{exitCode}}",
 		"manageCommands": "管理命令权限",
