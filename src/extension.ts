@@ -44,6 +44,7 @@ import {
 import { initializeI18n } from "./i18n"
 import { getCommand } from "./utils/commands"
 import { activateCoworkflowIntegration, deactivateCoworkflowIntegration } from "./core/costrict/workflow"
+import { defaultLang } from "./utils/language"
 
 /**
  * Built using https://github.com/microsoft/vscode-webview-ui-toolkit
@@ -87,7 +88,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	const mdmService = await MdmService.createInstance(cloudLogger)
 
 	// Initialize i18n for internationalization support.
-	initializeI18n(context.globalState.get("language") ?? formatLanguage(vscode.env.language))
+	initializeI18n(context.globalState.get("language") ?? formatLanguage(await defaultLang()))
 
 	// Initialize terminal shell execution handlers.
 	TerminalRegistry.initialize()

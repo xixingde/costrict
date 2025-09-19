@@ -277,6 +277,7 @@ export type ExtensionState = Pick<
 	| "maxConcurrentFileReads" // Optional in GlobalSettings, required here.
 	| "terminalOutputLineLimit"
 	| "terminalOutputCharacterLimit"
+	| "maxReadCharacterLimit"
 	| "terminalShellIntegrationTimeout"
 	| "terminalShellIntegrationDisabled"
 	| "terminalCommandDelay"
