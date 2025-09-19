@@ -61,7 +61,17 @@ export function getSupportedBinaryFormats(): string[] {
  * @returns Promise resolving to the extracted text content with line numbers
  * @throws {Error} If file not found, unsupported format, or invalid parameters
  */
-export async function extractTextFromFile(filePath: string, maxReadFileLine?: number): Promise<string> {
+export async function extractTextFromFile(
+	filePath: string,
+	maxReadFileLine?: number,
+	maxReadCharacterLimit?: number,
+): Promise<string> {
+	if (maxReadCharacterLimit != undefined && maxReadCharacterLimit <= 0) {
+		throw new Error(
+			`Invalid maxReadCharacterLimit: ${maxReadCharacterLimit}. Must be a positive integer or undefined for unlimited.`,
+		)
+	}
+
 	// Validate maxReadFileLine parameter
 	if (maxReadFileLine !== undefined && maxReadFileLine !== -1) {
 		if (!Number.isInteger(maxReadFileLine) || maxReadFileLine < 1) {
@@ -96,14 +106,32 @@ export async function extractTextFromFile(filePath: string, maxReadFileLine?: nu
 				// Read only up to maxReadFileLine (endLine is 0-based and inclusive)
 				const content = await readLines(filePath, maxReadFileLine - 1, 0)
 				const numberedContent = addLineNumbers(content)
-				return (
-					numberedContent +
-					`\n\n[File truncated: showing ${maxReadFileLine} of ${totalLines} total lines. The file is too large and may exhaust the context window if read in full.]`
-				)
+				// Apply character limit truncation if specified
+				if (maxReadCharacterLimit && numberedContent.length > maxReadCharacterLimit) {
+					const truncatedContent = truncateOutput(numberedContent, undefined, maxReadCharacterLimit)
+					return (
+						truncatedContent +
+						`\n\n[File truncated: showing ${maxReadFileLine} of ${totalLines} total lines, and content further truncated due to character limit (${maxReadCharacterLimit}). The file is too large and may exhaust the context window if read in full.]`
+					)
+				} else {
+					return (
+						numberedContent +
+						`\n\n[File truncated: showing ${maxReadFileLine} of ${totalLines} total lines. The file is too large and may exhaust the context window if read in full.]`
+					)
+				}
 			}
 		}
 		// Read the entire file if no limit or file is within limit
-		return addLineNumbers(await readFileWithEncodingDetection(filePath))
+		const fullContent = addLineNumbers(await readFileWithEncodingDetection(filePath))
+		// Apply character limit truncation if specified, even when line limit is not exceeded
+		if (maxReadCharacterLimit && fullContent.length > maxReadCharacterLimit) {
+			const truncatedContent = truncateOutput(fullContent, maxReadFileLine, maxReadCharacterLimit)
+			return (
+				truncatedContent +
+				`\n\n[File content omitted due to character limit (${maxReadCharacterLimit}). The file is too large and may exhaust the context window if read in full.]`
+			)
+		}
+		return fullContent
 	} else {
 		throw new Error(`Cannot read text for file type: ${fileExtension}`)
 	}

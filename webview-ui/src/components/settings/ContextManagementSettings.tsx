@@ -21,6 +21,7 @@ type ContextManagementSettingsProps = HTMLAttributes<HTMLDivElement> & {
 	maxWorkspaceFiles: number
 	showRooIgnoredFiles?: boolean
 	maxReadFileLine?: number
+	maxReadCharacterLimit?: number
 	maxImageFileSize?: number
 	maxTotalImageSize?: number
 	maxConcurrentFileReads?: number
@@ -35,6 +36,7 @@ type ContextManagementSettingsProps = HTMLAttributes<HTMLDivElement> & {
 		| "maxWorkspaceFiles"
 		| "showRooIgnoredFiles"
 		| "maxReadFileLine"
+		| "maxReadCharacterLimit"
 		| "maxImageFileSize"
 		| "maxTotalImageSize"
 		| "maxConcurrentFileReads"
@@ -55,6 +57,7 @@ export const ContextManagementSettings = ({
 	showRooIgnoredFiles,
 	setCachedStateField,
 	maxReadFileLine,
+	maxReadCharacterLimit,
 	maxImageFileSize,
 	maxTotalImageSize,
 	maxConcurrentFileReads,
@@ -177,7 +180,25 @@ export const ContextManagementSettings = ({
 						{t("settings:contextManagement.rooignore.description")}
 					</div>
 				</div>
-
+				<div>
+					<label className="block font-medium mb-1">
+						{t("settings:contextManagement.maxReadCharacter.label")}
+					</label>
+					<div className="flex items-center gap-2">
+						<Slider
+							min={0}
+							max={50000}
+							step={100}
+							value={[maxReadCharacterLimit ?? 20000]}
+							onValueChange={([value]) => setCachedStateField("maxReadCharacterLimit", value)}
+							data-testid="terminal-output-character-limit-slider"
+						/>
+						<span className="w-16">{maxReadCharacterLimit ?? 20000}</span>
+					</div>
+					<div className="text-vscode-descriptionForeground text-sm mt-1">
+						{t("settings:contextManagement.maxReadCharacter.description")}
+					</div>
+				</div>
 				<div>
 					<div className="flex flex-col gap-2">
 						<span className="font-medium">{t("settings:contextManagement.maxReadFile.label")}</span>

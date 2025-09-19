@@ -71,6 +71,10 @@
 		"maxReadFile": {
 			"description": "當模型省略開始/結束值時，Costrict 讀取此行數。如果此數字小於檔案總數，Costrict 會生成代碼定義的行號索引。特殊情況：-1指示 Costrict 讀取整個檔案（不建立索引），0指示它不讀取任何行，僅為最小上下文提供行索引。較低的值可最小化初始上下文使用，從而實現精確的後續行範圍讀取。明確的開始/結束請求不受此設定限制。"
 		},
+		"maxReadCharacter": {
+			"label": "檔案讀取字元限制",
+			"description": "檔案讀取時包含的最大字元數。此限制優先於行數限制，以防止因行過長而導致的記憶體問題。超出後，輸出將被截斷。"
+		},
 		"autoCondenseContextPercent": {
 			"description": "結束值時，Costrict 將自動壓縮它。"
 		},

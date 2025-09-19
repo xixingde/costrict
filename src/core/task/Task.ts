@@ -1812,6 +1812,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				includeDiagnosticMessages = true,
 				maxDiagnosticMessages = 50,
 				maxReadFileLine = -1,
+				maxReadCharacterLimit = 20000,
 			} = (await this.providerRef.deref()?.getState()) ?? {}
 
 			const parsedUserContent = await processUserContentMentions({
@@ -1824,6 +1825,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				includeDiagnosticMessages,
 				maxDiagnosticMessages,
 				maxReadFileLine,
+				maxReadCharacterLimit,
 			})
 
 			const environmentDetails = await getEnvironmentDetails(this, currentIncludeFileDetails)

@@ -18,6 +18,7 @@ export async function processUserContentMentions({
 	includeDiagnosticMessages = true,
 	maxDiagnosticMessages = 50,
 	maxReadFileLine,
+	maxReadCharacterLimit,
 }: {
 	userContent: Anthropic.Messages.ContentBlockParam[]
 	cwd: string
@@ -29,6 +30,7 @@ export async function processUserContentMentions({
 	includeDiagnosticMessages?: boolean
 	maxDiagnosticMessages?: number
 	maxReadFileLine?: number
+	maxReadCharacterLimit?: number
 }) {
 	// Process userContent array, which contains various block types:
 	// TextBlockParam, ImageBlockParam, ToolUseBlockParam, and ToolResultBlockParam.
@@ -62,6 +64,7 @@ export async function processUserContentMentions({
 							includeDiagnosticMessages,
 							maxDiagnosticMessages,
 							maxReadFileLine,
+							maxReadCharacterLimit,
 						),
 					}
 				}
@@ -82,6 +85,7 @@ export async function processUserContentMentions({
 								includeDiagnosticMessages,
 								maxDiagnosticMessages,
 								maxReadFileLine,
+								maxReadCharacterLimit,
 							),
 						}
 					}
@@ -103,6 +107,7 @@ export async function processUserContentMentions({
 										includeDiagnosticMessages,
 										maxDiagnosticMessages,
 										maxReadFileLine,
+										maxReadCharacterLimit,
 									),
 								}
 							}
