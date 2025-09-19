@@ -16,7 +16,7 @@ import { ExtensionMessage, ExtensionState, MarketplaceInstalledMetadata, Command
 import { findLastIndex } from "@roo/array"
 import { McpServer } from "@roo/mcp"
 import { checkExistKey } from "@roo/checkExistApiConfig"
-import { Mode, defaultModeSlug, defaultPrompts } from "@roo/modes"
+import { Mode, defaultModeSlug, defaultPrompts, ZgsmCodeMode } from "@roo/modes"
 import { CustomSupportPrompts } from "@roo/support-prompt"
 import { experimentDefault } from "@roo/experiments"
 import { RouterModels } from "@roo/api"
@@ -123,6 +123,7 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setListApiConfigMeta: (value: ProviderSettingsEntry[]) => void
 	mode: Mode
 	setMode: (value: Mode) => void
+	setZgsmCodeMode: (value: ZgsmCodeMode) => void
 	setCustomModePrompts: (value: CustomModePrompts) => void
 	setCustomSupportPrompts: (value: CustomSupportPrompts) => void
 	enhancementApiConfigId?: string
@@ -206,6 +207,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		enableCheckpoints: true,
 		useZgsmCustomConfig: false,
 		zgsmCodebaseIndexEnabled: true,
+		zgsmCodeMode: "vibe",
 		fuzzyMatchThreshold: 1.0,
 		language: "en", // Default fallback language (will be updated from extension)
 		writeDelayMs: 1000,
@@ -544,6 +546,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		setCurrentApiConfigName: (value) => setState((prevState) => ({ ...prevState, currentApiConfigName: value })),
 		setListApiConfigMeta,
 		setMode: (value: Mode) => setState((prevState) => ({ ...prevState, mode: value })),
+		setZgsmCodeMode: (value: ZgsmCodeMode) => setState((prevState) => ({ ...prevState, zgsmCodeMode: value })),
 		setCustomModePrompts: (value) => setState((prevState) => ({ ...prevState, customModePrompts: value })),
 		setCustomSupportPrompts: (value) => setState((prevState) => ({ ...prevState, customSupportPrompts: value })),
 		setEnhancementApiConfigId: (value) =>

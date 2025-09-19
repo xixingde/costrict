@@ -53,6 +53,10 @@ type SupportPromptType =
 	| "ZGSM_SIMPLIFY_CODE"
 	| "ZGSM_PERFORMANCE"
 	| "ZGSM_ADD_TEST"
+	| "WORKFLOW_TASK_RUN"
+	| "WORKFLOW_TASK_RETRY"
+	| "WORKFLOW_RQS_UPDATE"
+	| "WORKFLOW_DESIGN_UPDATE"
 
 const supportPromptConfigs: Record<SupportPromptType, SupportPromptConfig> = {
 	ENHANCE: {
@@ -98,6 +102,90 @@ Example summary structure:
   - [...]
 
 Output only the summary of the conversation so far, without any additional commentary or explanation.`,
+	},
+	WORKFLOW_TASK_RUN: {
+		template: `
+请开始执行用户需求的实现工作。基于已创建的需求文档(\${scope}/requirements.md)、架构设计文档(\${scope}/design.md)和任务规划文档(\${scope}/tasks.md)，逐步推进功能实现。
+
+## 实施前准备
+- 在执行任何开发任务前，请务必仔细阅读并理解 \`\${scope}\` 目录下的 requirements.md、design.md 和 tasks.md 文档
+- 若未充分理解需求或设计即开始执行任务，可能导致实现偏差或功能错误
+- **该过程不允许修改任何测试相关的文件比如修改测试案例**
+- 执行过程中及时更新 \`\${scope}/tasks.md\` 文档中对应任务的状态，状态说明：\`[ ]\` (未开始)、\`[-]\` (进行中)、\`[x]\` (已完成)
+
+## 待完成任务
+==============  待完成任务: start ===============
+\${selectedText}
+==============  待完成任务: end   ===============
+
+完成开发后，请使用 attempt_completion 工具提交实现结果总结。请注意，以上具体操作指令优先于常规的\${mode}指令。
+
+`,
+	},
+	WORKFLOW_TASK_RETRY: {
+		template: `
+请开始执行用户需求的实现工作。基于已创建的需求文档(\${scope}/requirements.md)、架构设计文档(\${scope}/design.md)和任务规划文档(\${scope}/tasks.md)，逐步推进功能实现。
+
+## 实施前准备：
+- 在执行任何开发任务前，请务必仔细阅读并理解 \`\${scope}\` 目录下的 requirements.md、design.md 和 tasks.md 文档
+- 若未充分理解需求或设计即开始执行任务，可能导致实现偏差或功能错误
+- **该过程不允许修改任何测试相关的文件比如修改测试案例**
+- 执行过程中及时更新 \`\${scope}/tasks.md\` 文档中对应任务的状态，状态说明：\`[ ]\` (未开始)、\`[-]\` (进行中)、\`[x]\` (已完成)
+
+## 待重试任务
+==============  待完成任务: start ===============
+\${selectedText}
+==============  待完成任务: end   ===============
+
+完成开发后，请使用 attempt_completion 工具提交实现结果总结。请注意，以上具体操作指令优先于常规的\${mode}指令。
+`,
+	},
+	WORKFLOW_RQS_UPDATE: {
+		template: `
+请开始实现用户需求更新。基于已创建的需求文档(\${scope}/requirements.md)、架构设计文档(\${scope}/design.md)和任务规划文档(\${scope}/tasks.md)，逐步实施需求变更。
+
+## 实施前准备：
+- 在执行任何更新任务前，请仔细阅读 \`\${scope}\` 下的requirements.md、design.md和tasks.md文件
+- 分析需求变更对现有设计的影响范围
+- 确认变更涉及的模块和需要调整的现有功能
+- 在没有充分理解变更影响的情况下执行任务将导致不准确的实现
+
+## 待更新任务
+==============  待完成任务: start ===============
+\${selectedText}
+==============  待完成任务: end   ===============
+
+## 变更实施要求：
+1. 评估设计文档需要调整的部分，更新相应的架构设计
+2. 重新规划受影响的任务，调整任务优先级和依赖关系
+3. 确保向后兼容性，或制定适当的迁移方案
+
+完成后使用attempt_completion工具提供变更总结，包括更新的功能点、受影响模块和验证要点。这些具体指令优先于\${mode}模式的常规指令。
+`,
+	},
+	WORKFLOW_DESIGN_UPDATE: {
+		template: `
+请开始实现用户设计更新。基于已创建的需求文档(\${scope}/requirements.md)、架构设计文档(\${scope}/design.md)和任务规划文档(\${scope}/tasks.md)，逐步实施需求变更。
+
+## 实施前准备：
+- 在执行任何更新任务前，请仔细阅读 \`\${scope}\` 下的requirements.md、design.md和tasks.md文件
+- 分析设计变更对现有任务规划的影响范围
+- 确认变更涉及的模块和需要调整的现有功能
+- 在没有充分理解变更影响的情况下执行任务将导致不准确的实现
+
+## 待更新任务
+==============  待完成任务: start ===============
+\${selectedText}
+==============  待完成任务: end   ===============
+
+## 变更实施要求：
+1. 评估任务规划文档需要调整的部分，更新相应的任务规划设计
+2. 重新规划受影响的任务，调整任务优先级和依赖关系
+3. 按照更新后的任务规划逐步实现变更功能
+4. 确保向后兼容性，或制定适当的迁移方案
+
+完成后使用attempt_completion工具提供变更总结，包括更新的功能点、受影响模块和验证要点。这些具体指令优先于\${mode}的常规指令。
+`,
 	},
 	EXPLAIN: {
 		template: `Explain the following code from file path \${filePath}:\${startLine}-\${endLine}

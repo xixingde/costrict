@@ -4,6 +4,9 @@ import { Trans } from "react-i18next"
 
 // import { buildDocLink } from "@src/utils/docLinks"
 import { vscode } from "@/utils/vscode"
+import { useCallback } from "react"
+import { useExtensionState } from "@/context/ExtensionStateContext"
+import { ZgsmCodeMode } from "@roo/modes"
 
 const tips = [
 	{
@@ -49,10 +52,56 @@ const tips = [
 	titleKey: string
 	descriptionKey: string
 }[]
-
 const RooTips = () => {
 	const { t } = useTranslation("chat")
+	const { zgsmCodeMode, setZgsmCodeMode } = useExtensionState()
+	const switchMode = useCallback(
+		(slug: ZgsmCodeMode) => {
+			setZgsmCodeMode(slug)
+			vscode.postMessage({
+				type: "zgsmCodeMode",
+				text: slug,
+			})
+			vscode.postMessage({
+				type: "mode",
+				text: slug === "vibe" ? "code" : "workflow",
+			})
+		},
+		[setZgsmCodeMode],
+	)
 
+	const providers = [
+		{
+			name: "Vibe",
+			slug: "vibe",
+			description: "Chat first, then build. Explore ideas and iterate as you discover needs.",
+			// description: t("welcome:routers.openrouter.description"),
+			incentive: `Great for:
+
+Rapid exploration and testing
+Building when requirements are unclear
+Implementing a task`,
+			switchMode: (e: React.MouseEvent<HTMLElement, MouseEvent>) => {
+				e.stopPropagation()
+				switchMode("vibe")
+			},
+		},
+		{
+			name: "Workflow",
+			slug: "workflow",
+			description: "Chat first, then build. Explore ideas and iterate as you discover needs.",
+			// description: t("welcome:routers.requesty.description"),
+			// incentive: t("welcome:routers.requesty.incentive"),
+			incentive: `Great for:
+Thinking through features in-depth
+Projects needing upfront planning
+Building features in a structured way`,
+			switchMode: (e: React.MouseEvent<HTMLElement, MouseEvent>) => {
+				e.stopPropagation()
+				switchMode("workflow")
+			},
+		},
+	]
 	return (
 		<div>
 			<p className="text-vscode-editor-foreground leading-tight font-vscode-font-family text-center text-balance max-w-[380px] mx-auto my-0">
@@ -82,6 +131,21 @@ const RooTips = () => {
 					</div>
 				))}
 			</div>
+			<br />
+			{providers.map((provider, index) => (
+				<div
+					key={`${index}${provider.slug}`}
+					onClick={provider.switchMode}
+					className={`flex-1 border border-vscode-panel-border hover:bg-secondary rounded-md py-3 px-4 mb-2 flex flex-row gap-3 cursor-pointer transition-all no-underline text-inherit ${zgsmCodeMode === provider.slug ? "border border-vscode-focusBorder outline outline-vscode-focusBorder focus-visible:ring-vscode-focusBorder" : ""}`}>
+					<div>
+						<div className="text-sm font-medium text-vscode-foreground">{provider.name}</div>
+						<div>
+							<div className="text-xs text-vscode-descriptionForeground">{provider.description}</div>
+							{provider.incentive && <div className="text-xs mt-1">{provider.incentive}</div>}
+						</div>
+					</div>
+				</div>
+			))}
 		</div>
 	)
 }
