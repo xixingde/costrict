@@ -39,6 +39,7 @@ interface CodeBlockProps {
 	collapsedHeight?: number
 	initialWindowShade?: boolean
 	onLanguageChange?: (language: string) => void
+	onDoubleClick?: (e: React.MouseEvent) => void
 }
 
 const CodeBlockButton = styled.button`
@@ -125,8 +126,8 @@ export const StyledPre = styled.div<{
 	max-height: ${({ windowshade, collapsedHeight }) =>
 		windowshade === "true" ? `${collapsedHeight || WINDOW_SHADE_SETTINGS.collapsedHeight}px` : "none"};
 	overflow-y: auto;
-	padding: 10px;
-	border-radius: 5px;
+	padding: 8px 3px;
+	border-radius: 6px;
 	${({ preStyle }) => preStyle && { ...preStyle }}
 
 	pre {
@@ -144,7 +145,7 @@ export const StyledPre = styled.div<{
 		white-space: ${({ wordwrap }) => (wordwrap === "false" ? "pre" : "pre-wrap")};
 		word-break: ${({ wordwrap }) => (wordwrap === "false" ? "normal" : "normal")};
 		overflow-wrap: ${({ wordwrap }) => (wordwrap === "false" ? "normal" : "break-word")};
-		font-size: var(--vscode-editor-font-size, var(--vscode-font-size, 12px));
+		font-size: 0.95em;
 		font-family: var(--vscode-editor-font-family);
 	}
 
@@ -219,9 +220,10 @@ const CodeBlock = memo(
 		rawSource,
 		language,
 		preStyle,
-		initialWordWrap = true,
+		initialWordWrap = false,
 		initialWindowShade = true,
 		collapsedHeight,
+		onDoubleClick,
 		onLanguageChange,
 	}: CodeBlockProps) => {
 		const [wordWrap, setWordWrap] = useState(initialWordWrap)
@@ -692,7 +694,7 @@ const CodeBlock = memo(
 		}
 
 		return (
-			<CodeBlockContainer ref={codeBlockRef}>
+			<CodeBlockContainer ref={codeBlockRef} onDoubleClick={onDoubleClick}>
 				<MemoizedStyledPre
 					preRef={preRef}
 					preStyle={preStyle}

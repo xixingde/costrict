@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback } from "react"
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 
-import type { ProviderSettings, ZgsmUserInfo } from "@roo-code/types"
+import type { ProviderSettings } from "@roo-code/types"
 import { TelemetryEventName } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { vscode } from "@src/utils/vscode"
 import { telemetryClient } from "@src/utils/TelemetryClient"
-import axios from "axios"
 import { useEvent } from "react-use"
 import { ExtensionMessage } from "@roo/ExtensionMessage"
+import { useZgsmUserInfo } from "@src/hooks/useZgsmUserInfo"
 
 type AccountViewProps = {
 	apiConfiguration?: ProviderSettings
@@ -18,51 +18,9 @@ type AccountViewProps = {
 
 export const ZgsmAccountView = ({ apiConfiguration, onDone }: AccountViewProps) => {
 	const { t } = useAppTranslation()
-	const [userInfo, setUserInfo] = useState<ZgsmUserInfo | null>(null)
-	const [hash, setHash] = useState("")
-	const [logoPic, setLogoPic] = useState("")
-
-	const wasAuthenticatedRef = useRef(false)
+	const { userInfo, logoPic, hash } = useZgsmUserInfo(apiConfiguration)
 
 	const rooLogoUri = (window as any).COSTRICT_BASE_URI + "/logo.svg"
-
-	// Track authentication state changes to detect successful logout
-	useEffect(() => {
-		const token = apiConfiguration?.zgsmAccessToken
-
-		if (token) {
-			wasAuthenticatedRef.current = true
-
-			const jwt = parseJwt(token)
-
-			const basicInfo: ZgsmUserInfo = {
-				id: jwt.id,
-				name: jwt?.properties?.oauth_GitHub_username || jwt.id,
-				picture: undefined,
-				email: jwt.email,
-				phone: jwt.phone,
-				organizationName: jwt.organizationName,
-				organizationImageUrl: jwt.organizationImageUrl,
-			}
-			setUserInfo(basicInfo)
-
-			if (jwt.avatar) {
-				imageUrlToBase64(jwt.avatar).then((base64) => {
-					if (!base64) return
-					// Step 3: Update userInfo.picture, only update the picture field
-					setLogoPic(base64)
-				})
-			}
-
-			hashToken(token).then((result) => {
-				console.log("New Credit hash: ", result)
-				setHash(result)
-			})
-		} else if (wasAuthenticatedRef.current && !token) {
-			telemetryClient.capture(TelemetryEventName.ACCOUNT_LOGOUT_SUCCESS)
-			wasAuthenticatedRef.current = false
-		}
-	}, [apiConfiguration?.zgsmAccessToken])
 
 	const handleConnectClick = () => {
 		// Send telemetry for account connect action
@@ -192,43 +150,4 @@ export const ZgsmAccountView = ({ apiConfiguration, onDone }: AccountViewProps) 
 			)}
 		</div>
 	)
-}
-
-function parseJwt(token: string) {
-	const parts = token.split(".")
-	if (parts.length !== 3) {
-		throw new Error("Invalid JWT")
-	}
-	const payload = parts[1]
-	const decoded = atob(payload.replace(/-/g, "+").replace(/_/g, "/")) // base64url → base64 → decode
-	return JSON.parse(decoded)
-}
-
-async function hashToken(token: string) {
-	const encoder = new TextEncoder()
-	const data = encoder.encode(token)
-	const hashBuffer = await crypto.subtle.digest("SHA-256", data)
-	return Array.from(new Uint8Array(hashBuffer))
-		.map((b) => b.toString(16).padStart(2, "0"))
-		.join("")
-}
-
-export async function imageUrlToBase64(url: string): Promise<string | null> {
-	try {
-		const response = await axios.get(url, {
-			responseType: "blob", // Key! Ensure axios returns Blob
-		})
-
-		const blob = response.data as Blob
-
-		return await new Promise<string>((resolve, reject) => {
-			const reader = new FileReader()
-			reader.onloadend = () => resolve(reader.result as string)
-			reader.onerror = () => reject("Failed to convert blob to base64")
-			reader.readAsDataURL(blob) // Automatically adds data:image/png;base64,...
-		})
-	} catch (error) {
-		console.error("Failed to convert image to base64", error)
-		return null
-	}
 }

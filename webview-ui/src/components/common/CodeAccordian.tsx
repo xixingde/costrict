@@ -39,7 +39,7 @@ const CodeAccordian = ({
 	return (
 		<ToolUseBlock>
 			{hasHeader && (
-				<ToolUseBlockHeader onClick={onToggleExpand}>
+				<ToolUseBlockHeader onClick={onToggleExpand} className="group">
 					{isLoading && <VSCodeProgressRing className="size-3 mr-2" />}
 					{header ? (
 						<div className="flex items-center">
@@ -81,12 +81,15 @@ const CodeAccordian = ({
 							aria-label={`Open file: ${path}`}
 						/>
 					)}
-					{!onJumpToFile && <span className={`codicon codicon-chevron-${isExpanded ? "up" : "down"}`}></span>}
+					{!onJumpToFile && (
+						<span
+							className={`opacity-0 group-hover:opacity-100 codicon codicon-chevron-${isExpanded ? "up" : "down"}`}></span>
+					)}
 				</ToolUseBlockHeader>
 			)}
 			{(!hasHeader || isExpanded) && (
 				<div className="overflow-x-auto overflow-y-hidden max-w-full">
-					<CodeBlock source={source} language={inferredLanguage} />
+					<CodeBlock source={source} language={inferredLanguage} onDoubleClick={onToggleExpand} />
 				</div>
 			)}
 		</ToolUseBlock>
