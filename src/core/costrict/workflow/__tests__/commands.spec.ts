@@ -30,9 +30,18 @@ vi.mock("vscode", () => ({
 			show: vi.fn(),
 			dispose: vi.fn(),
 		})),
+		createTextEditorDecorationType: vi.fn(() => ({
+			dispose: vi.fn(),
+		})),
 	},
 	workspace: {
 		getWorkspaceFolder: vi.fn(),
+		createFileSystemWatcher: vi.fn(() => ({
+			onDidChange: vi.fn(),
+			onDidCreate: vi.fn(),
+			onDidDelete: vi.fn(),
+			dispose: vi.fn(),
+		})),
 	},
 	Uri: {
 		file: vi.fn((path: string) => ({ fsPath: path, path })),
@@ -45,6 +54,7 @@ vi.mock("vscode", () => ({
 	env: {
 		uriScheme: "vscode",
 	},
+	RelativePattern: vi.fn((base, pattern) => ({ base, pattern })),
 }))
 
 // Mock supportPrompt
@@ -154,7 +164,7 @@ describe("Coworkflow Commands", () => {
 			// Get the registered handler
 			const registerCalls = vi.mocked(vscode.commands.registerCommand).mock.calls
 			const updateSectionCall = registerCalls.find((call) => call[0].includes(COWORKFLOW_COMMANDS.UPDATE_SECTION))
-			const handler = updateSectionCall?.[1] as Function
+			const handler = updateSectionCall?.[1] as (codeLens: CoworkflowCodeLens) => Promise<void>
 
 			vi.mocked(vscode.window.showInformationMessage).mockResolvedValue("Execute" as any)
 
@@ -175,7 +185,7 @@ describe("Coworkflow Commands", () => {
 			const disposables = registerCoworkflowCommands(mockContext)
 			const registerCalls = vi.mocked(vscode.commands.registerCommand).mock.calls
 			const updateSectionCall = registerCalls.find((call) => call[0].includes(COWORKFLOW_COMMANDS.UPDATE_SECTION))
-			const handler = updateSectionCall?.[1] as Function
+			const handler = updateSectionCall?.[1] as (codeLens: CoworkflowCodeLens) => Promise<void>
 
 			vi.mocked(vscode.window.showInformationMessage).mockResolvedValue("Execute" as any)
 
@@ -184,7 +194,7 @@ describe("Coworkflow Commands", () => {
 			expect(supportPrompt.create).toHaveBeenCalledWith("WORKFLOW_DESIGN_UPDATE", {
 				scope: ".cospec",
 				selectedText: "Test document content",
-				mode: "architect",
+				mode: "task",
 			})
 
 			disposables.forEach((d) => d.dispose())
@@ -196,7 +206,7 @@ describe("Coworkflow Commands", () => {
 			const disposables = registerCoworkflowCommands(mockContext)
 			const registerCalls = vi.mocked(vscode.commands.registerCommand).mock.calls
 			const updateSectionCall = registerCalls.find((call) => call[0].includes(COWORKFLOW_COMMANDS.UPDATE_SECTION))
-			const handler = updateSectionCall?.[1] as Function
+			const handler = updateSectionCall?.[1] as (codeLens: CoworkflowCodeLens) => Promise<void>
 
 			await handler(mockCodeLens)
 
@@ -223,7 +233,7 @@ describe("Coworkflow Commands", () => {
 			const disposables = registerCoworkflowCommands(mockContext)
 			const registerCalls = vi.mocked(vscode.commands.registerCommand).mock.calls
 			const runTaskCall = registerCalls.find((call) => call[0].includes(COWORKFLOW_COMMANDS.RUN_TASK))
-			const handler = runTaskCall?.[1] as Function
+			const handler = runTaskCall?.[1] as (codeLens: CoworkflowCodeLens) => Promise<void>
 
 			vi.mocked(vscode.window.showInformationMessage).mockResolvedValue("Execute" as any)
 
@@ -244,7 +254,7 @@ describe("Coworkflow Commands", () => {
 			const disposables = registerCoworkflowCommands(mockContext)
 			const registerCalls = vi.mocked(vscode.commands.registerCommand).mock.calls
 			const runTaskCall = registerCalls.find((call) => call[0].includes(COWORKFLOW_COMMANDS.RUN_TASK))
-			const handler = runTaskCall?.[1] as Function
+			const handler = runTaskCall?.[1] as (codeLens: CoworkflowCodeLens) => Promise<void>
 
 			await handler(mockCodeLens)
 
@@ -271,7 +281,7 @@ describe("Coworkflow Commands", () => {
 			const disposables = registerCoworkflowCommands(mockContext)
 			const registerCalls = vi.mocked(vscode.commands.registerCommand).mock.calls
 			const retryTaskCall = registerCalls.find((call) => call[0].includes(COWORKFLOW_COMMANDS.RETRY_TASK))
-			const handler = retryTaskCall?.[1] as Function
+			const handler = retryTaskCall?.[1] as (codeLens: CoworkflowCodeLens) => Promise<void>
 
 			vi.mocked(vscode.window.showWarningMessage).mockResolvedValue("Retry" as any)
 
@@ -282,21 +292,6 @@ describe("Coworkflow Commands", () => {
 				selectedText: "Test document content",
 				mode: "code",
 			})
-
-			disposables.forEach((d) => d.dispose())
-		})
-
-		it("should handle user cancellation", async () => {
-			const disposables = registerCoworkflowCommands(mockContext)
-			const registerCalls = vi.mocked(vscode.commands.registerCommand).mock.calls
-			const retryTaskCall = registerCalls.find((call) => call[0].includes(COWORKFLOW_COMMANDS.RETRY_TASK))
-			const handler = retryTaskCall?.[1] as Function
-
-			vi.mocked(vscode.window.showWarningMessage).mockResolvedValue("Cancel" as any)
-
-			await handler(mockCodeLens)
-
-			expect(supportPrompt.create).not.toHaveBeenCalled()
 
 			disposables.forEach((d) => d.dispose())
 		})

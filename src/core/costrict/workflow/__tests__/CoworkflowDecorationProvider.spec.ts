@@ -17,6 +17,9 @@ vi.mock("vscode", () => ({
 			dispose: vi.fn(),
 		})),
 		onDidChangeVisibleTextEditors: vi.fn(),
+		showErrorMessage: vi.fn(),
+		showWarningMessage: vi.fn(),
+		showInformationMessage: vi.fn(),
 	},
 	workspace: {
 		onDidChangeTextDocument: vi.fn(),
@@ -138,10 +141,13 @@ describe("CoworkflowDecorationProvider", () => {
 		it("应该处理空文档", () => {
 			vi.mocked(mockDocument.getText).mockReturnValue("")
 
-			decorationProvider.updateDecorations(mockDocument)
-
 			// 应该不会抛出错误
-			expect(mockEditor.setDecorations).toHaveBeenCalled()
+			expect(() => {
+				decorationProvider.updateDecorations(mockDocument)
+			}).not.toThrow()
+
+			// 空文档不会调用 setDecorations，因为会被 isValidTasksDocument 过滤掉
+			expect(mockEditor.setDecorations).not.toHaveBeenCalled()
 		})
 	})
 
