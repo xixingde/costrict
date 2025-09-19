@@ -242,7 +242,8 @@
 	"response": "回應",
 	"arguments": "參數",
 	"feedback": {
-		"youSaid": "您說"
+		"youSaid": "{{username}}說",
+		"defaultUserName": "您"
 	},
 	"mcp": {
 		"wantsToUseTool": "Roo 想要在 {{serverName}} MCP 伺服器上使用工具",
@@ -346,18 +347,6 @@
 		"title": "命令執行警告",
 		"description": "您的命令正在沒有 VSCode 終端機 Shell 整合的情況下執行。若要隱藏此警告，您可以在 <settingsLink>Roo Code 設定</settingsLink> 的<strong>終端機</strong>區塊中停用 Shell 整合，或使用下方的連結來排解 VSCode 終端機整合問題。",
 		"troubleshooting": "點選此處查看 Shell 整合文件。"
-	},
-	"ask": {
-		"autoApprovedRequestLimitReached": {
-			"title": "已達自動核准請求上限",
-			"description": "Roo 已達到 {{count}} 次 API 請求的自動核准上限。您想重設計數並繼續工作嗎？",
-			"button": "重設並繼續"
-		},
-		"autoApprovedCostLimitReached": {
-			"title": "已達自動核准費用上限",
-			"description": "Roo 已達到 ${{count}} 的自動核准費用上限。您想重設費用並繼續工作嗎？",
-			"button": "重設並繼續"
-		}
 	},
 	"indexingStatus": {
 		"ready": "索引就緒",

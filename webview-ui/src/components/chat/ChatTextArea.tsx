@@ -1316,7 +1316,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					<div
 						className={cn(
 							"flex items-center gap-2 min-w-0 overflow-clip flex-1",
-							isEditMode ? "ml-[20px] py-[14px]" : "",
+							isEditMode ? "ml-[42px] py-[14px]" : "",
 						)}>
 						<ModeSelector
 							value={mode}

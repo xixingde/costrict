@@ -39,6 +39,7 @@ interface CodeBlockProps {
 	collapsedHeight?: number
 	initialWindowShade?: boolean
 	onLanguageChange?: (language: string) => void
+	onDoubleClick?: (e: React.MouseEvent) => void
 }
 
 const CodeBlockButton = styled.button`
@@ -222,6 +223,7 @@ const CodeBlock = memo(
 		initialWordWrap = false,
 		initialWindowShade = true,
 		collapsedHeight,
+		onDoubleClick,
 		onLanguageChange,
 	}: CodeBlockProps) => {
 		const [wordWrap, setWordWrap] = useState(initialWordWrap)
@@ -692,7 +694,7 @@ const CodeBlock = memo(
 		}
 
 		return (
-			<CodeBlockContainer ref={codeBlockRef}>
+			<CodeBlockContainer ref={codeBlockRef} onDoubleClick={onDoubleClick}>
 				<MemoizedStyledPre
 					preRef={preRef}
 					preStyle={preStyle}

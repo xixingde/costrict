@@ -241,7 +241,8 @@
 	"response": "Response",
 	"arguments": "Arguments",
 	"feedback": {
-		"youSaid": "You said"
+		"youSaid": "{{username}} said",
+		"defaultUserName": "You"
 	},
 	"mcp": {
 		"wantsToUseTool": "Roo wants to use a tool on the {{serverName}} MCP server",

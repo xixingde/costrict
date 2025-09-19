@@ -67,6 +67,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getLine } from "@/utils/path-mentions"
+import { useZgsmUserInfo } from "@/hooks/useZgsmUserInfo"
 
 interface ChatRowProps {
 	message: ClineMessage
@@ -148,8 +149,8 @@ export const ChatRowContent = ({
 	searchQuery,
 }: ChatRowContentProps) => {
 	const { t } = useTranslation()
-
 	const { mcpServers, alwaysAllowMcp, currentCheckpoint, mode, apiConfiguration } = useExtensionState()
+	const { logoPic, userInfo } = useZgsmUserInfo(apiConfiguration)
 	const { info: model } = useSelectedModel(apiConfiguration)
 	const [showCopySuccess, setShowCopySuccess] = useState(false)
 	const [isEditing, setIsEditing] = useState(false)
@@ -1200,15 +1201,29 @@ export const ChatRowContent = ({
 					return (
 						<div className="group">
 							<div style={headerStyle}>
-								<User className="w-4" aria-label="User icon" />
-								<span style={{ fontWeight: "bold" }}>{t("chat:feedback.youSaid")}</span>
+								{logoPic ? (
+									<img
+										src={logoPic}
+										title={userInfo?.name || t("chat:feedback.defaultUserName")}
+										alt={userInfo?.name || t("chat:feedback.defaultUserName")}
+										className="w-6 h-6 rounded-full object-cover"
+									/>
+								) : (
+									<User className="w-4" aria-label="User icon" />
+								)}
+								<span style={{ fontWeight: "bold" }}>
+									{t("chat:feedback.youSaid", {
+										username: userInfo?.name || t("chat:feedback.defaultUserName"),
+									})}
+								</span>
 							</div>
 							<div
 								className={cn(
-									"ml-6 border rounded-sm overflow-hidden whitespace-pre-wrap",
+									"ml-6 border rounded-sm whitespace-pre-wrap",
+									isEditing ? "" : "overflow-hidden",
 									isEditing
 										? "bg-vscode-editor-background text-vscode-editor-foreground"
-										: "cursor-text p-1 bg-vscode-editor-foreground/70 text-vscode-editor-background",
+										: "cursor-text p-1 bg-vscode-editor-foreground/50 text-vscode-editor-background",
 								)}>
 								{isEditing ? (
 									<div className="flex flex-col gap-2">

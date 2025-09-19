@@ -89,7 +89,7 @@ const CodeAccordian = ({
 			)}
 			{(!hasHeader || isExpanded) && (
 				<div className="overflow-x-auto overflow-y-hidden max-w-full">
-					<CodeBlock source={source} language={inferredLanguage} />
+					<CodeBlock source={source} language={inferredLanguage} onDoubleClick={onToggleExpand} />
 				</div>
 			)}
 		</ToolUseBlock>
