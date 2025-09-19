@@ -5,31 +5,47 @@
 		"wantsToFetch": "Costrict 想要獲取詳細指令以協助當前任務"
 	},
 	"fileOperations": {
-		"wantsToReadAndXMore": "Costrict 想要讀取此檔案以及另外 {{count}} 個檔案：",
-		"wantsToReadMultiple": "Costrict 想要讀取多個檔案：",
-		"wantsToApplyBatchChanges": "Costrict 想要對多個檔案套用變更："
+		"wantsToRead": "Costrict 想要讀取此檔案",
+		"wantsToReadMultiple": "Costrict 想要讀取多個檔案",
+		"wantsToReadAndXMore": "Costrict 想要讀取此檔案以及另外 {{count}} 個檔案",
+		"wantsToReadOutsideWorkspace": "Costrict 想要讀取此工作區外的檔案",
+		"didRead": "Costrict 已讀取此檔案",
+		"wantsToEdit": "Costrict 想要編輯此檔案",
+		"wantsToEditOutsideWorkspace": "Costrict 想要編輯此工作區外的檔案",
+		"wantsToEditProtected": "Costrict 想要編輯受保護的設定檔案",
+		"wantsToApplyBatchChanges": "Costrict 想要對多個檔案套用變更",
+		"wantsToGenerateImage": "Costrict 想要產生圖片",
+		"wantsToGenerateImageOutsideWorkspace": "Costrict 想要在工作區外產生圖片",
+		"wantsToGenerateImageProtected": "Costrict 想要在受保護位置產生圖片",
+		"didGenerateImage": "Costrict 已產生圖片",
+		"wantsToCreate": "Costrict 想要建立新檔案",
+		"wantsToSearchReplace": "Costrict 想要在此檔案中搜尋和取代",
+		"didSearchReplace": "Costrict 已在此檔案執行搜尋和取代",
+		"wantsToInsert": "Costrict 想要在此檔案中插入內容",
+		"wantsToInsertWithLineNumber": "Costrict 想要在此檔案第 {{lineNumber}} 行插入內容",
+		"wantsToInsertAtEnd": "Costrict 想要在此檔案尾端新增內容"
 	},
 	"directoryOperations": {
-		"wantsToViewTopLevel": "Costrict 想要查看此目錄中的頂層文件：",
-		"didViewTopLevel": "Costrict 已查看此目錄中的頂層文件：",
-		"wantsToViewRecursive": "Costrict 想要遞歸查看此目錄中的所有文件：",
-		"didViewRecursive": "Costrict 已遞歸查看此目錄中的所有文件：",
-		"wantsToViewDefinitions": "Costrict 想要查看此目錄中使用的源代碼定義名稱：",
-		"didViewDefinitions": "Costrict 已查看此目錄中使用的源代碼定義名稱：",
-		"wantsToSearch": "Costrict 想要在此目錄中搜索<code>{{regex}}</code>：",
-		"didSearch": "Costrict 已在此目錄中搜索<code>{{regex}}</code>：",
-		"wantsToViewDefinitionsOutsideWorkspace": "Costrict 想要檢視此目錄（工作區外）中使用的原始碼定義名稱：",
-		"didViewDefinitionsOutsideWorkspace": "Costrict 已檢視此目錄（工作區外）中使用的原始碼定義名稱：",
-		"didViewTopLevelOutsideWorkspace": "Costrict 已檢視此目錄（工作區外）中最上層的檔案：",
-		"wantsToViewRecursiveOutsideWorkspace": "Costrict 想要遞迴檢視此目錄（工作區外）中的所有檔案：",
-		"didViewRecursiveOutsideWorkspace": "Costrict 已遞迴檢視此目錄（工作區外）中的所有檔案：",
-		"wantsToSearchOutsideWorkspace": "Costrict 想要在此目錄（工作區外）中搜尋 <code>{{regex}}</code>：",
-		"didSearchOutsideWorkspace": "Costrict 已在此目錄（工作區外）中搜尋 <code>{{regex}}</code>：",
-		"wantsToViewTopLevelOutsideWorkspace": "Costrict 想要檢視此目錄（工作區外）中最上層的檔案："
+		"wantsToViewTopLevel": "Costrict 想要檢視此目錄中最上層的檔案",
+		"didViewTopLevel": "Costrict 已檢視此目錄中最上層的檔案",
+		"wantsToViewTopLevelOutsideWorkspace": "Costrict 想要檢視此目錄（工作區外）中最上層的檔案",
+		"didViewTopLevelOutsideWorkspace": "Costrict 已檢視此目錄（工作區外）中最上層的檔案",
+		"wantsToViewRecursive": "Costrict 想要遞迴檢視此目錄中的所有檔案",
+		"didViewRecursive": "Costrict 已遞迴檢視此目錄中的所有檔案",
+		"wantsToViewRecursiveOutsideWorkspace": "Costrict 想要遞迴檢視此目錄（工作區外）中的所有檔案",
+		"didViewRecursiveOutsideWorkspace": "Costrict 已遞迴檢視此目錄（工作區外）中的所有檔案",
+		"wantsToViewDefinitions": "Costrict 想要檢視此目錄中使用的原始碼定義名稱",
+		"didViewDefinitions": "Costrict 已檢視此目錄中使用的原始碼定義名稱",
+		"wantsToViewDefinitionsOutsideWorkspace": "Costrict 想要檢視此目錄（工作區外）中使用的原始碼定義名稱",
+		"didViewDefinitionsOutsideWorkspace": "Costrict 已檢視此目錄（工作區外）中使用的原始碼定義名稱",
+		"wantsToSearch": "Costrict 想要在此目錄中搜尋 <code>{{regex}}</code>",
+		"didSearch": "Costrict 已在此目錄中搜尋 <code>{{regex}}</code>",
+		"wantsToSearchOutsideWorkspace": "Costrict 想要在此目錄（工作區外）中搜尋 <code>{{regex}}</code>",
+		"didSearchOutsideWorkspace": "Costrict 已在此目錄（工作區外）中搜尋 <code>{{regex}}</code>"
 	},
 	"mcp": {
-		"wantsToUseTool": "Costrict 想要在{{serverName}} MCP服務器上使用工具：",
-		"wantsToAccessResource": "Costrict 想要訪問{{serverName}} MCP服務器上的資源："
+		"wantsToUseTool": "Costrict 想要在{{serverName}} MCP服務器上使用工具",
+		"wantsToAccessResource": "Costrict 想要訪問{{serverName}} MCP服務器上的資源"
 	},
 	"modes": {
 		"wantsToSwitch": "Costrict 想要切換到{{mode}}模式",
@@ -38,15 +54,15 @@
 		"didSwitchWithReason": "Costrict 已切換到{{mode}}模式，因為：{{reason}}"
 	},
 	"subtasks": {
-		"wantsToCreate": "Costrict 想要在{{mode}}模式下創建新子任務：",
+		"wantsToCreate": "Costrict 想要在{{mode}}模式下創建新子任務",
 		"wantsToFinish": "Costrict 想要完成此子任務"
 	},
 	"questions": {
-		"hasQuestion": "Costrict 有一個問題："
+		"hasQuestion": "Costrict 有一個問題"
 	},
 	"troubleMessage": "Costrict 遇到了一些問題...",
 	"browser": {
-		"rooWantsToUse": "Costrict 想要使用瀏覽器："
+		"rooWantsToUse": "Costrict 想要使用瀏覽器"
 	},
 	"announcement": {
 		"title": "🎉 Costrict {{version}} 已發布",
@@ -80,11 +96,11 @@
 		"description": "在雲端執行 Costrict 遠端代理、隨時隨地存取您的工作、與他人協作等等。"
 	},
 	"copy": {
-		"errorDetail": "複製錯誤詳情"
+		"errorDetail": "複製錯誤詳情，聯絡管理員"
 	},
 	"slashCommand": {
-		"wantsToRun": "Costrict 想要執行斜線指令:",
-		"didRun": "Costrict 執行了斜線指令:"
+		"wantsToRun": "Costrict 想要執行斜線指令",
+		"didRun": "Costrict 執行了斜線指令"
 	},
 	"autoApprove": {
 		"triggerLabelAll": "全部批准"
