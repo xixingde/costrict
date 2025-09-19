@@ -1462,16 +1462,21 @@ export const webviewMessageHandler = async (
 				)
 			}
 			break
+		case "maxReadCharacterLimit":
 		case "terminalOutputCharacterLimit":
 			// Validate that the character limit is a positive number
 			const charLimit = message.value
 			if (typeof charLimit === "number" && charLimit > 0) {
-				await updateGlobalState("terminalOutputCharacterLimit", charLimit)
+				await updateGlobalState(
+					message.type as "terminalOutputCharacterLimit" | "maxReadCharacterLimit",
+					charLimit,
+				)
 				await provider.postStateToWebview()
 			} else {
 				vscode.window.showErrorMessage(
-					t("common:errors.invalid_character_limit") ||
-						"Terminal output character limit must be a positive number",
+					t("common:errors.invalid_character_limit") || message.type === "terminalOutputCharacterLimit"
+						? "Terminal output character limit must be a positive number"
+						: "File read character limit must be a positive number",
 				)
 			}
 			break

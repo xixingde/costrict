@@ -28,6 +28,7 @@ export const DEFAULT_WRITE_DELAY_MS = 1000
  * while preventing context window explosions from extremely long lines.
  */
 export const DEFAULT_TERMINAL_OUTPUT_CHARACTER_LIMIT = 50_000
+export const DEFAULT_FILE_READ_CHARACTER_LIMIT = 20_000
 
 /**
  * GlobalSettings
@@ -114,6 +115,7 @@ export const globalSettingsSchema = z.object({
 
 	terminalOutputLineLimit: z.number().optional(),
 	terminalOutputCharacterLimit: z.number().optional(),
+	maxReadCharacterLimit: z.number().optional(),
 	terminalShellIntegrationTimeout: z.number().optional(),
 	terminalShellIntegrationDisabled: z.boolean().optional(),
 	terminalCommandDelay: z.number().optional(),
@@ -290,6 +292,7 @@ export const EVALS_SETTINGS: RooCodeSettings = {
 
 	terminalOutputLineLimit: 500,
 	terminalOutputCharacterLimit: DEFAULT_TERMINAL_OUTPUT_CHARACTER_LIMIT,
+	maxReadCharacterLimit: DEFAULT_FILE_READ_CHARACTER_LIMIT,
 	terminalShellIntegrationTimeout: 30000,
 	terminalCommandDelay: 0,
 	terminalPowershellCounter: false,

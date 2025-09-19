@@ -103,6 +103,8 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setTerminalOutputLineLimit: (value: number) => void
 	terminalOutputCharacterLimit?: number
 	setTerminalOutputCharacterLimit: (value: number) => void
+	maxReadCharacterLimit?: number
+	setMaxReadCharacterLimit: (value: number) => void
 	mcpEnabled: boolean
 	setMcpEnabled: (value: boolean) => void
 	enableMcpServerCreation: boolean
@@ -205,12 +207,13 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		useZgsmCustomConfig: false,
 		zgsmCodebaseIndexEnabled: true,
 		fuzzyMatchThreshold: 1.0,
-		language: "en", // Default language code
+		language: "en", // Default fallback language (will be updated from extension)
 		writeDelayMs: 1000,
 		browserViewportSize: "900x600",
 		screenshotQuality: 75,
 		terminalOutputLineLimit: 500,
 		terminalOutputCharacterLimit: 50000,
+		maxReadCharacterLimit: 20000,
 		terminalShellIntegrationTimeout: 4000,
 		mcpEnabled: true,
 		enableMcpServerCreation: false,
@@ -343,6 +346,10 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 					// Update includeTaskHistoryInEnhance if present in state message
 					if ((newState as any).includeTaskHistoryInEnhance !== undefined) {
 						setIncludeTaskHistoryInEnhance((newState as any).includeTaskHistoryInEnhance)
+					}
+					// Update language if present in state message
+					if (newState.language !== undefined) {
+						setState((prevState) => ({ ...prevState, language: newState.language }))
 					}
 					// Handle marketplace data if present in state message
 					if (newState.marketplaceItems !== undefined) {
@@ -519,6 +526,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 			setState((prevState) => ({ ...prevState, terminalOutputLineLimit: value })),
 		setTerminalOutputCharacterLimit: (value) =>
 			setState((prevState) => ({ ...prevState, terminalOutputCharacterLimit: value })),
+		setMaxReadCharacterLimit: (value) => setState((prevState) => ({ ...prevState, maxReadCharacterLimit: value })),
 		setTerminalShellIntegrationTimeout: (value) =>
 			setState((prevState) => ({ ...prevState, terminalShellIntegrationTimeout: value })),
 		setTerminalShellIntegrationDisabled: (value) =>

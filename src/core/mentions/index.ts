@@ -82,6 +82,7 @@ export async function parseMentions(
 	includeDiagnosticMessages: boolean = true,
 	maxDiagnosticMessages: number = 50,
 	maxReadFileLine?: number,
+	maxReadCharacterLimit?: number,
 ): Promise<string> {
 	const mentions: Set<string> = new Set()
 	const validCommands: Map<string, Command> = new Map()
@@ -189,6 +190,7 @@ export async function parseMentions(
 					rooIgnoreController,
 					showRooIgnoredFiles,
 					maxReadFileLine,
+					maxReadCharacterLimit,
 				)
 				if (mention.endsWith("/")) {
 					parsedText += `\n\n<folder_content path="${mentionPath}">\n${content}\n</folder_content>`
@@ -267,6 +269,7 @@ async function getFileOrFolderContent(
 	rooIgnoreController?: any,
 	showRooIgnoredFiles: boolean = false,
 	maxReadFileLine?: number,
+	maxReadCharacterLimit?: number,
 ): Promise<string> {
 	const unescapedPath = unescapeSpaces(mentionPath)
 	const absPath = path.resolve(cwd, unescapedPath)
@@ -279,7 +282,7 @@ async function getFileOrFolderContent(
 				return `(File ${mentionPath} is ignored by .rooignore)`
 			}
 			try {
-				const content = await extractTextFromFile(absPath, maxReadFileLine)
+				const content = await extractTextFromFile(absPath, maxReadFileLine, maxReadCharacterLimit)
 				return content
 			} catch (error) {
 				return `(Failed to read contents of ${mentionPath}): ${error.message}`
@@ -319,7 +322,11 @@ async function getFileOrFolderContent(
 									if (isBinary) {
 										return undefined
 									}
-									const content = await extractTextFromFile(absoluteFilePath, maxReadFileLine)
+									const content = await extractTextFromFile(
+										absoluteFilePath,
+										maxReadFileLine,
+										maxReadCharacterLimit,
+									)
 									return `<file_content path="${filePath.toPosix()}">\n${content}\n</file_content>`
 								} catch (error) {
 									return undefined

@@ -71,6 +71,10 @@
 		"maxReadFile": {
 			"description": "Costrict reads this number of lines when the model omits start/end values. If this number is less than the file's total, Costrict generates a line number index of code definitions. Special cases: -1 instructs Costrict to read the entire file (without indexing), and 0 instructs it to read no lines and provides line indexes only for minimal context. Lower values minimize initial context usage, enabling precise subsequent line-range reads. Explicit start/end requests are not limited by this setting."
 		},
+		"maxReadCharacter": {
+			"label": "File Read Character Limit",
+			"description": "Maximum number of characters to include when reading files. This limit takes precedence over the line limit to prevent memory issues from very long lines. Output will be truncated if exceeded."
+		},
 		"autoCondenseContextPercent": {
 			"description": "When the context window reaches this threshold, Costrict will automatically condense it."
 		},
