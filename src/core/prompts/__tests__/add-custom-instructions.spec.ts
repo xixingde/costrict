@@ -204,7 +204,7 @@ describe("addCustomInstructions", () => {
 			undefined, // diffEnabled
 			undefined, // experiments
 			true, // enableMcpServerCreation
-			undefined, // language
+			"en", // language
 			undefined, // rooIgnoreInstructions
 			undefined, // partialReadsEnabled
 		)
@@ -227,7 +227,7 @@ describe("addCustomInstructions", () => {
 			undefined, // diffEnabled
 			undefined, // experiments
 			true, // enableMcpServerCreation
-			undefined, // language
+			"en", // language
 			undefined, // rooIgnoreInstructions
 			undefined, // partialReadsEnabled
 		)
@@ -252,7 +252,7 @@ describe("addCustomInstructions", () => {
 			undefined, // diffEnabled
 			undefined, // experiments
 			true, // enableMcpServerCreation
-			undefined, // language
+			"en", // language
 			undefined, // rooIgnoreInstructions
 			undefined, // partialReadsEnabled
 		)
@@ -278,7 +278,7 @@ describe("addCustomInstructions", () => {
 			undefined, // diffEnabled
 			undefined, // experiments
 			false, // enableMcpServerCreation
-			undefined, // language
+			"en", // language
 			undefined, // rooIgnoreInstructions
 			undefined, // partialReadsEnabled
 		)
@@ -302,7 +302,7 @@ describe("addCustomInstructions", () => {
 			undefined, // diffEnabled
 			undefined, // experiments
 			true, // enableMcpServerCreation
-			undefined, // language
+			"en", // language
 			undefined, // rooIgnoreInstructions
 			true, // partialReadsEnabled
 		)

@@ -11,11 +11,28 @@ export const Mention = ({ text, withShadow = false }: MentionProps) => {
 	if (!text) {
 		return <>{text}</>
 	}
-
+	// Highlight file path with line numbers format: filePath:startLine-endLine
 	const parts = text.split(mentionRegexGlobal).map((part, index) => {
 		if (index % 2 === 0) {
 			// This is regular text.
-			return part
+			const textSegments = part.split(/\b([\w/\\.-]+:\d+-\d+)\b/)
+			return textSegments.map((segment, segmentIndex) => {
+				if (segmentIndex % 2 === 1) {
+					// This is a file path match
+					return (
+						<mark
+							key={`${index}-${segmentIndex}`}
+							className={`mention-context-highlight-with-shadow cursor-pointer`}
+							style={{
+								pointerEvents: "auto",
+								color: "var(--vscode-textPreformat-foreground) !important",
+							}}>
+							{segment}
+						</mark>
+					)
+				}
+				return segment
+			})
 		} else {
 			// This is a mention.
 			return (

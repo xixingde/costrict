@@ -5,27 +5,43 @@
 		"wantsToFetch": "Costrict 想要获取详细指令以协助当前任务"
 	},
 	"fileOperations": {
-		"wantsToReadAndXMore": "Costrict 想读取此文件以及另外 {{count}} 个文件：",
-		"wantsToReadMultiple": "Costrict 想要读取多个文件：",
-		"wantsToApplyBatchChanges": "Costrict 想要对多个文件应用更改："
+		"wantsToRead": "需要读取文件",
+		"wantsToReadOutsideWorkspace": "请求访问外部文件",
+		"didRead": "已读取文件",
+		"wantsToEdit": "需要编辑文件",
+		"wantsToEditOutsideWorkspace": "需要编辑外部文件",
+		"wantsToEditProtected": "需要编辑受保护的配置文件",
+		"wantsToCreate": "需要新建文件",
+		"wantsToSearchReplace": "需要在此文件中搜索和替换",
+		"didSearchReplace": "已完成搜索和替换",
+		"wantsToInsert": "需要在此文件中插入内容",
+		"wantsToInsertWithLineNumber": "需要在第 {{lineNumber}} 行插入内容",
+		"wantsToInsertAtEnd": "需要在文件末尾添加内容",
+		"wantsToReadAndXMore": "Costrict 想读取此文件以及另外 {{count}} 个文件",
+		"wantsToReadMultiple": "Costrict 想要读取多个文件",
+		"wantsToApplyBatchChanges": "Costrict 想要对多个文件应用更改",
+		"wantsToGenerateImage": "需要生成图片",
+		"wantsToGenerateImageOutsideWorkspace": "需要在工作区外生成图片",
+		"wantsToGenerateImageProtected": "需要在受保护位置生成图片",
+		"didGenerateImage": "已生成图片"
 	},
 	"directoryOperations": {
-		"wantsToViewTopLevel": "Costrict 想要查看此目录中的顶层文件：",
-		"didViewTopLevel": "Costrict 已查看此目录中的顶层文件：",
-		"wantsToViewRecursive": "Costrict 想要递归查看此目录中的所有文件：",
-		"didViewRecursive": "Costrict 已递归查看此目录中的所有文件：",
-		"wantsToViewDefinitions": "Costrict 想要查看此目录中使用的源代码定义名称：",
-		"didViewDefinitions": "Costrict 已查看此目录中使用的源代码定义名称：",
-		"wantsToSearch": "Costrict 想要在此目录中搜索<code>{{regex}}</code>：",
-		"didSearch": "Costrict 已在此目录中搜索<code>{{regex}}</code>：",
-		"wantsToViewDefinitionsOutsideWorkspace": "Costrict 想查看此目录中使用的源代码定义名称（工作区外）:",
-		"didViewDefinitionsOutsideWorkspace": "Costrict 已查看此目录中使用的源代码定义名称（工作区外）:",
-		"didViewTopLevelOutsideWorkspace": "Costrict 已查看目录文件列表（工作区外）:",
-		"wantsToViewRecursiveOutsideWorkspace": "Costrict 需要查看目录所有文件（工作区外）",
-		"didViewRecursiveOutsideWorkspace": "Costrict 已查看目录所有文件（工作区外）:",
-		"wantsToSearchOutsideWorkspace": "Costrict 需要搜索内容（工作区外）: {{regex}}",
-		"didSearchOutsideWorkspace": "Costrict 已完成内容搜索（工作区外）: {{regex}}",
-		"wantsToViewTopLevelOutsideWorkspace": "Costrict 需要查看目录文件列表（工作区外）:"
+		"wantsToViewTopLevel": "需要查看目录文件列表",
+		"didViewTopLevel": "已查看目录文件列表",
+		"wantsToViewRecursive": "需要查看目录所有文件",
+		"didViewRecursive": "已查看目录所有文件",
+		"wantsToViewDefinitions": "Costrict想查看此目录中使用的源代码定义名称",
+		"didViewDefinitions": "Costrict已查看此目录中使用的源代码定义名称",
+		"wantsToSearch": "需要搜索内容: {{regex}}",
+		"didSearch": "已完成内容搜索: {{regex}}",
+		"wantsToSearchOutsideWorkspace": "需要搜索内容（工作区外）: {{regex}}",
+		"didSearchOutsideWorkspace": "已完成内容搜索（工作区外）: {{regex}}",
+		"wantsToViewTopLevelOutsideWorkspace": "需要查看目录文件列表（工作区外）",
+		"didViewTopLevelOutsideWorkspace": "已查看目录文件列表（工作区外）",
+		"wantsToViewRecursiveOutsideWorkspace": "需要查看目录所有文件（工作区外）",
+		"didViewRecursiveOutsideWorkspace": "已查看目录所有文件（工作区外）",
+		"wantsToViewDefinitionsOutsideWorkspace": "Costrict想查看此目录中使用的源代码定义名称（工作区外）",
+		"didViewDefinitionsOutsideWorkspace": "Costrict已查看此目录中使用的源代码定义名称（工作区外）"
 	},
 	"mcp": {
 		"wantsToUseTool": "Costrict 想要在{{serverName}} MCP服务器上使用工具：",
@@ -38,15 +54,15 @@
 		"didSwitchWithReason": "Costrict 已切换到{{mode}}模式，因为：{{reason}}"
 	},
 	"subtasks": {
-		"wantsToCreate": "Costrict 想要在{{mode}}模式下创建新子任务：",
+		"wantsToCreate": "Costrict 想要在{{mode}}模式下创建新子任务",
 		"wantsToFinish": "Costrict 想要完成此子任务"
 	},
 	"questions": {
-		"hasQuestion": "Costrict 有一个问题："
+		"hasQuestion": "Costrict 有一个问题"
 	},
 	"troubleMessage": "Costrict 遇到了一些问题...",
 	"browser": {
-		"rooWantsToUse": "Costrict 想要使用浏览器："
+		"rooWantsToUse": "Costrict 想要使用浏览器"
 	},
 	"announcement": {
 		"title": "🎉 Costrict {{version}} 已发布",
@@ -80,11 +96,11 @@
 		"description": "在云端运行远程代理，随时随地访问任务，与他人协作等更多功能。"
 	},
 	"copy": {
-		"errorDetail": "复制错误详情"
+		"errorDetail": "复制错误详情，联系管理员"
 	},
 	"slashCommand": {
-		"wantsToRun": "Costrict 想要运行斜杠命令:",
-		"didRun": "Costrict 运行了斜杠命令:"
+		"wantsToRun": "Costrict 想要运行斜杠命令",
+		"didRun": "Costrict 运行了斜杠命令"
 	},
 	"autoApprove": {
 		"triggerLabelAll": "全部批准"

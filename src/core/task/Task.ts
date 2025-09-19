@@ -627,14 +627,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.emit(RooCodeEventName.Message, { action: "created", message })
 		await this.saveClineMessages()
 
-		const shouldCaptureMessage = message.partial !== true && CloudService.isEnabled()
+		// const shouldCaptureMessage = message.partial !== true && CloudService.isEnabled()
 
-		if (shouldCaptureMessage) {
-			// CloudService.instance.captureEvent({
-			// 	event: TelemetryEventName.TASK_MESSAGE as any,
-			// 	properties: { taskId: this.taskId, message },
-			// })
-		}
+		// if (shouldCaptureMessage) {
+		// 	CloudService.instance.captureEvent({
+		// 		event: TelemetryEventName.TASK_MESSAGE as any,
+		// 		properties: { taskId: this.taskId, message },
+		// 	})
+		// }
 	}
 
 	public async overwriteClineMessages(newMessages: ClineMessage[]) {
@@ -730,7 +730,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// simply removes the reference to this instance, but the instance is
 		// still alive until this promise resolves or rejects.)
 		if (this.abort) {
-			throw new Error(`[RooCode#ask] task ${this.taskId}.${this.instanceId} aborted`)
+			throw new Error(`[Costrict#ask] task ${this.taskId}.${this.instanceId} aborted`)
 		}
 
 		let askTs: number
@@ -1086,7 +1086,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		contextCondense?: ContextCondense,
 	): Promise<undefined> {
 		if (this.abort) {
-			throw new Error(`[RooCode#say] task ${this.taskId}.${this.instanceId} aborted`)
+			throw new Error(`[Costrict#say] task ${this.taskId}.${this.instanceId} aborted`)
 		}
 
 		if (partial !== undefined) {
@@ -1741,7 +1741,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			const currentIncludeFileDetails = currentItem.includeFileDetails
 
 			if (this.abort) {
-				throw new Error(`[RooCode#recursivelyMakeRooRequests] task ${this.taskId}.${this.instanceId} aborted`)
+				throw new Error(`[Costrict#recursivelyMakeRooRequests] task ${this.taskId}.${this.instanceId} aborted`)
 			}
 
 			if (this.consecutiveMistakeLimit > 0 && this.consecutiveMistakeCount >= this.consecutiveMistakeLimit) {
@@ -2237,7 +2237,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// Need to call here in case the stream was aborted.
 				if (this.abort || this.abandoned) {
 					throw new Error(
-						`[RooCode#recursivelyMakeRooRequests] task ${this.taskId}.${this.instanceId} aborted`,
+						`[Costrict#recursivelyMakeRooRequests] task ${this.taskId}.${this.instanceId} aborted`,
 					)
 				}
 
@@ -2580,7 +2580,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			// Show countdown timer
 			for (let i = rateLimitDelay; i > 0; i--) {
 				const delayMessage = `Rate limiting for ${i} seconds...`
-				await this.say("api_req_retry_delayed", delayMessage, undefined, true)
+				await this.say("api_req_retry_delayed", delayMessage, undefined, true, undefined, undefined, {
+					metadata: {
+						isRateLimit: true,
+					},
+				})
 				await delay(1000)
 			}
 		}
@@ -2721,14 +2725,19 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.isWaitingForFirstChunk = false
 		} catch (error) {
 			const isZgsm = apiConfiguration?.apiProvider === "zgsm"
-			const errorMsg = await ErrorCodeManager.getInstance().parseResponse(
-				error,
-				isZgsm,
-				this.taskId,
-				this.instanceId,
-			)
-			if (error.status === 401 && isZgsm) {
-				ZgsmAuthService.openStatusBarLoginTip()
+			let errorMsg = ""
+
+			if (isZgsm) {
+				errorMsg = await ErrorCodeManager.getInstance().parseResponse(
+					error,
+					isZgsm,
+					this.taskId,
+					this.instanceId,
+				)
+
+				if (error.status === 401) {
+					ZgsmAuthService.openStatusBarLoginTip()
+				}
 			}
 
 			this.isWaitingForFirstChunk = false
@@ -2775,7 +2784,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				for (let i = finalDelay; i > 0; i--) {
 					await this.say(
 						"api_req_retry_delayed",
-						`${errorMsg}\n\nRetry attempt ${retryAttempt + 1}\nRetrying in ${i} seconds...`,
+						`${errorMsg}\nRetry attempt ${retryAttempt + 1}\nRetrying in ${i} seconds...`,
 						undefined,
 						true,
 					)
@@ -2784,7 +2793,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 				await this.say(
 					"api_req_retry_delayed",
-					`${errorMsg}\n\nRetry attempt ${retryAttempt + 1}\nRetrying now...`,
+					`${errorMsg}\nRetry attempt ${retryAttempt + 1}\nRetrying now...`,
 					undefined,
 					false,
 				)

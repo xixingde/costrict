@@ -219,7 +219,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // diffEnabled
 			experiments,
 			true, // enableMcpServerCreation
-			undefined, // language
+			"en", // language
 			undefined, // rooIgnoreInstructions
 			undefined, // partialReadsEnabled
 		)
@@ -242,7 +242,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // diffEnabled
 			experiments,
 			true, // enableMcpServerCreation
-			undefined, // language
+			"en", // language
 			undefined, // rooIgnoreInstructions
 			undefined, // partialReadsEnabled
 		)
@@ -267,7 +267,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // diffEnabled
 			experiments,
 			true, // enableMcpServerCreation
-			undefined, // language
+			"en", // language
 			undefined, // rooIgnoreInstructions
 			undefined, // partialReadsEnabled
 		)
@@ -290,7 +290,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // diffEnabled
 			experiments,
 			true, // enableMcpServerCreation
-			undefined, // language
+			"en", // language
 			undefined, // rooIgnoreInstructions
 			undefined, // partialReadsEnabled
 		)
@@ -313,7 +313,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // diffEnabled
 			experiments,
 			true, // enableMcpServerCreation
-			undefined, // language
+			"en", // language
 			undefined, // rooIgnoreInstructions
 			undefined, // partialReadsEnabled
 		)
@@ -336,7 +336,7 @@ describe("SYSTEM_PROMPT", () => {
 			true, // diffEnabled
 			experiments,
 			true, // enableMcpServerCreation
-			undefined, // language
+			"en", // language
 			undefined, // rooIgnoreInstructions
 			undefined, // partialReadsEnabled
 		)
@@ -360,7 +360,7 @@ describe("SYSTEM_PROMPT", () => {
 			false, // diffEnabled
 			experiments,
 			true, // enableMcpServerCreation
-			undefined, // language
+			"en", // language
 			undefined, // rooIgnoreInstructions
 			undefined, // partialReadsEnabled
 		)
@@ -384,7 +384,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // diffEnabled
 			experiments,
 			true, // enableMcpServerCreation
-			undefined, // language
+			"en", // language
 			undefined, // rooIgnoreInstructions
 			undefined, // partialReadsEnabled
 		)
@@ -500,7 +500,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // diffEnabled
 			experiments,
 			true, // enableMcpServerCreation
-			undefined, // language
+			"en", // language
 			undefined, // rooIgnoreInstructions
 			undefined, // partialReadsEnabled
 		)
@@ -538,7 +538,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // diffEnabled
 			undefined, // experiments
 			false, // enableMcpServerCreation
-			undefined, // language
+			"en", // language
 			undefined, // rooIgnoreInstructions
 			undefined, // partialReadsEnabled
 		)
@@ -571,7 +571,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // diffEnabled
 			undefined, // experiments
 			false, // enableMcpServerCreation
-			undefined, // language
+			"en", // language
 			undefined, // rooIgnoreInstructions
 			undefined, // partialReadsEnabled
 		)
@@ -602,7 +602,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // diffEnabled
 			experiments,
 			true, // enableMcpServerCreation
-			undefined, // language
+			"en", // language
 			undefined, // rooIgnoreInstructions
 			undefined, // partialReadsEnabled
 			settings, // settings
@@ -635,7 +635,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // diffEnabled
 			experiments,
 			true, // enableMcpServerCreation
-			undefined, // language
+			"en", // language
 			undefined, // rooIgnoreInstructions
 			undefined, // partialReadsEnabled
 			settings, // settings
@@ -667,7 +667,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // diffEnabled
 			experiments,
 			true, // enableMcpServerCreation
-			undefined, // language
+			"en", // language
 			undefined, // rooIgnoreInstructions
 			undefined, // partialReadsEnabled
 			settings, // settings

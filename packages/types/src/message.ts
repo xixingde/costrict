@@ -217,6 +217,7 @@ export const clineMessageSchema = z.object({
 	isAnswered: z.boolean().optional(),
 	metadata: z
 		.object({
+			isRateLimit: z.boolean().optional(),
 			gpt5: z
 				.object({
 					previous_response_id: z.string().optional(),

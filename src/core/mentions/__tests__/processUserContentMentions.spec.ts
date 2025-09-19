@@ -54,7 +54,7 @@ describe("processUserContentMentions", () => {
 				true, // includeDiagnosticMessages
 				50, // maxDiagnosticMessages
 				100,
-				undefined, // 新增的第10个参数
+				undefined,
 			)
 		})
 
@@ -84,7 +84,7 @@ describe("processUserContentMentions", () => {
 				true, // includeDiagnosticMessages
 				50, // maxDiagnosticMessages
 				undefined,
-				undefined, // 新增的第10个参数
+				undefined,
 			)
 		})
 
@@ -115,7 +115,7 @@ describe("processUserContentMentions", () => {
 				true, // includeDiagnosticMessages
 				50, // maxDiagnosticMessages
 				-1,
-				undefined, // 新增的第10个参数
+				undefined,
 			)
 		})
 	})
