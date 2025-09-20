@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useMemo, useCallback } from "react"
 import axios from "axios"
 import type { ProviderSettings, ZgsmUserInfo } from "@roo-code/types"
 import { TelemetryEventName } from "@roo-code/types"
@@ -62,68 +62,103 @@ export async function imageUrlToBase64(url: string): Promise<string | null> {
 /**
  * 用于管理ZGSM用户信息的自定义Hook
  * 提供用户信息解析、头像处理、token哈希等功能
+ * 优化版本：使用 useMemo 缓存昂贵的计算操作，避免滚动时重复计算
  */
-export function useZgsmUserInfo(apiConfiguration?: ProviderSettings): ZgsmUserData {
-	const [userInfo, setUserInfo] = useState<ZgsmUserInfo | null>(null)
-	const [hash, setHash] = useState("")
+export function useZgsmUserInfo(tokenOrConfig?: string | ProviderSettings): ZgsmUserData {
 	const [logoPic, setLogoPic] = useState("")
+	const [hash, setHash] = useState("")
 	const wasAuthenticatedRef = useRef(false)
 
-	useEffect(() => {
-		const token = apiConfiguration?.zgsmAccessToken
+	// 提取实际的 token 值
+	const token = useMemo(() => {
+		if (typeof tokenOrConfig === "string") {
+			return tokenOrConfig
+		}
+		return tokenOrConfig?.zgsmAccessToken
+	}, [tokenOrConfig])
 
-		if (token) {
+	// 使用 useMemo 缓存 JWT 解析结果，只有当 token 真正变化时才重新解析
+	const parsedJwt = useMemo(() => {
+		if (!token) return null
+
+		try {
+			return parseJwt(token)
+		} catch (error) {
+			console.error("Failed to parse JWT token:", error)
+			return null
+		}
+	}, [token])
+
+	// 使用 useMemo 缓存用户基本信息，只有当解析结果变化时才重新计算
+	const userInfo = useMemo((): ZgsmUserInfo | null => {
+		if (!parsedJwt) return null
+
+		return {
+			id: parsedJwt.id,
+			name: parsedJwt?.properties?.oauth_GitHub_username || parsedJwt.id,
+			picture: undefined,
+			email: parsedJwt.email,
+			phone: parsedJwt.phone,
+			organizationName: parsedJwt.organizationName,
+			organizationImageUrl: parsedJwt.organizationImageUrl,
+		}
+	}, [parsedJwt])
+
+	// 使用 useCallback 缓存头像处理函数
+	const processAvatar = useCallback(async (avatarUrl: string) => {
+		try {
+			const base64 = await imageUrlToBase64(avatarUrl)
+			if (base64) {
+				setLogoPic(base64)
+			}
+		} catch (error) {
+			console.error("Failed to process avatar:", error)
+			setLogoPic("")
+		}
+	}, [])
+
+	// 使用 useCallback 缓存哈希计算函数
+	const processTokenHash = useCallback(async (tokenValue: string) => {
+		try {
+			const result = await hashToken(tokenValue)
+			setHash(result)
+		} catch (error) {
+			console.error("Failed to hash token:", error)
+			setHash("")
+		}
+	}, [])
+
+	// 处理副作用：头像和哈希计算
+	useEffect(() => {
+		if (token && parsedJwt) {
 			wasAuthenticatedRef.current = true
 
-			try {
-				const jwt = parseJwt(token)
-
-				const basicInfo: ZgsmUserInfo = {
-					id: jwt.id,
-					name: jwt?.properties?.oauth_GitHub_username || jwt.id,
-					picture: undefined,
-					email: jwt.email,
-					phone: jwt.phone,
-					organizationName: jwt.organizationName,
-					organizationImageUrl: jwt.organizationImageUrl,
-				}
-				setUserInfo(basicInfo)
-
-				// 处理头像
-				if (jwt.avatar) {
-					imageUrlToBase64(jwt.avatar).then((base64) => {
-						if (!base64) return
-						setLogoPic(base64)
-					})
-				} else {
-					setLogoPic("")
-				}
-
-				// 计算token哈希
-				hashToken(token).then((result) => {
-					console.log("New Credit hash: ", result)
-					setHash(result)
-				})
-			} catch (error) {
-				console.error("Failed to parse JWT token:", error)
-				setUserInfo(null)
+			// 处理头像
+			if (parsedJwt.avatar) {
+				processAvatar(parsedJwt.avatar)
+			} else {
 				setLogoPic("")
-				setHash("")
 			}
+
+			// 计算token哈希
+			processTokenHash(token)
 		} else if (wasAuthenticatedRef.current && !token) {
 			// 检测到登出
 			telemetryClient.capture(TelemetryEventName.ACCOUNT_LOGOUT_SUCCESS)
 			wasAuthenticatedRef.current = false
-			setUserInfo(null)
+			setLogoPic("")
+			setHash("")
+		} else if (!token) {
+			// 确保在没有token时清空状态
 			setLogoPic("")
 			setHash("")
 		}
-	}, [apiConfiguration?.zgsmAccessToken])
+	}, [token, parsedJwt, processAvatar, processTokenHash])
 
 	return {
 		userInfo,
 		logoPic,
 		hash,
-		isAuthenticated: !!apiConfiguration?.zgsmAccessToken,
+		isAuthenticated: !!token,
 	}
 }

@@ -116,8 +116,15 @@ describe("useZgsmUserInfo", () => {
 	})
 
 	it("应该在登出时发送遥测事件", () => {
+		// 创建一个有效的JWT token，确保能够正确解析
+		const mockPayload = {
+			id: "user123",
+			email: "test@example.com",
+		}
+		const validToken = `header.${btoa(JSON.stringify(mockPayload))}.signature`
+
 		const apiConfiguration: ProviderSettings = {
-			zgsmAccessToken: "valid-token",
+			zgsmAccessToken: validToken,
 		}
 
 		const { rerender } = renderHook(({ config }) => useZgsmUserInfo(config), {
