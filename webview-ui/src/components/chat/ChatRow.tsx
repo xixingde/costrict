@@ -68,6 +68,7 @@ import {
 import { cn } from "@/lib/utils"
 import { getLine } from "@/utils/path-mentions"
 import { useZgsmUserInfo } from "@/hooks/useZgsmUserInfo"
+import { format } from "date-fns"
 
 interface ChatRowProps {
 	message: ClineMessage
@@ -103,7 +104,7 @@ const ChatRow = memo(
 
 		const [chatrow, { height }] = useSize(
 			<div
-				className={`px-[15px] py-[10px] pr-[6px] transition-all duration-300 ease-in-out ${
+				className={`px-[15px] py-[10px] transition-all duration-300 ease-in-out ${
 					props.shouldHighlight
 						? "bg-vscode-editor-findMatchHighlightBackground border-l-4 border-vscode-editor-findMatchBorder shadow-sm"
 						: ""
@@ -150,7 +151,7 @@ export const ChatRowContent = ({
 }: ChatRowContentProps) => {
 	const { t } = useTranslation()
 	const { mcpServers, alwaysAllowMcp, currentCheckpoint, mode, apiConfiguration } = useExtensionState()
-	const { logoPic, userInfo } = useZgsmUserInfo(apiConfiguration)
+	const { logoPic, userInfo } = useZgsmUserInfo(apiConfiguration?.zgsmAccessToken)
 	const { info: model } = useSelectedModel(apiConfiguration)
 	const [showCopySuccess, setShowCopySuccess] = useState(false)
 	const [isEditing, setIsEditing] = useState(false)
@@ -323,17 +324,25 @@ export const ChatRowContent = ({
 					apiReqCancelReason !== null && apiReqCancelReason !== undefined ? (
 						apiReqCancelReason === "user_cancelled" ? (
 							<span style={{ color: normalColor, fontWeight: "bold" }}>
-								{t("chat:apiRequest.cancelled")}
+								{t("chat:apiRequest.cancelled")}{" "}
+								{message.ts ? format(new Date(message.ts), "yyyy-MM-dd HH:mm:ss") : ""}
 							</span>
 						) : (
 							<span style={{ color: errorColor, fontWeight: "bold" }}>
-								{t("chat:apiRequest.streamingFailed")}
+								{t("chat:apiRequest.streamingFailed")}{" "}
+								{message.ts ? format(new Date(message.ts), "yyyy-MM-dd HH:mm:ss") : ""}
 							</span>
 						)
 					) : cost !== null && cost !== undefined ? (
-						<span style={{ color: normalColor }}>{t("chat:apiRequest.title")}</span>
+						<span style={{ color: normalColor }}>
+							{t("chat:apiRequest.title")}{" "}
+							{message.ts ? format(new Date(message.ts), "yyyy-MM-dd HH:mm:ss") : ""}
+						</span>
 					) : apiRequestFailedMessage ? (
-						<span style={{ color: errorColor }}>{t("chat:apiRequest.failed")}</span>
+						<span style={{ color: errorColor }}>
+							{t("chat:apiRequest.failed")}{" "}
+							{message.ts ? format(new Date(message.ts), "yyyy-MM-dd HH:mm:ss") : ""}
+						</span>
 					) : (
 						<span style={{ color: normalColor }}>{t("chat:apiRequest.streaming")}</span>
 					),
@@ -438,7 +447,7 @@ export const ChatRowContent = ({
 								code={tool.content ?? tool.diff}
 								language="diff"
 								progressStatus={message.progressStatus}
-								isLoading={message.partial}
+								isLoading={message.partial && isLast}
 								isExpanded={isExpanded}
 								onToggleExpand={handleToggleExpand}
 							/>
@@ -475,7 +484,7 @@ export const ChatRowContent = ({
 								code={tool.diff}
 								language="diff"
 								progressStatus={message.progressStatus}
-								isLoading={message.partial}
+								isLoading={message.partial && isLast}
 								isExpanded={isExpanded}
 								onToggleExpand={handleToggleExpand}
 							/>
@@ -508,7 +517,7 @@ export const ChatRowContent = ({
 								code={tool.diff}
 								language="diff"
 								progressStatus={message.progressStatus}
-								isLoading={message.partial}
+								isLoading={message.partial && isLast}
 								isExpanded={isExpanded}
 								onToggleExpand={handleToggleExpand}
 							/>
@@ -575,7 +584,7 @@ export const ChatRowContent = ({
 								path={tool.path}
 								code={tool.content}
 								language={getLanguageFromPath(tool.path || "") || "log"}
-								isLoading={message.partial}
+								isLoading={message.partial && isLast}
 								isExpanded={isExpanded}
 								onToggleExpand={handleToggleExpand}
 								onJumpToFile={() =>
@@ -667,7 +676,7 @@ export const ChatRowContent = ({
 							<CodeAccordian
 								code={tool.content}
 								language="markdown"
-								isLoading={message.partial}
+								isLoading={message.partial && isLast}
 								isExpanded={isExpanded}
 								onToggleExpand={handleToggleExpand}
 							/>
@@ -1216,6 +1225,7 @@ export const ChatRowContent = ({
 										username: userInfo?.name || t("chat:feedback.defaultUserName"),
 									})}
 								</span>
+								{message.ts ? format(new Date(message.ts), "yyyy-MM-dd HH:mm:ss") : ""}
 							</div>
 							<div
 								className={cn(

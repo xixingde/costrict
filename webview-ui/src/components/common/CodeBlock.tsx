@@ -16,7 +16,7 @@ export const WRAPPER_ALPHA = "cc" // 80% opacity
 // Configuration constants
 export const WINDOW_SHADE_SETTINGS = {
 	transitionDelayS: 0.2,
-	collapsedHeight: 500, // Default collapsed height in pixels
+	collapsedHeight: 240, // Default collapsed height in pixels
 }
 
 // Tolerance in pixels for determining when a container is considered "at the bottom"
@@ -220,7 +220,7 @@ const CodeBlock = memo(
 		rawSource,
 		language,
 		preStyle,
-		initialWordWrap = false,
+		initialWordWrap = true,
 		initialWindowShade = true,
 		collapsedHeight,
 		onDoubleClick,
