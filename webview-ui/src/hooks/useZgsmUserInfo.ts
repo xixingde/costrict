@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo, useCallback } from "react"
+import { useEffect, useState, useRef } from "react"
 import axios from "axios"
 import type { ProviderSettings, ZgsmUserInfo } from "@roo-code/types"
 import { TelemetryEventName } from "@roo-code/types"
@@ -20,7 +20,7 @@ function parseJwt(token: string) {
 		throw new Error("Invalid JWT")
 	}
 	const payload = parts[1]
-	const decoded = atob(payload.replace(/-/g, "+").replace(/_/g, "/")) // base64url → base64 → decode
+	const decoded = atob(payload.replace(/-/g, "+").replace(/_/g, "/"))
 	return JSON.parse(decoded)
 }
 
@@ -42,7 +42,7 @@ async function hashToken(token: string): Promise<string> {
 export async function imageUrlToBase64(url: string): Promise<string | null> {
 	try {
 		const response = await axios.get(url, {
-			responseType: "blob", // Key! Ensure axios returns Blob
+			responseType: "blob",
 		})
 
 		const blob = response.data as Blob
@@ -51,7 +51,7 @@ export async function imageUrlToBase64(url: string): Promise<string | null> {
 			const reader = new FileReader()
 			reader.onloadend = () => resolve(reader.result as string)
 			reader.onerror = () => reject("Failed to convert blob to base64")
-			reader.readAsDataURL(blob) // Automatically adds data:image/png;base64,...
+			reader.readAsDataURL(blob)
 		})
 	} catch (error) {
 		console.error("Failed to convert image to base64", error)
@@ -59,106 +59,96 @@ export async function imageUrlToBase64(url: string): Promise<string | null> {
 	}
 }
 
-/**
- * 用于管理ZGSM用户信息的自定义Hook
- * 提供用户信息解析、头像处理、token哈希等功能
- * 优化版本：使用 useMemo 缓存昂贵的计算操作，避免滚动时重复计算
- */
 export function useZgsmUserInfo(tokenOrConfig?: string | ProviderSettings): ZgsmUserData {
-	const [logoPic, setLogoPic] = useState("")
-	const [hash, setHash] = useState("")
-	const wasAuthenticatedRef = useRef(false)
+	const [data, setData] = useState<ZgsmUserData>({
+		userInfo: null,
+		logoPic: "",
+		hash: "",
+		isAuthenticated: false,
+	})
 
-	// 提取实际的 token 值
-	const token = useMemo(() => {
-		if (typeof tokenOrConfig === "string") {
-			return tokenOrConfig
+	const cacheRef = useRef<{
+		token?: string
+		result?: ZgsmUserData
+		isProcessing: boolean
+	}>({ isProcessing: false })
+
+	useEffect(() => {
+		const token = typeof tokenOrConfig === "string" ? tokenOrConfig : tokenOrConfig?.zgsmAccessToken
+
+		if (!token) {
+			setData((prevData) => {
+				if (prevData.isAuthenticated) {
+					telemetryClient.capture(TelemetryEventName.ACCOUNT_LOGOUT_SUCCESS)
+				}
+
+				return {
+					userInfo: null,
+					logoPic: "",
+					hash: "",
+					isAuthenticated: false,
+				}
+			})
+
+			cacheRef.current = { isProcessing: false }
+			return
 		}
-		return tokenOrConfig?.zgsmAccessToken
+
+		if (cacheRef.current.token === token && cacheRef.current.result) {
+			setData(cacheRef.current.result)
+			return
+		}
+
+		if (cacheRef.current.isProcessing) return
+		cacheRef.current.isProcessing = true
+
+		const processToken = async () => {
+			try {
+				const parsedJwt = parseJwt(token)
+
+				const userInfo: ZgsmUserInfo = {
+					id: parsedJwt.id,
+					name: parsedJwt?.properties?.oauth_GitHub_username || parsedJwt.id,
+					picture: undefined,
+					email: parsedJwt.email,
+					phone: parsedJwt.phone,
+					organizationName: parsedJwt.organizationName,
+					organizationImageUrl: parsedJwt.organizationImageUrl,
+				}
+
+				const [logoPic, hash] = await Promise.all([
+					parsedJwt.avatar ? imageUrlToBase64(parsedJwt.avatar) : Promise.resolve(""),
+					hashToken(token),
+				])
+
+				const result: ZgsmUserData = {
+					userInfo,
+					logoPic: logoPic || "",
+					hash,
+					isAuthenticated: true,
+				}
+
+				cacheRef.current = {
+					token,
+					result,
+					isProcessing: false,
+				}
+				setData(result)
+			} catch (error) {
+				console.error("Failed to parse JWT token:", error)
+				const errorResult: ZgsmUserData = {
+					userInfo: null,
+					logoPic: "",
+					hash: "",
+					isAuthenticated: true,
+				}
+				cacheRef.current.isProcessing = false
+				setData(errorResult)
+			}
+		}
+
+		processToken()
 	}, [tokenOrConfig])
 
-	// 使用 useMemo 缓存 JWT 解析结果，只有当 token 真正变化时才重新解析
-	const parsedJwt = useMemo(() => {
-		if (!token) return null
-
-		try {
-			return parseJwt(token)
-		} catch (error) {
-			console.error("Failed to parse JWT token:", error)
-			return null
-		}
-	}, [token])
-
-	// 使用 useMemo 缓存用户基本信息，只有当解析结果变化时才重新计算
-	const userInfo = useMemo((): ZgsmUserInfo | null => {
-		if (!parsedJwt) return null
-
-		return {
-			id: parsedJwt.id,
-			name: parsedJwt?.properties?.oauth_GitHub_username || parsedJwt.id,
-			picture: undefined,
-			email: parsedJwt.email,
-			phone: parsedJwt.phone,
-			organizationName: parsedJwt.organizationName,
-			organizationImageUrl: parsedJwt.organizationImageUrl,
-		}
-	}, [parsedJwt])
-
-	// 使用 useCallback 缓存头像处理函数
-	const processAvatar = useCallback(async (avatarUrl: string) => {
-		try {
-			const base64 = await imageUrlToBase64(avatarUrl)
-			if (base64) {
-				setLogoPic(base64)
-			}
-		} catch (error) {
-			console.error("Failed to process avatar:", error)
-			setLogoPic("")
-		}
-	}, [])
-
-	// 使用 useCallback 缓存哈希计算函数
-	const processTokenHash = useCallback(async (tokenValue: string) => {
-		try {
-			const result = await hashToken(tokenValue)
-			setHash(result)
-		} catch (error) {
-			console.error("Failed to hash token:", error)
-			setHash("")
-		}
-	}, [])
-
-	// 处理副作用：头像和哈希计算
-	useEffect(() => {
-		if (token && parsedJwt) {
-			wasAuthenticatedRef.current = true
-
-			// 处理头像
-			if (parsedJwt.avatar) {
-				processAvatar(parsedJwt.avatar)
-			} else {
-				setLogoPic("")
-			}
-
-			// 计算token哈希
-			processTokenHash(token)
-		} else if (wasAuthenticatedRef.current && !token) {
-			// 检测到登出
-			telemetryClient.capture(TelemetryEventName.ACCOUNT_LOGOUT_SUCCESS)
-			wasAuthenticatedRef.current = false
-			setLogoPic("")
-			setHash("")
-		} else if (!token) {
-			// 确保在没有token时清空状态
-			setLogoPic("")
-			setHash("")
-		}
-	}, [token, parsedJwt, processAvatar, processTokenHash])
-
-	return {
-		userInfo,
-		logoPic,
-		hash,
-		isAuthenticated: !!token,
-	}
+	return data
 }
