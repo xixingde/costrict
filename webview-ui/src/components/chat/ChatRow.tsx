@@ -104,7 +104,7 @@ const ChatRow = memo(
 
 		const [chatrow, { height }] = useSize(
 			<div
-				className={`px-[15px] py-[10px] pr-[6px] transition-all duration-300 ease-in-out ${
+				className={`px-[15px] py-[10px] transition-all duration-300 ease-in-out ${
 					props.shouldHighlight
 						? "bg-vscode-editor-findMatchHighlightBackground border-l-4 border-vscode-editor-findMatchBorder shadow-sm"
 						: ""
@@ -151,7 +151,7 @@ export const ChatRowContent = ({
 }: ChatRowContentProps) => {
 	const { t } = useTranslation()
 	const { mcpServers, alwaysAllowMcp, currentCheckpoint, mode, apiConfiguration } = useExtensionState()
-	const { logoPic, userInfo } = useZgsmUserInfo(apiConfiguration)
+	const { logoPic, userInfo } = useZgsmUserInfo(apiConfiguration?.zgsmAccessToken)
 	const { info: model } = useSelectedModel(apiConfiguration)
 	const [showCopySuccess, setShowCopySuccess] = useState(false)
 	const [isEditing, setIsEditing] = useState(false)
@@ -447,7 +447,7 @@ export const ChatRowContent = ({
 								code={tool.content ?? tool.diff}
 								language="diff"
 								progressStatus={message.progressStatus}
-								isLoading={message.partial}
+								isLoading={message.partial && isLast}
 								isExpanded={isExpanded}
 								onToggleExpand={handleToggleExpand}
 							/>
@@ -484,7 +484,7 @@ export const ChatRowContent = ({
 								code={tool.diff}
 								language="diff"
 								progressStatus={message.progressStatus}
-								isLoading={message.partial}
+								isLoading={message.partial && isLast}
 								isExpanded={isExpanded}
 								onToggleExpand={handleToggleExpand}
 							/>
@@ -517,7 +517,7 @@ export const ChatRowContent = ({
 								code={tool.diff}
 								language="diff"
 								progressStatus={message.progressStatus}
-								isLoading={message.partial}
+								isLoading={message.partial && isLast}
 								isExpanded={isExpanded}
 								onToggleExpand={handleToggleExpand}
 							/>
@@ -584,7 +584,7 @@ export const ChatRowContent = ({
 								path={tool.path}
 								code={tool.content}
 								language={getLanguageFromPath(tool.path || "") || "log"}
-								isLoading={message.partial}
+								isLoading={message.partial && isLast}
 								isExpanded={isExpanded}
 								onToggleExpand={handleToggleExpand}
 								onJumpToFile={() =>
@@ -676,7 +676,7 @@ export const ChatRowContent = ({
 							<CodeAccordian
 								code={tool.content}
 								language="markdown"
-								isLoading={message.partial}
+								isLoading={message.partial && isLast}
 								isExpanded={isExpanded}
 								onToggleExpand={handleToggleExpand}
 							/>
