@@ -290,6 +290,12 @@ export default function Privacy() {
 							service‑related emails (such as password resets, billing notices, or security alerts) will
 							continue even if you opt out.
 						</li>
+						<li>
+							<strong>Marketing communications:</strong> You can unsubscribe from marketing and
+							promotional emails by clicking the unsubscribe link in those emails. Transactional or
+							service‑related emails (such as password resets, billing notices, or security alerts) will
+							continue even if you opt out.
+						</li>
 					</ul>
 
 					<h2 className="mt-12 text-2xl font-bold">6. Security Practices</h2>
