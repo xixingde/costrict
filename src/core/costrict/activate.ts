@@ -75,7 +75,7 @@ export async function activate(
 	provider: ClineProvider,
 	outputChannel: vscode.OutputChannel,
 ) {
-	const logger = createLogger(Package.outputChannel, { channel: outputChannel })
+	const logger = createLogger(Package.outputChannel)
 	initErrorCodeManager(provider)
 	initGitCheckoutDetector(context, logger)
 	await initialize(provider, logger)
