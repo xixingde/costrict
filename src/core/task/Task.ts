@@ -2231,7 +2231,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 						// Now abort (emits TaskAborted which provider listens to)
 						await this.abortTask()
-
 						this?.api?.cancelChat?.(cancelReason)
 						// Do not rehydrate here; provider owns rehydration to avoid duplication races
 					}

@@ -521,7 +521,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 								"system",
 							),
 						},
-						timeout: 10_000,
+						timeout: 5000,
 					}),
 				)
 			} catch (error) {

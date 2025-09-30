@@ -2680,6 +2680,7 @@ export class ClineProvider
 			},
 		).catch(() => {
 			console.error("Failed to abort task")
+			task?.api?.cancelChat?.(task.abortReason)
 		})
 
 		task?.api?.cancelChat?.(task.abortReason)
