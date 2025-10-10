@@ -3,7 +3,7 @@
 	"displayName": "%extension.displayName.long%",
 	"description": "%extension.description%",
 	"publisher": "zgsm-ai",
-	"version": "1.6.19",
+	"version": "1.6.20",
 	"icon": "assets/images/shenma_robot_logo_big.png",
 	"galleryBanner": {
 		"color": "#617A91",
@@ -247,6 +247,36 @@
 				"title": "%command.generateCommitMessage.title%",
 				"category": "%configuration.title%",
 				"icon": "assets/images/shenma_robot_logo_big.png"
+			},
+			{
+				"command": "zgsm.coworkflow.updateSection",
+				"title": "Update Section",
+				"category": "Coworkflow"
+			},
+			{
+				"command": "zgsm.coworkflow.runTask",
+				"title": "Run Task",
+				"category": "Coworkflow"
+			},
+			{
+				"command": "zgsm.coworkflow.retryTask",
+				"title": "Retry Task",
+				"category": "Coworkflow"
+			},
+			{
+				"command": "zgsm.coworkflow.refreshCodeLens",
+				"title": "Refresh CodeLens",
+				"category": "Coworkflow"
+			},
+			{
+				"command": "zgsm.coworkflow.refreshDecorations",
+				"title": "Refresh Decorations",
+				"category": "Coworkflow"
+			},
+			{
+				"command": "zgsm.coworkflow.runTest",
+				"title": "Generate Test Case",
+				"category": "Coworkflow"
 			}
 		],
 		"menus": {

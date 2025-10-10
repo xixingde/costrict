@@ -87,6 +87,13 @@ export const costrictCommandIds = [
 	"logout",
 	"checkLoginStatus",
 	"refreshToken",
+	"coworkflow.updateSection",
+	"coworkflow.runTask",
+	"coworkflow.runAllTasks",
+	"coworkflow.retryTask",
+	"coworkflow.refreshCodeLens",
+	"coworkflow.refreshDecorations",
+	"coworkflow.runTest",
 ] as const
 export type CostrictCommandId = (typeof costrictCommandIds)[number]
 export type CommandId = (typeof commandIds)[number]
