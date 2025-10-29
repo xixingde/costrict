@@ -38,11 +38,11 @@ CoStrict是一款免费开源的AI辅助编程工具，支持企业私有化部�
 
 - **代码补全（Code Completion）**：代码自动补全，根据光标的上下文代码，自动生成后续代码，快速秒级出码 支持注释描述的补全，变量补全，函数补全等，Tab 一键采纳
 
-<br>
-
 ![completiongif](./assets/images/readme/completion.gif)
 
 <br>
+
+![morefeature](./assets/images/readme/more-feature.png)
 
 - **更多特性（More Features）**：
     - **MCP 服务**：无缝对接MCP开放生态，实现标准化系统连接。您可以通过MCP服务集成外部 API、连接数据库或开发定制工具等
@@ -51,8 +51,6 @@ CoStrict是一款免费开源的AI辅助编程工具，支持企业私有化部�
     - **大仓库上下文**：CoStrict会自动将大文件全仓库数据纳入上下文，对于代码补全场景也会根据光标位置动态感知上下文。 你也可以通过@键添加文件/文件夹、终端、问题等等给输入更精准的上下文信息
     - **支持图片**：多模态模型支持上传图片，您可以点击对话框下方的图片icon上传图片，也可以按住shift键将图片拖拽到输入框内
     - **快捷菜单**： 选中代码，点击右键出现功能菜单，支持：解释代码、修复代码、改进代码、添加注释、代码审查 、添加日志、增加容错、简化代码、优化性能等功能，能满足你所有的代码场景
-
-![morefeature](./assets/images/readme/more-feature.png)
 
 ## 更多帮助 For more assistance
 
