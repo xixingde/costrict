@@ -60,11 +60,12 @@ export class MetricsSerializer {
 						}
 					})
 					// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-					HistogramLogs && Object.keys(HistogramLogs).forEach(name => {						
-						this.logger.debug(
-							`[MetricsSerializer] Histogram sum for ${name} loaded with value: ${HistogramLogs![name].join()}`,
-						)
-					})
+					HistogramLogs &&
+						Object.keys(HistogramLogs).forEach((name) => {
+							this.logger.debug(
+								`[MetricsSerializer] Histogram sum for ${name} loaded with value: ${HistogramLogs![name].join()}`,
+							)
+						})
 				} else if (metric instanceof Gauge) {
 					for (const item of metricData.values) {
 						metric.set(item.labels, item.value)

@@ -398,12 +398,14 @@ const ZgsmAccountViewComponent = ({ apiConfiguration, onDone }: AccountViewProps
 								<h2 className="text-xs text-vscode-descriptionForeground mb-1 flex items-center gap-1 whitespace-nowrap">
 									ID: {userInfo.id}
 									<StandardTooltip content={t("common:mermaid.buttons.copy")}>
-												<ClipboardCopy
-													onClick={(e) => {
-														e.stopPropagation()
-														copyWithFeedback(userInfo.id || "")
-													}}
-													aria-label="Copy message icon" className="cursor-pointer w-[14px] -translate-y-0.5" />
+										<ClipboardCopy
+											onClick={(e) => {
+												e.stopPropagation()
+												copyWithFeedback(userInfo.id || "")
+											}}
+											aria-label="Copy message icon"
+											className="cursor-pointer w-[14px] -translate-y-0.5"
+										/>
 									</StandardTooltip>
 								</h2>
 							)}
