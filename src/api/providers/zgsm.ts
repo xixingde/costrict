@@ -72,6 +72,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 				baseURL: this.baseURL,
 				apiKey,
 				timeout,
+				maxRetries: 1,
 				defaultHeaders: this.headers,
 				defaultQuery: { "api-version": this.options.azureApiVersion || "2024-05-01-preview" },
 			})
@@ -82,6 +83,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 				baseURL: this.baseURL,
 				apiKey,
 				timeout,
+				maxRetries: 1,
 				apiVersion: this.options.azureApiVersion || azureOpenAiDefaultApiVersion,
 				defaultHeaders: this.headers,
 			})
@@ -90,6 +92,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 				baseURL: this.baseURL,
 				apiKey,
 				timeout,
+				maxRetries: 1,
 				defaultHeaders: this.headers,
 			})
 		}
@@ -238,7 +241,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 
 			yield {
 				type: "text",
-				text: response.choices[0]?.message.content || "",
+				text: response.choices?.[0]?.message.content || "",
 			}
 
 			yield this.processUsageMetrics(response.usage, modelInfo)
@@ -442,7 +445,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 
 		// chunk
 		for await (const chunk of stream) {
-			const delta = chunk.choices[0]?.delta ?? {}
+			const delta = chunk.choices?.[0]?.delta ?? {}
 
 			// Cache content for batch processing
 			if (delta.content) {
@@ -562,7 +565,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 					timeout: 20000,
 				}),
 			)
-			return response.choices[0]?.message?.content || ""
+			return response.choices?.[0]?.message?.content || ""
 		} catch (error) {
 			throw handleOpenAIError(error, this.providerName)
 		}
@@ -645,7 +648,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 
 			yield {
 				type: "text",
-				text: response.choices[0]?.message.content || "",
+				text: response.choices?.[0]?.message.content || "",
 			}
 			yield this.processUsageMetrics(response.usage)
 		}
@@ -653,7 +656,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 
 	private async *handleStreamResponse(stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>): ApiStream {
 		for await (const chunk of stream) {
-			const delta = chunk.choices[0]?.delta
+			const delta = chunk.choices?.[0]?.delta
 			if (delta?.content) {
 				yield {
 					type: "text",
