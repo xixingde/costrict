@@ -446,6 +446,10 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 
 		// chunk
 		for await (const chunk of stream) {
+			if (this.abortController?.signal.aborted) {
+				break
+			}
+
 			const delta = chunk.choices?.[0]?.delta ?? {}
 
 			// Cache content for batch processing
@@ -595,7 +599,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 				],
 				stream: true,
 				...(isGrokXAI ? {} : { stream_options: { include_usage: true } }),
-				reasoning_effort: modelInfo.reasoningEffort,
+				reasoning_effort: modelInfo.reasoningEffort as "low" | "medium" | "high" | undefined,
 				temperature: undefined,
 			}
 
@@ -626,7 +630,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 					},
 					...convertToOpenAiMessages(messages),
 				],
-				reasoning_effort: modelInfo.reasoningEffort,
+				reasoning_effort: modelInfo.reasoningEffort as "low" | "medium" | "high" | undefined,
 				temperature: undefined,
 			}
 
@@ -657,6 +661,9 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 
 	private async *handleStreamResponse(stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>): ApiStream {
 		for await (const chunk of stream) {
+			if (this.abortController?.signal.aborted) {
+				break
+			}
 			const delta = chunk.choices?.[0]?.delta
 			if (delta?.content) {
 				yield {
