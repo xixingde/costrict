@@ -711,6 +711,14 @@
 	"advancedSettings": {
 		"title": "Advanced settings"
 	},
+	"toolProtocol": {
+		"label": "Tool Call Protocol",
+		"description": "Choose how CoStrict communicates with the API. Native uses the provider's function calling API, while XML uses XML-formatted tool definitions.",
+		"default": "Default",
+		"xml": "XML",
+		"native": "Native",
+		"currentDefault": "Default: {{protocol}}"
+	},
 	"advanced": {
 		"diff": {
 			"label": "Enable editing through diffs",
@@ -793,10 +801,6 @@
 		"RUN_SLASH_COMMAND": {
 			"name": "Enable model-initiated slash commands",
 			"description": "When enabled, Roo can run your slash commands to execute workflows."
-		},
-		"NATIVE_TOOL_CALLING": {
-			"name": "Enable native tool calling",
-			"description": "When enabled, CoStrict will use the provider's native function calling API instead of XML-based tool definitions. This is experimental and does not yet work with all providers."
 		}
 	},
 	"promptCaching": {

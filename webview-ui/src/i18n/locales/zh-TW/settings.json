@@ -713,6 +713,14 @@
 	"advancedSettings": {
 		"title": "進階設定"
 	},
+	"toolProtocol": {
+		"label": "工具呼叫協議",
+		"description": "選擇 CoStrict 如何與 API 通信。原生使用提供者的函數呼叫 API，而 XML 使用 XML 格式的工具定義。",
+		"default": "預設",
+		"xml": "XML",
+		"native": "原生",
+		"currentDefault": "預設: {{protocol}}"
+	},
 	"advanced": {
 		"diff": {
 			"label": "透過差異比對編輯",
@@ -795,10 +803,6 @@
 		"RUN_SLASH_COMMAND": {
 			"name": "啟用模型啟動的斜線命令",
 			"description": "啟用時，Roo 可以執行您的斜線命令來執行工作流程。"
-		},
-		"NATIVE_TOOL_CALLING": {
-			"name": "啟用原生工具呼叫",
-			"description": "啟用後，CoStrict 將使用提供商的原生函式呼叫 API，而非基於 XML 的工具定義。這是實驗性功能，目前尚未支援所有提供商。"
 		}
 	},
 	"promptCaching": {
