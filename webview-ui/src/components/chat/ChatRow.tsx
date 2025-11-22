@@ -145,7 +145,7 @@ const ChatRow = memo(
 				<></>
 			) : (
 				<div
-					className={`px-[15px] py-[10px] transition-all duration-300 ease-in-out ${
+					className={`px-[15px] py-2.5 transition-all duration-300 ease-in-out ${
 						props.shouldHighlight
 							? "bg-vscode-editor-findMatchHighlightBackground border-l-4 border-vscode-editor-findMatchBorder shadow-sm"
 							: ""
@@ -188,6 +188,7 @@ export const ChatRowContent = ({
 	onFollowUpUnmount,
 	onBatchFileResponse,
 	// isFollowUpAnswered,
+	editable,
 	isFollowUpAnswered,
 	// editable,
 	searchQuery,
@@ -201,6 +202,7 @@ export const ChatRowContent = ({
 		apiConfiguration,
 		clineMessages,
 		apiRequestBlockHide,
+		alwaysAllowUpdateTodoList,
 	} = useExtensionState()
 	const { logoPic, userInfo } = useZgsmUserInfo(apiConfiguration?.zgsmAccessToken)
 	const { info: model } = useSelectedModel(apiConfiguration)
@@ -631,7 +633,23 @@ export const ChatRowContent = ({
 				// Get previous todos from the latest todos in the task context
 				const previousTodos = getPreviousTodos(clineMessages, message.ts)
 
-				return <TodoChangeDisplay previousTodos={previousTodos} newTodos={todos} />
+				return (
+					<>
+						<TodoChangeDisplay previousTodos={previousTodos} newTodos={todos} />
+						{!alwaysAllowUpdateTodoList && isLast && (
+							<UpdateTodoListToolBlock
+								todos={todos}
+								content={(tool as any).content}
+								onChange={(updatedTodos) => {
+									if (typeof vscode !== "undefined" && vscode?.postMessage) {
+										vscode.postMessage({ type: "updateTodoList", payload: { todos: updatedTodos } })
+									}
+								}}
+								editable={!!(editable && isLast)}
+							/>
+						)}
+					</>
+				)
 			}
 			case "newFileCreated":
 				return (
@@ -1093,13 +1111,14 @@ export const ChatRowContent = ({
 						</div>
 						{message.type === "ask" && (
 							<div className="pl-6">
-								<CodeAccordian
-									path={tool.path}
-									code={tool.content}
-									language="text"
-									isExpanded={isExpanded}
-									onToggleExpand={handleToggleExpand}
-								/>
+								<ToolUseBlock>
+									<div className="p-2">
+										<div className="mb-2 break-words">{tool.content}</div>
+										<div className="flex items-center gap-1 text-xs text-vscode-descriptionForeground">
+											{tool.path}
+										</div>
+									</div>
+								</ToolUseBlock>
 							</div>
 						)}
 					</>
@@ -1251,7 +1270,7 @@ export const ChatRowContent = ({
 												<br />
 												<Button
 													size="sm"
-													className="ml-[24px]"
+													className="ml-6"
 													onClick={() =>
 														handleCopyErrorDetail(
 															apiRequestFailedMessage ||
@@ -1360,7 +1379,7 @@ export const ChatRowContent = ({
 								) : (
 									<div className="flex justify-between cursor-pointer">
 										<div
-											className="flex-grow px-2 py-1 wrap-anywhere rounded-lg transition-colors"
+											className="grow px-2 py-1 wrap-anywhere rounded-lg transition-colors"
 											onClick={(e) => {
 												e.stopPropagation()
 												if (!isStreaming) {
@@ -1515,7 +1534,7 @@ export const ChatRowContent = ({
 										<br />
 										<Button
 											size="sm"
-											className="ml-[24px]"
+											className="ml-6"
 											onClick={() => handleCopyErrorDetail(message.text || "")}>
 											{t("chat:copy.errorDetail")}
 										</Button>
@@ -1614,6 +1633,10 @@ export const ChatRowContent = ({
 							<ImageBlock imageUri={imageInfo.imageUri} imagePath={imageInfo.imagePath} />
 						</div>
 					)
+				case "browser_action":
+				case "browser_action_result":
+					// Handled by BrowserSessionRow; prevent raw JSON (action/result) from rendering here
+					return null
 				default:
 					return (
 						<>
