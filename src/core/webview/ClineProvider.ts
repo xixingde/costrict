@@ -1403,17 +1403,28 @@ export class ClineProvider
 		const prevConfig = task.apiConfiguration
 		const prevProvider = prevConfig?.apiProvider
 		const prevModelId = prevConfig ? getModelId(prevConfig) : undefined
+		const prevToolProtocol = prevConfig?.toolProtocol
 		const newProvider = providerSettings.apiProvider
 		const newModelId = getModelId(providerSettings)
+		const newToolProtocol = providerSettings.toolProtocol
 
-		// if (prevProvider !== newProvider || prevModelId !== newModelId || customApiConfigChanged) {
-		if (forceRebuild || prevProvider !== newProvider || prevModelId !== newModelId) {
-			task.api = buildApiHandler(providerSettings)
+		const needsRebuild =
+			forceRebuild ||
+			prevProvider !== newProvider ||
+			prevModelId !== newModelId ||
+			prevToolProtocol !== newToolProtocol
+
+		if (needsRebuild) {
+			// Use updateApiConfiguration which handles both API handler rebuild and parser sync.
+			// This is important when toolProtocol changes - the assistantMessageParser needs to be
+			// created/destroyed to match the new protocol (XML vs native).
+			// Note: updateApiConfiguration is declared async but has no actual async operations,
+			// so we can safely call it without awaiting.
+			task.updateApiConfiguration(providerSettings)
+		} else {
+			// No rebuild needed, just sync apiConfiguration
+			;(task as any).apiConfiguration = providerSettings
 		}
-
-		// Always sync the task's apiConfiguration with the latest provider settings.
-		// Note: Task.apiConfiguration is declared readonly in types, so we cast to any for runtime update.
-		;(task as any).apiConfiguration = providerSettings
 	}
 
 	getProviderProfileEntries(): ProviderSettingsEntry[] {
@@ -1746,7 +1757,7 @@ export class ClineProvider
 			if (id === this.getCurrentTask()?.taskId) {
 				// if we found the taskid to delete - call finish to abort this task and allow a new task to be started,
 				// if we are deleting a subtask and parent task is still waiting for subtask to finish - it allows the parent to resume (this case should neve exist)
-				await this.finishSubTask(t("common:tasks.deleted"))
+				await this.finishSubTask(t("common:tasks.deleted"), id)
 			}
 
 			// delete task from the task history state
