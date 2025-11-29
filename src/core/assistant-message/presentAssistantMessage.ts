@@ -17,6 +17,8 @@ import { shouldUseSingleFileRead, TOOL_PROTOCOL } from "@roo-code/types"
 import { writeToFileTool } from "../tools/WriteToFileTool"
 import { applyDiffTool } from "../tools/MultiApplyDiffTool"
 import { insertContentTool } from "../tools/InsertContentTool"
+import { searchAndReplaceTool } from "../tools/SearchAndReplaceTool"
+import { applyPatchTool } from "../tools/ApplyPatchTool"
 import { listCodeDefinitionNamesTool } from "../tools/ListCodeDefinitionNamesTool"
 import { searchFilesTool } from "../tools/SearchFilesTool"
 import { browserActionTool } from "../tools/BrowserActionTool"
@@ -40,6 +42,8 @@ import { experiments, EXPERIMENT_IDS } from "../../shared/experiments"
 import { applyDiffTool as applyDiffToolClass } from "../tools/ApplyDiffTool"
 import { updateCospecMetadata } from "../checkpoints"
 import { fixBrowserLaunchAction } from "../../utils/fixbrowserLaunchAction"
+import { isNativeProtocol } from "@roo-code/types"
+import { resolveToolProtocol } from "../../utils/resolveToolProtocol"
 
 /**
  * Processes and presents assistant message content to the user interface.
@@ -379,6 +383,10 @@ export async function presentAssistantMessage(cline: Task) {
 						}]`
 					case "insert_content":
 						return `[${block.name} for '${block.params.path}']`
+					case "search_and_replace":
+						return `[${block.name} for '${block.params.path}']`
+					case "apply_patch":
+						return `[${block.name}]`
 					case "list_files":
 						return `[${block.name} for '${block.params.path}']`
 					case "list_code_definition_names":
@@ -689,8 +697,14 @@ export async function presentAssistantMessage(cline: Task) {
 			}
 
 			// Validate tool use before execution.
-			const { mode, customModes, terminalShellIntegrationDisabled } =
-				(await cline.providerRef.deref()?.getState()) ?? {}
+			const {
+				mode,
+				customModes,
+				experiments: stateExperiments,
+				apiConfiguration,
+			} = (await cline.providerRef.deref()?.getState()) ?? {}
+			const modelInfo = cline.api.getModel()
+			const includedTools = modelInfo?.info?.includedTools
 
 			try {
 				validateToolUse(
@@ -699,6 +713,8 @@ export async function presentAssistantMessage(cline: Task) {
 					customModes ?? [],
 					{ apply_diff: cline.diffEnabled },
 					block.params,
+					stateExperiments,
+					includedTools,
 				)
 			} catch (error) {
 				cline.consecutiveMistakeCount++
@@ -812,6 +828,26 @@ export async function presentAssistantMessage(cline: Task) {
 				case "insert_content":
 					await checkpointSaveAndMark(cline)
 					await insertContentTool.handle(cline, block as ToolUse<"insert_content">, {
+						askApproval,
+						handleError,
+						pushToolResult,
+						removeClosingTag,
+						toolProtocol,
+					})
+					break
+				case "search_and_replace":
+					await checkpointSaveAndMark(cline)
+					await searchAndReplaceTool.handle(cline, block as ToolUse<"search_and_replace">, {
+						askApproval,
+						handleError,
+						pushToolResult,
+						removeClosingTag,
+						toolProtocol,
+					})
+					break
+				case "apply_patch":
+					await checkpointSaveAndMark(cline)
+					await applyPatchTool.handle(cline, block as ToolUse<"apply_patch">, {
 						askApproval,
 						handleError,
 						pushToolResult,
