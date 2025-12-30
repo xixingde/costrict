@@ -8,7 +8,7 @@ import { addLineNumbers, everyLineHasLineNumbers, stripLineNumbers } from "../..
 import { ToolUse, DiffStrategy, DiffResult } from "../../../shared/tools"
 import { normalizeString } from "../../../utils/text-normalization"
 
-const BUFFER_LINES = 3000 // Number of extra context lines to show before and after matches
+const BUFFER_LINES = 5000 // Number of extra context lines to show before and after matches
 
 function getSimilarity(original: string, search: string): number {
 	// Empty searches are no longer supported
@@ -427,11 +427,21 @@ Only use a single line of '=======' between search and replacement content, beca
 				replaceContent = stripLineNumbers(replaceContent)
 			}
 
+			// Validate that search and replace content are not identical
 			if (searchContent === replaceContent) {
 				appliedCount++
 				console.warn(
 					`[MultiSearchReplaceDiffStrategy] Skipping replacement at line ${startLine} because search and replace content are identical`,
 				)
+				// TODO: Add a warning to the diff results (costrct change)
+				// diffResults.push({
+				// 	success: false,
+				// 	error:
+				// 		`Search and replace content are identical - no changes would be made\n\n` +
+				// 		`Debug Info:\n` +
+				// 		`- Search and replace must be different to make changes\n` +
+				// 		`- Use read_file to verify the content you want to change`,
+				// })
 				continue
 			}
 
