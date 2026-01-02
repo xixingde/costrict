@@ -3354,6 +3354,28 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 							this.abortReason = cancelReason
 							await this.abortTask()
 						} else {
+							// Handle tool protocol errors with immediate retry
+							if (this.isToolProtocolError(error, this.apiConfiguration)) {
+								await this.rollbackXmlToolProtocol(error)
+
+								// Protocol switched successfully, retry immediately without backoff
+								console.log(
+									`[Task#${this.taskId}.${this.instanceId}] Protocol switched to XML, retrying immediately`,
+								)
+
+								// Push back onto stack with userMessageWasRemoved flag
+								// rollbackXmlToolProtocol already removed the user message from history,
+								// so we need to signal that it should be re-added on retry
+								stack.push({
+									userContent: currentUserContent,
+									includeFileDetails: false,
+									retryAttempt: 0,
+									userMessageWasRemoved: true,
+								})
+								// Continue immediately to next iteration
+								continue
+							}
+
 							// Stream failed - log the error and retry with the same content
 							// The existing rate limiting will prevent rapid retries
 							console.error(
@@ -4370,7 +4392,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 			// Automatic protocol fallback: If using native protocol and error is protocol-related,
 			// switch to XML protocol and retry. This only happens once per task.
-			if (this._taskToolProtocol === "native" && this.isToolProtocolError(error, this.apiConfiguration)) {
+			if (this.isToolProtocolError(error, this.apiConfiguration)) {
 				console.log(
 					`[Task#${this.taskId}] Protocol error detected on attempt ${retryAttempt + 1}. ` +
 						`Falling back to XML protocol...`,
@@ -4687,9 +4709,41 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			"<tool_format>xml</tool_format>",
 		)
 
-		// Remove the failed assistant message and preceding user message
+		// Remove the entire failed conversation turn, including all tool calls and results
+		// Start by removing the failed assistant message
 		this.apiConversationHistory.pop()
-		this.apiConversationHistory.pop()
+
+		// Then remove all preceding tool_result/tool_use pairs and the initial user message
+		// This ensures we clean up the entire conversation turn, not just the last two messages
+		while (this.apiConversationHistory.length > 2) {
+			const lastMessage = this.apiConversationHistory[this.apiConversationHistory.length - 1]
+
+			// If it's a user message with tool_result, remove it and continue
+			if (lastMessage?.role === "user") {
+				const content = Array.isArray(lastMessage.content) ? lastMessage.content : []
+				const hasToolResult = content.some(
+					(block: any) => block.type === "tool_result" || block.tool_result !== undefined,
+				)
+
+				// Remove this user message
+				this.apiConversationHistory.pop()
+
+				// If it had tool_result, continue to remove the assistant message before it
+				// If it didn't have tool_result, it's the original user message - we're done
+				if (!hasToolResult) {
+					break
+				}
+			}
+			// If it's an assistant message, remove it and continue
+			// (This should be a tool_use message)
+			else if (lastMessage?.role === "assistant") {
+				this.apiConversationHistory.pop()
+			}
+			// Unexpected message type - stop to avoid removing too much
+			else {
+				break
+			}
+		}
 
 		// Force reset XML parser to ensure clean state for first retry
 		// This is critical: even if parser exists, we reset it to clear any cached state
@@ -4728,7 +4782,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * Performance optimization: Uses regex pattern matching instead of multiple string comparisons
 	 */
 	private isToolProtocolError(error: any, apiConfiguration: ProviderSettings): boolean {
-		if (!error?.message) {
+		if (this._taskToolProtocol !== "native" || !error?.message) {
 			return false
 		}
 
@@ -4767,6 +4821,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				"invalid tool format",
 				"tool calls must be in the correct format",
 				"malformed tool call",
+
+				"message content parts cannot be empty",
 			].join("|"),
 			"i", // case-insensitive flag
 		)

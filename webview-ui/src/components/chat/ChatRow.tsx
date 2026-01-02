@@ -45,6 +45,7 @@ import { BatchFilePermission } from "./BatchFilePermission"
 import { BatchDiffApproval } from "./BatchDiffApproval"
 import { ProgressIndicator } from "./ProgressIndicator"
 import { Markdown } from "./Markdown"
+import { CollapsibleMarkdownBlock } from "./CollapsibleMarkdownBlock"
 import { CommandExecution } from "./CommandExecution"
 import { CommandExecutionError } from "./CommandExecutionError"
 import { AutoApprovedRequestLimitWarning } from "./AutoApprovedRequestLimitWarning"
@@ -1234,7 +1235,7 @@ export const ChatRowContent = ({
 										padding: "12px 16px",
 										backgroundColor: "var(--vscode-editor-background)",
 									}}>
-									<MarkdownBlock markdown={message.text} />
+									<CollapsibleMarkdownBlock markdown={message.text} />
 								</div>
 							</div>
 						</div>
