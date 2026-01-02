@@ -359,9 +359,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	assistantMessageContent: AssistantMessageContent[] = []
 	presentAssistantMessageLocked = false
 	presentAssistantMessageHasPendingUpdates = false
-	userMessageContent: ((Anthropic.TextBlockParam | Anthropic.ImageBlockParam | Anthropic.ToolResultBlockParam) & {
-		__isNoToolsUsed?: boolean
-	})[] = []
+	userMessageContent: Array<
+		(Anthropic.TextBlockParam | Anthropic.ImageBlockParam | Anthropic.ToolResultBlockParam) & {
+			__isNoToolsUsed?: boolean
+		}
+	> = []
 	userMessageContentReady = false
 	didRejectTool = false
 	didAlreadyUseTool = false
@@ -2466,13 +2468,18 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				) as { type: string; text: string }
 
 				// Use the task's locked protocol, NOT the current settings (fallback to xml if not set)
-				nextUserContent = [
-					{
-						type: "text",
-						__isNoToolsUsed: true,
-						text: formatResponse.noToolsUsed(this._taskToolProtocol ?? "xml", _nextUserContent?.text),
-					},
-				]
+				const content = {
+					type: "text",
+					text: formatResponse.noToolsUsed(this._taskToolProtocol ?? "xml", _nextUserContent?.text),
+				} as Anthropic.Messages.ContentBlockParam & { __isNoToolsUsed?: boolean }
+
+				Object.defineProperty(content, "__isNoToolsUsed", {
+					value: true,
+					enumerable: false, // 不可枚举，JSON 序列化时会被忽略
+					writable: false,
+					configurable: false,
+				})
+				nextUserContent = [content]
 			}
 		}
 	}
@@ -3592,15 +3599,25 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						}
 
 						// Use the task's locked protocol for consistent behavior
-						this.userMessageContent.push({
+						const _content = {
 							type: "text",
-							__isNoToolsUsed: true,
 							text: formatResponse.noToolsUsed(
 								this._taskToolProtocol ?? "xml",
 								undefined,
 								preAssistantMessage,
 							),
+						} as (Anthropic.TextBlockParam | Anthropic.ImageBlockParam | Anthropic.ToolResultBlockParam) & {
+							__isNoToolsUsed?: boolean
+						}
+
+						Object.defineProperty(_content, "__isNoToolsUsed", {
+							value: true,
+							enumerable: false, // 不可枚举，JSON 序列化时会被忽略
+							writable: false,
+							configurable: false,
 						})
+
+						this.userMessageContent.push(_content)
 					} else {
 						// Reset counter when tools are used successfully
 						this.consecutiveNoToolUseCount = 0
