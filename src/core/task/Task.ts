@@ -238,6 +238,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * @private
 	 */
 	private _taskToolProtocol: ToolProtocol | undefined
+	private _taskToolProtocolChange: boolean | undefined
 
 	/**
 	 * Promise that resolves when the task mode has been initialized.
@@ -281,6 +282,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// API
 	api: ApiHandler & {
 		setChatType?: (type: "user" | "system") => void
+		setToolProtocol?: (toolProtocol?: "native" | "xml") => void
 		getChatType?: () => "user" | "system"
 		cancelChat?: (cancelType?: ClineApiReqCancelReason) => void
 	}
@@ -1940,7 +1942,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// If we don't have a persisted tool protocol (old tasks before this feature),
 		// detect it from the API history. This ensures tasks that previously used
 		// XML tools will continue using XML even if NTC is now enabled.
-		if (!this._taskToolProtocol) {
+		if (!this._taskToolProtocol || this._taskToolProtocolChange) {
+			this._taskToolProtocolChange = false
 			const detectedProtocol = detectToolProtocolFromHistory(this.apiConversationHistory)
 			if (detectedProtocol) {
 				// Found tool calls in history - lock to that protocol
@@ -2543,6 +2546,18 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			// Determine API protocol based on provider and model
 			const modelId = getModelId(this.apiConfiguration)
 			const apiProtocol = getApiProtocol(this.apiConfiguration.apiProvider, modelId)
+
+			// Respect user-configured provider rate limiting BEFORE we emit api_req_started.
+			// This prevents the UI from showing an "API Request..." spinner while we are
+			// intentionally waiting due to the rate limit slider.
+			//
+			// NOTE: We also set Task.lastGlobalApiRequestTime here to reserve this slot
+			// before we build environment details (which can take time).
+			// This ensures subsequent requests (including subtasks) still honour the
+			// provider rate-limit window.
+			await this.maybeWaitForProviderRateLimit(currentItem.retryAttempt ?? 0)
+			Task.lastGlobalApiRequestTime = performance.now()
+
 			await this.say(
 				"api_req_started",
 				JSON.stringify({
@@ -2758,12 +2773,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					streamModelInfo,
 					this._taskToolProtocol,
 				)
-				const shouldUseXmlParser = streamProtocol === "xml"
+				let shouldUseXmlParser = streamProtocol === "xml"
 
 				// Yields only if the first chunk is successful, otherwise will
 				// allow the user to retry the request (most likely due to rate
 				// limit error, which gets thrown on the first chunk).
-				const stream = this.attemptApiRequest()
+				const stream = this.attemptApiRequest(currentItem.retryAttempt ?? 0, { skipProviderRateLimit: true })
 				let assistantMessage = ""
 				let reasoningMessage = ""
 				let streamingFailedMessage: string | undefined = ""
@@ -3003,7 +3018,18 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 							}
 							case "text": {
 								assistantMessage += chunk.text
+								if (this._taskToolProtocolChange) {
+									shouldUseXmlParser =
+										resolveToolProtocol(
+											this.apiConfiguration,
+											streamModelInfo,
+											this._taskToolProtocol,
+										) === "xml"
 
+									if (shouldUseXmlParser) {
+										this._taskToolProtocolChange = false
+									}
+								}
 								// Use the protocol determined at the start of streaming
 								// Don't rely solely on parser existence - parser might exist from previous state
 								if (shouldUseXmlParser && this.assistantMessageParser) {
@@ -3944,7 +3970,44 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		await this.providerRef.deref()?.postMessageToWebview({ type: "condenseTaskContextResponse", text: this.taskId })
 	}
 
-	public async *attemptApiRequest(retryAttempt: number = 0): ApiStream {
+	/**
+	 * Enforce the user-configured provider rate limit.
+	 *
+	 * NOTE: This is intentionally treated as expected behavior and is surfaced via
+	 * the `api_req_rate_limit_wait` say type (not an error).
+	 */
+	private async maybeWaitForProviderRateLimit(retryAttempt: number): Promise<void> {
+		const state = await this.providerRef.deref()?.getState()
+		const rateLimitSeconds =
+			state?.apiConfiguration?.rateLimitSeconds ?? this.apiConfiguration?.rateLimitSeconds ?? 0
+
+		if (rateLimitSeconds <= 0 || !Task.lastGlobalApiRequestTime) {
+			return
+		}
+
+		const now = performance.now()
+		const timeSinceLastRequest = now - Task.lastGlobalApiRequestTime
+		const rateLimitDelay = Math.ceil(
+			Math.min(rateLimitSeconds, Math.max(0, rateLimitSeconds * 1000 - timeSinceLastRequest) / 1000),
+		)
+
+		// Only show the countdown UX on the first attempt. Retry flows have their own delay messaging.
+		if (rateLimitDelay > 0 && retryAttempt === 0) {
+			for (let i = rateLimitDelay; i > 0; i--) {
+				// Send structured JSON data for i18n-safe transport
+				const delayMessage = JSON.stringify({ seconds: i })
+				await this.say("api_req_rate_limit_wait", delayMessage, undefined, true)
+				await delay(1000)
+			}
+			// Finalize the partial message so the UI doesn't keep rendering an in-progress spinner.
+			await this.say("api_req_rate_limit_wait", undefined, undefined, false)
+		}
+	}
+
+	public async *attemptApiRequest(
+		retryAttempt: number = 0,
+		options: { skipProviderRateLimit?: boolean } = {},
+	): ApiStream {
 		const state = await this.providerRef.deref()?.getState()
 
 		const {
@@ -3983,29 +4046,17 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			}
 		}
 
-		let rateLimitDelay = 0
-
-		// Use the shared timestamp so that subtasks respect the same rate-limit
-		// window as their parent tasks.
-		if (Task.lastGlobalApiRequestTime) {
-			const now = performance.now()
-			const timeSinceLastRequest = now - Task.lastGlobalApiRequestTime
-			const rateLimit = apiConfiguration?.rateLimitSeconds ?? 1
-			rateLimitDelay = Math.ceil(Math.min(rateLimit, Math.max(0, rateLimit * 1000 - timeSinceLastRequest) / 1000))
+		if (!options.skipProviderRateLimit) {
+			await this.maybeWaitForProviderRateLimit(retryAttempt)
 		}
 
-		// Only show rate limiting message if we're not retrying. If retrying, we'll include the delay there.
-		if (rateLimitDelay > 0 && retryAttempt === 0) {
-			// Show countdown timer
-			for (let i = rateLimitDelay; i > 0; i--) {
-				const delayMessage = `Rate limiting for ${i} seconds...`
-				this.providerRef?.deref()?.log(`"api_req_retry_delayed" ${delayMessage}`)
-				await delay(1000)
-			}
-		}
-
-		// Update last request time before making the request so that subsequent
+		// Update last request time right before making the request so that subsequent
 		// requests — even from new subtasks — will honour the provider's rate-limit.
+		//
+		// NOTE: When recursivelyMakeClineRequests handles rate limiting, it sets the
+		// timestamp earlier to include the environment details build. We still set it
+		// here for direct callers (tests) and for the case where we didn't rate-limit
+		// in the caller.
 		Task.lastGlobalApiRequestTime = performance.now()
 
 		const systemPrompt = await this.getSystemPrompt()
@@ -4300,6 +4351,23 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.currentRequestAbortController = undefined
 			const isContextWindowExceededError = checkContextWindowExceededError(error)
 
+			// Automatic protocol fallback: If using native protocol and error is protocol-related,
+			// switch to XML protocol and retry. This only happens once per task.
+			if (this._taskToolProtocol === "native" && this.isToolProtocolError(error, this.apiConfiguration)) {
+				console.log(
+					`[Task#${this.taskId}] Protocol error detected on attempt ${retryAttempt + 1}. ` +
+						`Falling back to XML protocol...`,
+				)
+
+				await this.rollbackXmlToolProtocol(error)
+
+				// Set chat type for system message
+				this.api?.setChatType?.("system")
+
+				yield* this.attemptApiRequest()
+				return
+			}
+
 			// If it's a context window error and we haven't exceeded max retries for this error type
 			if (isContextWindowExceededError && retryAttempt < MAX_CONTEXT_WINDOW_RETRIES) {
 				console.warn(
@@ -4585,6 +4653,115 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		return cleanConversationHistory
 	}
+
+	async rollbackXmlToolProtocol(error: Error) {
+		console.log(`[Task#${this.taskId}] Switching from native to XML tool protocol due to API error`)
+
+		// Update protocol flag
+		this._taskToolProtocol = "xml"
+		this._taskToolProtocolChange = true
+		// Notify API provider about protocol change
+		this.api?.setToolProtocol?.("xml")
+
+		// Update system prompt to reflect new protocol
+		// @ts-ignore
+		this.apiConversationHistory[0].content[1].text = this.apiConversationHistory[0].content[1].text.replace(
+			"<tool_format>native</tool_format>",
+			"<tool_format>xml</tool_format>",
+		)
+
+		// Remove the failed assistant message and preceding user message
+		this.apiConversationHistory.pop()
+		this.apiConversationHistory.pop()
+
+		// Force reset XML parser to ensure clean state for first retry
+		// This is critical: even if parser exists, we reset it to clear any cached state
+		if (this.assistantMessageParser) {
+			this.assistantMessageParser.reset()
+			console.log(`[Task#${this.taskId}] Reset existing XML parser state`)
+		} else {
+			this.assistantMessageParser = new AssistantMessageParser(this.getCustomToolNames())
+			console.log(`[Task#${this.taskId}] Initialized new XML parser`)
+		}
+
+		// Clear all streaming state to prevent interference with XML parsing
+		this.assistantMessageContent = []
+		this.streamingToolCallIndices.clear()
+		this.currentStreamingContentIndex = 0
+		this.didCompleteReadingStream = false
+
+		console.log(`[Task#${this.taskId}] Cleared all streaming state for protocol switch`)
+
+		await this.say("rollback_xml_tool", error?.message)
+	}
+	/**
+	 * Detects if an error is related to tool protocol incompatibility.
+	 * This enables automatic fallback from native to XML tool protocol when errors occur.
+	 *
+	 * @param error - The error object to analyze
+	 * @returns true if the error is related to tool protocol incompatibility, false otherwise
+	 *
+	 * Common tool protocol errors detected:
+	 * - Missing or invalid tool_call_id in tool_result messages
+	 * - Invalid tool call format or structure
+	 * - Tool use blocks without proper ID fields
+	 * - Mismatched tool call and result references
+	 * - Malformed tool call syntax
+	 *
+	 * Performance optimization: Uses regex pattern matching instead of multiple string comparisons
+	 */
+	private isToolProtocolError(error: any, apiConfiguration: ProviderSettings): boolean {
+		if (!error?.message) {
+			return false
+		}
+
+		const errorMessage = error.message.toLowerCase()
+
+		if (
+			apiConfiguration.apiProvider === "zgsm" &&
+			apiConfiguration.zgsmModelId?.toLowerCase().includes("claude") &&
+			errorMessage.includes("provider returned error")
+		) {
+			return true
+		}
+
+		// Optimized regex pattern covering all common tool protocol errors
+		// This single regex is more performant than multiple string.includes() calls
+		const toolProtocolErrorPattern = new RegExp(
+			[
+				// Missing or invalid tool_call_id
+				"no previous assistant message with a tool call",
+				"tool_call_id\\s+is not found",
+				"tool_call_id is required",
+				"invalid tool_call_id",
+				"tool_result requires tool_call_id",
+
+				// Tool use format errors
+				"tool use must have an id",
+				"tool_use blocks must have an id field",
+				"missing id in tool_use",
+
+				// Tool call/result mismatch
+				"tool result does not match any tool call",
+				"unexpected tool_result",
+				"tool_result without matching tool call",
+
+				// Invalid tool structure
+				"invalid tool format",
+				"tool calls must be in the correct format",
+				"malformed tool call",
+			].join("|"),
+			"i", // case-insensitive flag
+		)
+
+		const isProtocolError = toolProtocolErrorPattern.test(errorMessage)
+
+		if (isProtocolError) {
+			console.warn(`[Task#${this.taskId}] Tool protocol error detected: ${error.message.slice(0, 200)}...`)
+		}
+
+		return isProtocolError
+	}
 	public async checkpointRestore(options: CheckpointRestoreOptions) {
 		return checkpointRestore(this, options)
 	}
@@ -4774,7 +4951,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			const errorCodeManager = ErrorCodeManager.getInstance()
 			errorMsg = await errorCodeManager.parseResponse(error, isZgsm, this.taskId, this.instanceId)
 
-			const requestId = error.headers?.get("x-request-id") || this?.lastApiRequestHeaders?.["X-Request-ID"]
+			const requestId =
+				(error.headers && error.headers?.get?.("x-request-id")) || this?.lastApiRequestHeaders?.["X-Request-ID"]
 			if (requestId) {
 				// Store raw error
 				errorCodeManager.setRawError(requestId, error)
