@@ -48,6 +48,7 @@ import BrowserActionRow from "./BrowserActionRow"
 import BrowserSessionStatusRow from "./BrowserSessionStatusRow"
 import ChatRow from "./ChatRow"
 import { ChatTextArea } from "./ChatTextArea"
+import { markdownExpandingRef } from "./Markdown"
 import TaskHeader from "./TaskHeader"
 import SystemPromptWarning from "./SystemPromptWarning"
 import ProfileViolationWarning from "./ProfileViolationWarning"
@@ -172,6 +173,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const stickyFollowRef = useRef<boolean>(false)
 	const [showScrollToBottom, setShowScrollToBottom] = useState(false)
 	const [isAtBottom, setIsAtBottom] = useState(false)
+	const userExpandingRef = useRef<boolean>(false)
 	const lastTtsRef = useRef<string>("")
 	const [wasStreaming, setWasStreaming] = useState<boolean>(false)
 	const [checkpointWarning, setCheckpointWarning] = useState<
@@ -1208,15 +1210,32 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	// Scroll when user toggles certain rows.
 	const toggleRowExpansion = useCallback(
 		(ts: number) => {
+			// Mark that user is actively expanding/collapsing content
+			userExpandingRef.current = true
+			// Immediately disable sticky follow to prevent Virtuoso from auto-scrolling
+			stickyFollowRef.current = false
 			handleSetExpandedRow(ts)
 			// The logic to set disableAutoScrollRef.current = true on expansion
 			// is now handled by the useEffect hook that observes expandedRows.
+
+			// Clear the flag after content has had time to render and settle
+			// Increased timeout to handle large content blocks
+			setTimeout(() => {
+				userExpandingRef.current = false
+			}, 1000)
 		},
 		[handleSetExpandedRow],
 	)
 
 	const handleRowHeightChange = useCallback(
 		(isTaller: boolean) => {
+			// Don't auto-scroll if the user is actively expanding/collapsing content
+			// This prevents scroll conflicts when user manually expands the last message
+			// or expands Markdown content
+			if (userExpandingRef.current || markdownExpandingRef.current) {
+				return
+			}
+
 			if (isAtBottom) {
 				if (isTaller) {
 					scrollToBottomSmooth()
@@ -1651,7 +1670,14 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							increaseViewportBy={{ top: 3_000, bottom: 1000 }}
 							data={groupedMessages}
 							itemContent={itemContent}
-							followOutput={(isAtBottom: boolean) => isAtBottom || stickyFollowRef.current}
+							followOutput={(isAtBottom: boolean) => {
+								// Disable auto-scrolling when user is manually expanding/collapsing content
+								// This prevents scroll jumping when expanding the last message or Markdown content
+								if (userExpandingRef.current || markdownExpandingRef.current) {
+									return false
+								}
+								return isAtBottom || stickyFollowRef.current
+							}}
 							atBottomStateChange={(isAtBottom: boolean) => {
 								setIsAtBottom(isAtBottom)
 								// Only show the scroll-to-bottom button if not at bottom

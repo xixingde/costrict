@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "../ui"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
+import { ProgressIndicator } from "./ProgressIndicator"
 
 /**
  * Unified error display component for all error types in the chat.
@@ -61,6 +62,7 @@ export interface ErrorRowProps {
 	message: string
 	showCopyButton?: boolean
 	expandable?: boolean
+	isLast?: boolean
 	defaultExpanded?: boolean
 	additionalContent?: React.ReactNode
 	headerClassName?: string
@@ -81,6 +83,7 @@ export const ErrorRow = memo(
 		showCopyButton = false,
 		expandable = false,
 		defaultExpanded = false,
+		isLast = false,
 		additionalContent,
 		headerClassName,
 		messageClassName,
@@ -200,8 +203,13 @@ export const ErrorRow = memo(
 						<div
 							className="flex items-center gap-2 flex-grow  text-vscode-editorWarning-foreground"
 							onClick={handleToggleExpand}>
-							<span className="text-vscode-editorWarning-foreground font-bold grow cursor-pointer">
-								{"🪄 CoStrict Auto Switch: NATIVE -> XML"}
+							{isLast && <ProgressIndicator />}
+							<span
+								className="font-bold grow cursor-pointer"
+								style={{
+									color: "var(--vscode-charts-green)",
+								}}>
+								{"🪄 CoStrict Auto Switch ToolProtocol: NATIVE -> XML"}
 							</span>
 							<div className="flex items-center transition-opacity opacity-0 group-hover:opacity-100">
 								{showCopyButton && (
@@ -213,7 +221,7 @@ export const ErrorRow = memo(
 									</VSCodeButton>
 								)}
 								<span
-									className={`text-vscode-editor-foreground codicon codicon-chevron-${isExpanded ? "up" : "down"}`}
+									className={`cursor-pointer text-vscode-editor-foreground codicon codicon-chevron-${isExpanded ? "up" : "down"}`}
 								/>
 							</div>
 						</div>

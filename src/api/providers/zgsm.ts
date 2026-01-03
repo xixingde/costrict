@@ -112,7 +112,6 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 		const requestId = uuidv7()
 		const workflowModes = ["strict", "plan"] as Array<string | undefined>
 		await this.updateModelInfo()
-		const isNative = isNativeProtocol(this?.toolProtocol)
 		const fromWorkflow =
 			metadata?.zgsmWorkflowMode ||
 			workflowModes.includes(metadata?.mode) ||
@@ -128,6 +127,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 		const modelUrl = this.baseURL || ZgsmAuthConfig.getInstance().getDefaultApiBaseUrl()
 		const enabledR1Format = this.options.openAiR1FormatEnabled ?? false
 		const enabledLegacyFormat = this.options.openAiLegacyFormat ?? false
+		const isNative = isNativeProtocol(this?.toolProtocol)
 
 		// Cache boolean calculation results
 		const isAzureAiInference = this._isAzureAiInference(modelUrl)
@@ -397,7 +397,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 					}
 				: { role: "system" as const, content: systemPrompt }
 
-			convertedMessages = [systemMessage, ...convertToOpenAiMessages(messages)]
+			convertedMessages = [systemMessage, ...convertToOpenAiMessages(messages, { mergeToolResultText: true })]
 		}
 
 		// Apply cache control logic

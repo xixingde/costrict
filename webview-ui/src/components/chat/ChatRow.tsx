@@ -1179,7 +1179,14 @@ export const ChatRowContent = ({
 		case "say":
 			switch (message.say) {
 				case "rollback_xml_tool":
-					return <ErrorRow type="rollback_xml_tool" message={message.text || ""} expandable={true} />
+					return (
+						<ErrorRow
+							type="rollback_xml_tool"
+							message={message.text || ""}
+							expandable={true}
+							isLast={isLast}
+						/>
+					)
 				case "diff_error":
 					return (
 						<ErrorRow
@@ -1669,7 +1676,7 @@ export const ChatRowContent = ({
 					}
 
 					// Fallback for generic errors
-					return <ErrorRow type="error" message={message.text || t("chat:error")} />
+					return <ErrorRow type="error" message={message.text || t("chat:error")} isLast={isLast} />
 				case "completion_result":
 					return (
 						<>
@@ -1880,7 +1887,7 @@ export const ChatRowContent = ({
 		case "ask":
 			switch (message.ask) {
 				case "mistake_limit_reached":
-					return <ErrorRow type="mistake_limit" message={message.text || ""} />
+					return <ErrorRow type="mistake_limit" message={message.text || ""} isLast={isLast} />
 				case "command":
 					return (
 						<CommandExecution

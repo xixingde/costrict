@@ -8,6 +8,10 @@ import MarkdownBlock from "../common/MarkdownBlock"
 
 const MAX_COLLAPSED_HEIGHT = 400
 
+// Global flag to prevent auto-scrolling when expanding markdown content
+// This is set to true when user clicks expand button and cleared after content settles
+export const markdownExpandingRef = { current: false }
+
 export const Markdown = memo(({ markdown, partial }: { markdown?: string; partial?: boolean }) => {
 	const [isHovering, setIsHovering] = useState(false)
 	const [isExpanded, setIsExpanded] = useState(false)
@@ -58,7 +62,15 @@ export const Markdown = memo(({ markdown, partial }: { markdown?: string; partia
 									background: "var(--vscode-editor-background)",
 									transition: "background 0.2s ease-in-out",
 								}}
-								onClick={() => setIsExpanded(!isExpanded)}>
+								onClick={() => {
+									// Set global flag to prevent auto-scrolling during expansion
+									markdownExpandingRef.current = true
+									setIsExpanded(!isExpanded)
+									// Clear flag after content has rendered and settled
+									setTimeout(() => {
+										markdownExpandingRef.current = false
+									}, 1000)
+								}}>
 								<span className={`codicon codicon-chevron-${isExpanded ? "up" : "down"}`} />
 							</VSCodeButton>
 						</StandardTooltip>

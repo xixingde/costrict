@@ -925,89 +925,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	/**
-	 * Mark recent error-correction message pairs when the model successfully uses tools after an error.
-	 * This allows the system to filter out error messages and their corrections to reduce context.
-	 *
-	 * When enabled, this will tag:
-	 * 1. The assistant message that failed to use tools
-	 * 2. The user message with the error correction prompt
-	 * 3. Mark the current successful assistant message as a correction marker
-	 */
-	private async markErrorCorrectionPair(): Promise<void> {
-		// Check if error correction filtering is enabled
-		const state = await this.providerRef.deref()?.getState()
-		if (!state?.filterErrorCorrectionMessages) {
-			return // Feature is disabled, do nothing
-		}
-
-		// Find all unmarked error messages (with __isNoToolsUsed that haven't been tagged yet)
-		const errorUserMessageIndices: number[] = []
-		for (let i = this.apiConversationHistory.length - 1; i >= 0; i--) {
-			const msg = this.apiConversationHistory[i]
-			if (msg.role === "user" && Array.isArray(msg.content)) {
-				// Skip messages that are already marked as part of an error-correction pair
-				if (msg.errorCorrectionParent) {
-					continue
-				}
-
-				const hasNoToolsUsedError = msg.content.some((block: any) => block.__isNoToolsUsed === true)
-				if (hasNoToolsUsedError) {
-					errorUserMessageIndices.push(i)
-				}
-			}
-		}
-
-		// If no unmarked error messages found, nothing to do
-		if (errorUserMessageIndices.length === 0) {
-			return
-		}
-
-		// Verify that the last message in history is an assistant message
-		// This is a safety check to ensure we're in the expected state
-		const lastMessageIndex = this.apiConversationHistory.length - 1
-		if (lastMessageIndex < 0 || this.apiConversationHistory[lastMessageIndex].role !== "assistant") {
-			// Unexpected state: last message should be the successful assistant response
-			this.providerRef
-				?.deref()
-				?.log(`Warning: markErrorCorrectionPair called but last message is not from assistant`)
-			return
-		}
-
-		// Avoid marking the same assistant message as a correction marker multiple times
-		if (this.apiConversationHistory[lastMessageIndex].isErrorCorrectionMarker) {
-			// This assistant message is already marked as a correction marker
-			return
-		}
-
-		// Generate a single errorCorrectionId for all the error-correction pairs
-		const errorCorrectionId = crypto.randomUUID()
-
-		// Mark all found error messages and their preceding assistant messages
-		for (const errorUserMessageIndex of errorUserMessageIndices) {
-			// Mark the error user message
-			this.apiConversationHistory[errorUserMessageIndex].errorCorrectionParent = errorCorrectionId
-
-			// Find and mark the assistant message that triggered the error (the one before the error user message)
-			for (let i = errorUserMessageIndex - 1; i >= 0; i--) {
-				if (this.apiConversationHistory[i].role === "assistant") {
-					// Only mark if not already marked (defensive check)
-					if (!this.apiConversationHistory[i].errorCorrectionParent) {
-						this.apiConversationHistory[i].errorCorrectionParent = errorCorrectionId
-					}
-					break
-				}
-			}
-		}
-
-		// Mark the current (most recent) assistant message as the correction marker
-		this.apiConversationHistory[lastMessageIndex].isErrorCorrectionMarker = true
-		this.apiConversationHistory[lastMessageIndex].errorCorrectionId = errorCorrectionId
-
-		// Save the updated history
-		await this.saveApiConversationHistory()
-	}
-
-	/**
 	 * Flush any pending tool results to the API conversation history.
 	 *
 	 * This is critical for native tool protocol when the task is about to be
@@ -3643,10 +3560,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					} else {
 						// Reset counter when tools are used successfully
 						this.consecutiveNoToolUseCount = 0
-
-						// Mark error-correction pairs if this is a successful response after an error
-						// This allows filtering out the error and its correction from context
-						await this.markErrorCorrectionPair()
 					}
 
 					// Push to stack if there's content OR if we're paused waiting for a subtask.
@@ -4700,53 +4613,166 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this._taskToolProtocol = "xml"
 		this._taskToolProtocolChange = true
 		// Notify API provider about protocol change
-		this.api?.setToolProtocol?.("xml")
+		this.api?.setToolProtocol?.(this._taskToolProtocol)
 
-		// Update system prompt to reflect new protocol
-		// @ts-ignore
-		this.apiConversationHistory[0].content[1].text = this.apiConversationHistory[0].content[1].text.replace(
-			"<tool_format>native</tool_format>",
-			"<tool_format>xml</tool_format>",
-		)
-
-		// Remove the entire failed conversation turn, including all tool calls and results
-		// Start by removing the failed assistant message
-		this.apiConversationHistory.pop()
-
-		// Then remove all preceding tool_result/tool_use pairs and the initial user message
-		// This ensures we clean up the entire conversation turn, not just the last two messages
-		while (this.apiConversationHistory.length > 2) {
-			const lastMessage = this.apiConversationHistory[this.apiConversationHistory.length - 1]
-
-			// If it's a user message with tool_result, remove it and continue
-			if (lastMessage?.role === "user") {
-				const content = Array.isArray(lastMessage.content) ? lastMessage.content : []
-				const hasToolResult = content.some(
-					(block: any) => block.type === "tool_result" || block.tool_result !== undefined,
-				)
-
-				// Remove this user message
+		// Update system prompt to reflect new protocol (if exists in conversation history)
+		const firstMessage = this.apiConversationHistory[0] as any
+		let lastMessage = this.apiConversationHistory[this.apiConversationHistory.length - 1]
+		let userFeedback = ""
+		if (lastMessage?.role === "user") {
+			if (Array.isArray(lastMessage.content)) {
 				this.apiConversationHistory.pop()
+				const lastMessageToolcontent = (
+					lastMessage.content.find((block: any) => block.type === "tool_result") as any
+				)?.content as string
 
-				// If it had tool_result, continue to remove the assistant message before it
-				// If it didn't have tool_result, it's the original user message - we're done
-				if (!hasToolResult) {
-					break
+				if (
+					lastMessageToolcontent.includes("<task>") ||
+					lastMessageToolcontent.includes("<feedback>") ||
+					lastMessageToolcontent.includes("<answer>") ||
+					lastMessageToolcontent.includes("<user_message>")
+				) {
+					userFeedback = lastMessageToolcontent
 				}
-			}
-			// If it's an assistant message, remove it and continue
-			// (This should be a tool_use message)
-			else if (lastMessage?.role === "assistant") {
-				this.apiConversationHistory.pop()
-			}
-			// Unexpected message type - stop to avoid removing too much
-			else {
-				break
 			}
 		}
 
+		if (
+			firstMessage?.role === "system" &&
+			firstMessage?.content &&
+			Array.isArray(firstMessage.content) &&
+			firstMessage.content[1]?.type === "text"
+		) {
+			firstMessage.content[1].text = firstMessage.content[1].text.replace(
+				"<tool_format>native</tool_format>",
+				"<tool_format>xml</tool_format>",
+			)
+		}
+
+		// Find the first user message (skip system prompt if it exists)
+		const startIndex = (this.apiConversationHistory[0] as any)?.role === "system" ? 1 : 0
+		const originalUserMessage = this.apiConversationHistory[startIndex]
+
+		// If no user message exists, can't proceed - just clear history
+		if (!originalUserMessage || originalUserMessage.role !== "user") {
+			console.warn(`[Task#${this.taskId}] No original user message found, resetting to empty history`)
+			this.apiConversationHistory =
+				(this.apiConversationHistory[0] as any)?.role === "system" ? [this.apiConversationHistory[0]] : []
+
+			// Reset parser and state
+			this.resetParserAndState()
+			await this.say("rollback_xml_tool", error?.message)
+			return
+		}
+
+		// Collect all tool calls and their results
+		const toolUseMap = new Map<string, string>() // toolCallId -> toolName
+		const toolResults: string[] = []
+
+		for (let i = startIndex + 1; i < this.apiConversationHistory.length; i++) {
+			const message = this.apiConversationHistory[i]
+
+			if (message?.role === "assistant" && Array.isArray(message.content)) {
+				// Record all tool_use IDs and names for later matching
+				for (const block of message.content) {
+					if (block.type === "tool_use" && (block as any).id && (block as any).name) {
+						toolUseMap.set((block as any).id, (block as any).name)
+					}
+				}
+			} else if (message?.role === "user" && Array.isArray(message.content)) {
+				// Match tool_result with corresponding tool_use
+				for (const block of message.content) {
+					if (block.type === "tool_result") {
+						const toolResultBlock = block as any
+						const toolCallId = toolResultBlock.tool_use_id
+						const toolName = toolCallId ? toolUseMap.get(toolCallId) : undefined
+
+						// Format content based on its type
+						let contentStr = ""
+						if (typeof toolResultBlock.content === "string") {
+							contentStr = toolResultBlock.content
+						} else if (Array.isArray(toolResultBlock.content)) {
+							// Handle content array (e.g., [{ type: "text", text: "..." }])
+							contentStr = toolResultBlock.content
+								.map((c: any) => (c.type === "text" ? c.text : JSON.stringify(c)))
+								.join("\n")
+						} else if (toolResultBlock.content) {
+							contentStr = JSON.stringify(toolResultBlock.content)
+						}
+
+						if (contentStr) {
+							const resultText = toolName ? `["${toolName}" tool result]\n${contentStr}` : contentStr
+							toolResults.push(resultText)
+						}
+					}
+				}
+			}
+		}
+
+		// Build new assistant message content
+		const assistantContent: any[] = []
+
+		// Preserve non-tool text blocks from the first assistant message
+		const firstAssistantIndex = startIndex + 1
+		const firstAssistant = this.apiConversationHistory[firstAssistantIndex]
+		if (firstAssistant?.role === "assistant" && Array.isArray(firstAssistant.content)) {
+			const textBlocks = firstAssistant.content.filter((block: any) => block.type === "text")
+			if (textBlocks.length > 0) {
+				assistantContent.push(...textBlocks)
+			}
+		}
+
+		// Add tool results summary if any exist
+		if (toolResults.length > 0) {
+			assistantContent.push({
+				type: "text",
+				text: toolResults.join("\n\n"),
+			})
+		}
+
+		// Rebuild conversation history
+		const newHistory: any[] = []
+
+		// Keep system prompt if it exists
+		if ((this.apiConversationHistory[0] as any)?.role === "system") {
+			newHistory.push(this.apiConversationHistory[0])
+		}
+
+		// Add original user message
+		newHistory.push(originalUserMessage)
+
+		// Add assistant message only if it has content
+		if (assistantContent.length > 0) {
+			newHistory.push({
+				role: "assistant",
+				content: assistantContent,
+			})
+		}
+
+		if (userFeedback?.length) {
+			newHistory.push({
+				role: "user",
+				content: userFeedback,
+			})
+		}
+
+		this.apiConversationHistory = newHistory
+
+		// Reset parser and state
+		this.resetParserAndState()
+
+		console.log(
+			`[Task#${this.taskId}] Rolled back to ${newHistory.length} messages ` +
+				`(${toolResults.length} tool results preserved)`,
+		)
+		await this.say("rollback_xml_tool", error?.message)
+	}
+
+	/**
+	 * Helper method to reset XML parser and streaming state
+	 */
+	private resetParserAndState() {
 		// Force reset XML parser to ensure clean state for first retry
-		// This is critical: even if parser exists, we reset it to clear any cached state
 		if (this.assistantMessageParser) {
 			this.assistantMessageParser.reset()
 			console.log(`[Task#${this.taskId}] Reset existing XML parser state`)
@@ -4759,11 +4785,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.assistantMessageContent = []
 		this.streamingToolCallIndices.clear()
 		this.currentStreamingContentIndex = 0
+		this.consecutiveMistakeCount = 0
 		this.didCompleteReadingStream = false
 
 		console.log(`[Task#${this.taskId}] Cleared all streaming state for protocol switch`)
-
-		await this.say("rollback_xml_tool", error?.message)
 	}
 	/**
 	 * Detects if an error is related to tool protocol incompatibility.
