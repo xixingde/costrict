@@ -862,8 +862,6 @@ export class NativeToolCallParser {
 				default:
 					if (customToolRegistry.has(resolvedName)) {
 						nativeArgs = args as NativeArgsFor<TName>
-					} else {
-						console.error(`Unhandled tool: ${resolvedName}`)
 					}
 
 					break
