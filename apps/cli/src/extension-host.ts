@@ -346,6 +346,11 @@ export class ExtensionHost extends EventEmitter {
 
 		// Map provider to the correct API key and model field names.
 		switch (provider) {
+			case "zgsm":
+				if (apiKey) config.zgsmAccessToken = apiKey
+				if (model) config.zgsmModelId = model
+				break
+
 			case "anthropic":
 				if (apiKey) config.apiKey = apiKey
 				if (model) config.apiModelId = model

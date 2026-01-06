@@ -13,7 +13,7 @@ This CLI uses the `@roo-code/vscode-shim` package to provide a VSCode API compat
 pnpm install
 
 # Build the main extension first.
-pnpm --filter roo-cline bundle
+pnpm --filter zgsm bundle
 
 # Build the cli.
 pnpm --filter @roo-code/cli build
