@@ -92,21 +92,30 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 			})()
 
 			await this.terminal.setActiveStream(stream, Promise.resolve(this.pid))
-
+			let outputIndex = 0
 			for await (const line of stream) {
 				if (this.aborted) {
 					break
 				}
-
+				outputIndex++
 				this.fullOutput += line
 
-				if (this.isListening) {
-					await delay(400)
+				const now = Date.now()
+
+				if (
+					this.isListening &&
+					(now - this.lastEmitTime_ms > 600 || this.lastEmitTime_ms === 0 || outputIndex < 3)
+				) {
 					this.emitRemainingBufferIfListening()
+					this.lastEmitTime_ms = now
 				}
 
 				this.startHotTimer(line)
 			}
+
+			await delay(500)
+			this.emitRemainingBufferIfListening()
+			this.startHotTimer(this.fullOutput.slice(-2000))
 
 			if (this.aborted) {
 				let timeoutId: NodeJS.Timeout | undefined
@@ -151,8 +160,10 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 			this.subprocess = undefined
 		}
 
-		await this.terminal.setActiveStream(undefined, Promise.resolve(this.pid))
-		this.emitRemainingBufferIfListening()
+		await Promise.all([
+			this.terminal.setActiveStream(undefined, Promise.resolve(this.pid)),
+			this.emitRemainingBufferIfListening(),
+		])
 		this.stopHotTimer()
 		this.emit("completed", this.fullOutput)
 		this.emit("continue")

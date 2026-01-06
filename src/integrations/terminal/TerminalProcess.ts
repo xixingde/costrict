@@ -172,7 +172,7 @@ export class TerminalProcess extends BaseTerminalProcess {
 
 		let preOutput = ""
 		let commandOutputStarted = false
-
+		let outputIndex = 0
 		/*
 		 * Extract clean output from raw accumulated output. FYI:
 		 * ]633 is a custom sequence number used by VSCode shell integration:
@@ -185,6 +185,7 @@ export class TerminalProcess extends BaseTerminalProcess {
 
 		// Process stream data
 		for await (let data of stream) {
+			outputIndex++
 			// Check for command output start marker
 			if (!commandOutputStarted) {
 				preOutput += data
@@ -209,13 +210,22 @@ export class TerminalProcess extends BaseTerminalProcess {
 			// For non-immediately returning commands we want to show loading spinner
 			// right away but this wouldn't happen until it emits a line break, so
 			// as soon as we get any output we emit to let webview know to show spinner
-			if (this.isListening) {
-				await delay(150)
+			const now = Date.now()
+
+			if (
+				this.isListening &&
+				(now - this.lastEmitTime_ms > 150 || this.lastEmitTime_ms === 0 || outputIndex < 3)
+			) {
 				this.emitRemainingBufferIfListening()
+				this.lastEmitTime_ms = now
 			}
 
 			this.startHotTimer(data)
 		}
+
+		await delay(500)
+		this.emitRemainingBufferIfListening()
+		this.startHotTimer(this.fullOutput.slice(-2000))
 
 		// Set streamClosed immediately after stream ends.
 		await this.terminal.setActiveStream(undefined, this.terminal?.terminal?.processId)
