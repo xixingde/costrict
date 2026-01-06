@@ -18,6 +18,7 @@ import type {
 	ApiStreamToolCallEndChunk,
 } from "../../api/transform/stream"
 import { MCP_TOOL_PREFIX, MCP_TOOL_SEPARATOR, parseMcpToolName } from "../../utils/mcp-name"
+import { fixNativeToolname } from "../../utils/fixNativeToolname"
 
 /**
  * Helper type to extract properly typed native arguments for a given tool.
@@ -205,7 +206,7 @@ export class NativeToolCallParser {
 	public static startStreamingToolCall(id: string, name: string): void {
 		this.streamingToolCalls.set(id, {
 			id,
-			name,
+			name: fixNativeToolname(name),
 			argumentsAccumulator: "",
 		})
 	}

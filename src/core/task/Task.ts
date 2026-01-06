@@ -139,6 +139,7 @@ import { AutoApprovalHandler, checkAutoApproval } from "../auto-approval"
 import psTree from "ps-tree"
 import { MessageManager } from "../message-manager"
 import { validateAndFixToolResultIds } from "./validateToolResultIds"
+import { fixNativeToolname } from "../../utils/fixNativeToolname"
 
 const MAX_EXPONENTIAL_BACKOFF_SECONDS = 600 // 10 minutes
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
@@ -2797,7 +2798,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 										// Create initial partial tool use
 										const partialToolUse: ToolUse = {
 											type: "tool_use",
-											name: event.name as ToolName,
+											name: fixNativeToolname(event.name as ToolName),
 											params: {},
 											partial: true,
 										}
