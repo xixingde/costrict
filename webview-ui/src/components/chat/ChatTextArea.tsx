@@ -1375,7 +1375,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					</div>
 
 					{/* ModeSwitch positioned at the top left of the input area */}
-					<div className="absolute top-2 left-2 z-30">
+					<div className="absolute top-2 left-2 z-30 bg-vscode-input-background">
 						<ModeSwitch isStreaming={isStreaming} />
 					</div>
 				</div>
@@ -1445,7 +1445,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								selectedProviderModels={selectedProviderModels}
 							/>
 						)}
-						<AutoApproveDropdown triggerClassName="min-w-[28px] text-ellipsis overflow-hidden flex-shrink" />
+						<AutoApproveDropdown triggerClassName="min-w-[28px] text-ellipsis overflow-hidden flex-shrink bg-vscode-input-background" />
 					</div>
 				</div>
 			</div>

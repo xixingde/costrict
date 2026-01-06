@@ -13,6 +13,7 @@ import { inspect } from "util"
 import type { ExitCodeDetails } from "./types"
 import { BaseTerminalProcess } from "./BaseTerminalProcess"
 import { Terminal } from "./Terminal"
+import delay from "delay"
 
 export class TerminalProcess extends BaseTerminalProcess {
 	private terminalRef: WeakRef<Terminal>
@@ -132,6 +133,9 @@ export class TerminalProcess extends BaseTerminalProcess {
 				commandToExecute += ` ; start-sleep -milliseconds ${Terminal.getCommandDelay()}`
 			}
 
+			// Set UTF-8 encoding for PowerShell
+			commandToExecute = `$OutputEncoding = [System.Text.Encoding]::UTF8 ; [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 ; ${commandToExecute}`
+
 			terminal.shellIntegration.executeCommand(commandToExecute)
 		} else if (isCmd) {
 			// For Windows cmd, do not use chcp as it's unreliable
@@ -205,11 +209,9 @@ export class TerminalProcess extends BaseTerminalProcess {
 			// For non-immediately returning commands we want to show loading spinner
 			// right away but this wouldn't happen until it emits a line break, so
 			// as soon as we get any output we emit to let webview know to show spinner
-			const now = Date.now()
-
-			if (this.isListening && (now - this.lastEmitTime_ms > 100 || this.lastEmitTime_ms === 0)) {
+			if (this.isListening) {
+				await delay(150)
 				this.emitRemainingBufferIfListening()
-				this.lastEmitTime_ms = now
 			}
 
 			this.startHotTimer(data)
@@ -273,7 +275,7 @@ export class TerminalProcess extends BaseTerminalProcess {
 		this.removeAllListeners("line")
 		this.emit("continue")
 	}
-	public userInput (input: string) {
+	public userInput(input: string) {
 		this.terminal.terminal.sendText(input)
 	}
 

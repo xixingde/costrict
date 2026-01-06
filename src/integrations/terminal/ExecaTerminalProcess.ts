@@ -8,6 +8,7 @@ import { BaseTerminalProcess } from "./BaseTerminalProcess"
 import { getIdeaShellEnvWithUpdatePath } from "../../utils/ideaShellEnvLoader"
 import { isJetbrainsPlatform } from "../../utils/platform"
 import { t } from "../../i18n"
+import delay from "delay"
 
 export class ExecaTerminalProcess extends BaseTerminalProcess {
 	private terminalRef: WeakRef<RooTerminal>
@@ -52,6 +53,8 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 					// Ensure UTF-8 encoding for Ruby, CocoaPods, etc.
 					LANG: "en_US.UTF-8",
 					LC_ALL: "en_US.UTF-8",
+					LANGUAGE: "en_US.UTF-8",
+					PYTHONIOENCODING: "utf-8",
 				},
 			})`${command}`
 
@@ -97,11 +100,9 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 
 				this.fullOutput += line
 
-				const now = Date.now()
-
-				if (this.isListening && (now - this.lastEmitTime_ms > 500 || this.lastEmitTime_ms === 0)) {
+				if (this.isListening) {
+					await delay(400)
 					this.emitRemainingBufferIfListening()
-					this.lastEmitTime_ms = now
 				}
 
 				this.startHotTimer(line)

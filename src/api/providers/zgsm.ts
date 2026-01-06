@@ -379,7 +379,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 			convertedMessages = convertToR1Format([{ role: "user", content: systemPrompt }, ...messages])
 		} else if (isArk || isLegacyFormat) {
 			convertedMessages = [{ role: "system", content: systemPrompt }, ...convertToSimpleMessages(messages)]
-		} else if (_mid?.includes("glm") || isMiniMax || _mid?.includes("claude")) {
+		} else if (isNative && (_mid?.includes("glm") || isMiniMax || _mid?.includes("claude"))) {
 			convertedMessages = [
 				{ role: "system", content: systemPrompt },
 				...convertToZAiFormat(messages, { mergeToolResultText: true }),
@@ -398,7 +398,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 					}
 				: { role: "system" as const, content: systemPrompt }
 
-			convertedMessages = [systemMessage, ...convertToOpenAiMessages(messages, { mergeToolResultText: true })]
+			convertedMessages = [systemMessage, ...convertToOpenAiMessages(messages, { mergeToolResultText: isNative })]
 		}
 
 		// Apply cache control logic
