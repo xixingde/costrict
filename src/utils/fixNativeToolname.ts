@@ -18,7 +18,5 @@ export const fixNativeToolname = (toolname: string | ToolName) => {
 		fixedToolname = tags[0] as ToolName
 	}
 
-	console.log("fixNativeToolname tags", toolname, "->", fixedToolname)
-
 	return fixedToolname
 }
