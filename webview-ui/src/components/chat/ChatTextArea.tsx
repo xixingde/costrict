@@ -112,6 +112,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			// cloudOrganizations,
 			enterBehavior,
 			reviewTask,
+			automaticallyFocus,
 		} = useExtensionState()
 		const selectedProviderModels = useMemo(() => {
 			if (!apiConfiguration?.apiProvider) return []
@@ -709,6 +710,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		// Automatically focus on the text box when the window regains focus.
 		useEffect(() => {
 			const handleWindowFocus = () => {
+				if (!automaticallyFocus) return
 				// When the window regains focus, automatically focus on the text box.
 				// However, avoid focusing when the context menu is displayed, and avoid interrupting user operations in edit mode.
 				if (textAreaRef.current && !showContextMenu && !isEditMode) {
@@ -723,7 +725,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			return () => {
 				window.removeEventListener("focus", handleWindowFocus)
 			}
-		}, [showContextMenu, isEditMode])
+		}, [showContextMenu, isEditMode, automaticallyFocus])
 
 		const handleBlur = useCallback(() => {
 			// Only hide the context menu if the user didn't click on it.

@@ -3965,6 +3965,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			autoCondenseContextPercent = 100,
 			profileThresholds = {},
 			showSpeedInfo = false,
+			automaticallyFocus = false,
 		} = state ?? {}
 
 		// Get condensing configuration for automatic triggers.
