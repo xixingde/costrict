@@ -20,7 +20,6 @@ import { XmlMatcher } from "../../utils/xml-matcher"
 
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { convertToR1Format } from "../transform/r1-format"
-import { convertToSimpleMessages } from "../transform/simple-format"
 import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"
 
@@ -127,7 +126,6 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 		const { info: modelInfo, reasoning, id: modelId } = this.getModel()
 		const modelUrl = this.baseURL || ZgsmAuthConfig.getInstance().getDefaultApiBaseUrl()
 		const enabledR1Format = this.options.openAiR1FormatEnabled ?? false
-		const enabledLegacyFormat = this.options.openAiLegacyFormat ?? false
 		const isNative = isNativeProtocol(this?.toolProtocol)
 
 		// Cache boolean calculation results
@@ -135,7 +133,6 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 		const isDeepseekReasoner = modelId.includes("deepseek-reasoner")
 		const isMiniMax = modelId.toLowerCase().includes("minimax")
 		const deepseekReasoner = isDeepseekReasoner || enabledR1Format
-		const isArk = modelUrl.includes(".volces.com")
 		const isGrokXAI = this._isGrokXAI(this.baseURL)
 		const isO1Family = modelId.includes("o1") || modelId.includes("o3") || modelId.includes("o4")
 
@@ -170,9 +167,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 					systemPrompt,
 					messages,
 					deepseekReasoner,
-					isArk,
 					isMiniMax,
-					enabledLegacyFormat,
 					modelInfo,
 					isNative,
 				)
@@ -251,7 +246,6 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 					systemPrompt,
 					messages,
 					deepseekReasoner,
-					enabledLegacyFormat,
 					modelInfo,
 					metadata,
 				)
@@ -367,9 +361,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 		systemPrompt: string,
 		messages: Anthropic.Messages.MessageParam[],
 		isDeepseekReasoner: boolean,
-		isArk: boolean,
 		isMiniMax: boolean,
-		isLegacyFormat: boolean,
 		modelInfo: ModelInfo,
 		isNative: boolean,
 	): Array<OpenAI.Chat.ChatCompletionMessageParam | Anthropic.Messages.MessageParam> {
@@ -377,8 +369,6 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 		const _mid = modelInfo.id?.toLowerCase()
 		if (isDeepseekReasoner) {
 			convertedMessages = convertToR1Format([{ role: "user", content: systemPrompt }, ...messages])
-		} else if (isArk || isLegacyFormat) {
-			convertedMessages = [{ role: "system", content: systemPrompt }, ...convertToSimpleMessages(messages)]
 		} else if (isNative && (_mid?.includes("glm") || isMiniMax || _mid?.includes("claude"))) {
 			convertedMessages = [
 				{ role: "system", content: systemPrompt },
@@ -487,7 +477,6 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 		systemPrompt: string,
 		messages: Anthropic.Messages.MessageParam[],
 		isDeepseekReasoner: boolean,
-		isLegacyFormat: boolean,
 		modelInfo: ModelInfo,
 		metadata?: ApiHandlerCreateMessageMetadata,
 		isNative?: boolean,
@@ -500,9 +489,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 			model: modelId,
 			messages: isDeepseekReasoner
 				? convertToR1Format([{ role: "user", content: systemPrompt }, ...messages])
-				: isLegacyFormat
-					? [systemMessage, ...convertToSimpleMessages(messages)]
-					: [systemMessage, ...convertToOpenAiMessages(messages)],
+				: [systemMessage, ...convertToOpenAiMessages(messages)],
 			...(isNative
 				? {
 						...(metadata?.tools && { tools: this.convertToolsForOpenAI(metadata.tools) }),

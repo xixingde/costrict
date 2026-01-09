@@ -55,7 +55,6 @@ export const ZgsmAI = ({
 	const { t } = useAppTranslation()
 	const [refetchingModels, setRefetchingModels] = useState(false)
 	const [azureApiVersionSelected, setAzureApiVersionSelected] = useState(!!apiConfiguration?.azureApiVersion)
-	const [openAiLegacyFormatSelected, setOpenAiLegacyFormatSelected] = useState(!!apiConfiguration?.openAiLegacyFormat)
 
 	// Use `ref` to track whether `includeMaxTokens` has been explicitly set by the user.
 	const includeMaxTokensInitializedRef = useRef(Object.hasOwn(apiConfiguration, "includeMaxTokens"))
@@ -238,16 +237,6 @@ export const ZgsmAI = ({
 						onChange={handleInputChange("openAiR1FormatEnabled", noTransform)}
 						openAiR1FormatEnabled={apiConfiguration?.openAiR1FormatEnabled ?? false}
 					/>
-					<div>
-						<Checkbox
-							checked={openAiLegacyFormatSelected}
-							onChange={(checked: boolean) => {
-								setOpenAiLegacyFormatSelected(checked)
-								setApiConfigurationField("openAiLegacyFormat", checked)
-							}}>
-							{t("settings:providers.useLegacyFormat")}
-						</Checkbox>
-					</div>
 					<Checkbox
 						checked={apiConfiguration?.openAiStreamingEnabled ?? true}
 						onChange={handleInputChange("openAiStreamingEnabled", noTransform)}>
