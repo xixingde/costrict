@@ -314,7 +314,7 @@ export class ExtensionHost extends EventEmitter {
 
 	private async createEphemeralStorageDir(): Promise<string> {
 		const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
-		const tmpDir = path.join(os.tmpdir(), `roo-cli-${uniqueId}`)
+		const tmpDir = path.join(os.tmpdir(), `cos-cli-${uniqueId}`)
 		await fs.promises.mkdir(tmpDir, { recursive: true })
 		return tmpDir
 	}

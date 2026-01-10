@@ -790,7 +790,7 @@ describe("ExtensionHost", () => {
 				createdDirs.push(tmpDir)
 
 				expect(tmpDir).toContain(os.tmpdir())
-				expect(tmpDir).toContain("roo-cli-")
+				expect(tmpDir).toContain("cos-cli-")
 				expect(fs.existsSync(tmpDir)).toBe(true)
 			})
 
@@ -811,8 +811,8 @@ describe("ExtensionHost", () => {
 				createdDirs.push(tmpDir)
 
 				const dirName = path.basename(tmpDir)
-				// Format: roo-cli-{timestamp}-{randomId}
-				expect(dirName).toMatch(/^roo-cli-\d+-[a-z0-9]+$/)
+				// Format: cos-cli-{timestamp}-{randomId}
+				expect(dirName).toMatch(/^cos-cli-\d+-[a-z0-9]+$/)
 			})
 		})
 
@@ -839,7 +839,7 @@ describe("ExtensionHost", () => {
 				const host = createTestHost({ ephemeral: true })
 
 				// Set a non-existent directory
-				;(host as unknown as Record<string, unknown>).ephemeralStorageDir = "/non/existent/path/roo-cli-test"
+				;(host as unknown as Record<string, unknown>).ephemeralStorageDir = "/non/existent/path/cos-cli-test"
 
 				// Dispose should not throw
 				await expect(host.dispose()).resolves.toBeUndefined()

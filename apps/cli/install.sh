@@ -120,7 +120,7 @@ get_version() {
 
 # Download and extract
 download_and_install() {
-    TARBALL="roo-cli-${PLATFORM}.tar.gz"
+    TARBALL="cos-cli-${PLATFORM}.tar.gz"
     
     # Create temp directory
     TMP_DIR=$(mktemp -d)

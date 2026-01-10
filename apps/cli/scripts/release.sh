@@ -244,8 +244,8 @@ build() {
 create_tarball() {
     step "4/8" "Creating release tarball for $PLATFORM..."
     
-    RELEASE_DIR="$REPO_ROOT/roo-cli-${PLATFORM}"
-    TARBALL="roo-cli-${PLATFORM}.tar.gz"
+    RELEASE_DIR="$REPO_ROOT/cos-cli-${PLATFORM}"
+    TARBALL="cos-cli-${PLATFORM}.tar.gz"
     
     # Clean up any previous build
     rm -rf "$RELEASE_DIR"
@@ -549,7 +549,7 @@ roo --help
 ## Platform Support
 
 This release includes:
-- \`roo-cli-${PLATFORM}.tar.gz\` - Built on $(uname -s) $(uname -m)
+- \`cos-cli-${PLATFORM}.tar.gz\` - Built on $(uname -s) $(uname -m)
 
 > **Note:** Additional platforms will be added as needed. If you need a different platform, please open an issue.
 

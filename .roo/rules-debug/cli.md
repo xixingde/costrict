@@ -5,13 +5,13 @@ When debugging the CLI, `console.log` will break the TUI (Terminal User Interfac
 ## File-Based Logging Strategy
 
 1. **Write logs to a temporary file instead of console**:
-    - Create a log file at a known location, e.g., `/tmp/roo-cli-debug.log`
+    - Create a log file at a known location, e.g., `/tmp/cos-cli-debug.log`
     - Use `fs.appendFileSync()` to write timestamped log entries
     - Example logging utility:
 
         ```typescript
         import fs from "fs"
-        const DEBUG_LOG = "/tmp/roo-cli-debug.log"
+        const DEBUG_LOG = "/tmp/cos-cli-debug.log"
 
         function debugLog(message: string, data?: unknown) {
         	const timestamp = new Date().toISOString()
@@ -23,7 +23,7 @@ When debugging the CLI, `console.log` will break the TUI (Terminal User Interfac
         ```
 
 2. **Clear the log file before each debugging session**:
-    - Run `echo "" > /tmp/roo-cli-debug.log` or use `fs.writeFileSync(DEBUG_LOG, "")` at app startup during debugging
+    - Run `echo "" > /tmp/cos-cli-debug.log` or use `fs.writeFileSync(DEBUG_LOG, "")` at app startup during debugging
 
 ## Iterative Debugging Workflow
 
@@ -32,7 +32,7 @@ Follow this feedback loop to systematically narrow down issues:
 1. **Add targeted logging** at suspected problem areas based on your hypotheses
 2. **Instruct the user** to reproduce the issue using the CLI normally
 3. **Read the log file** after the user completes testing:
-    - Run `cat /tmp/roo-cli-debug.log` to retrieve the captured output
+    - Run `cat /tmp/cos-cli-debug.log` to retrieve the captured output
 4. **Analyze the log output** to gather clues about:
     - Execution flow and timing
     - Variable values at key points
