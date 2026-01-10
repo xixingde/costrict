@@ -12,6 +12,7 @@ import {
 	zgsmModelsConfig as zgsmModels,
 	// TOOL_PROTOCOL,
 	isNativeProtocol,
+	ClineApiReqCancelReason,
 } from "@roo-code/types"
 
 import type { ApiHandlerOptions } from "../../shared/api"
@@ -35,7 +36,6 @@ import { Package } from "../../shared/package"
 import { COSTRICT_DEFAULT_HEADERS } from "../../shared/headers"
 import { handleOpenAIError } from "./utils/openai-error-handler"
 import { getModels } from "./fetchers/modelCache"
-import { ClineApiReqCancelReason } from "../../shared/ExtensionMessage"
 import { getEditorType } from "../../utils/getEditorType"
 import { ChatCompletionChunk } from "openai/resources/index.mjs"
 import { convertToZAiFormat } from "../transform/zai-format"

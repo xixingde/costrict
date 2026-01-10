@@ -11,9 +11,8 @@ import {
 	zgsmModelsConfig as zgsmModels,
 	zgsmDefaultModelId,
 	OrganizationAllowList,
+	ExtensionMessage,
 } from "@roo-code/types"
-
-import { ExtensionMessage } from "@roo/ExtensionMessage"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Button, StandardTooltip } from "@src/components/ui"
