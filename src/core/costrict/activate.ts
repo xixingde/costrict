@@ -93,7 +93,7 @@ export async function activate(
 	initErrorCodeManager(provider)
 	initGitCheckoutDetector(context, logger)
 	await initialize(provider, logger)
-	startIPCServer()
+	await startIPCServer()
 	connectIPC()
 
 	if (isVscodePlatform) {

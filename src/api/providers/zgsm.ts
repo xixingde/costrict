@@ -623,7 +623,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 				for (const key of ["reasoning_content", "reasoning"] as const) {
 					if (key in delta) {
 						const reasoning_content = ((delta as any)[key] as string | undefined) || ""
-						if (reasoning_content?.trim()) {
+						if (reasoning_content) {
 							// eslint-disable-next-line @typescript-eslint/no-unused-expressions
 							isDev &&
 								this.logger.warn(
