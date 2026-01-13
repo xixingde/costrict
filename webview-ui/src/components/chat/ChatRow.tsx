@@ -1304,8 +1304,13 @@ export const ChatRowContent = ({
 					// Determine if the API request is in progress
 					const isApiRequestInProgress =
 						apiReqCancelReason === undefined && apiRequestFailedMessage === undefined && cost === undefined
+					const showApiFetchErrorIcon =
+						((cost === null || cost === undefined) && apiRequestFailedMessage) ||
+						apiReqStreamingFailedMessage
+
 					return (
 						<>
+							{/* header Info */}
 							<div
 								className={`group text-sm transition-opacity ${
 									isApiRequestInProgress ? "opacity-100" : "opacity-40 hover:opacity-100"
@@ -1352,15 +1357,9 @@ export const ChatRowContent = ({
 									</StandardTooltip>
 								)}
 							</div>
+							{/* speed Info */}
 							{(selectReason || firstTokenLatency !== undefined || tokensPerSecond !== undefined) && (
 								<div className="mt-2 flex items-center flex-wrap gap-2">
-									{/* {(selectedLLM || originModelId) && (
-										<div
-											className="text-xs text-vscode-descriptionForeground border-vscode-dropdown-border/50 border px-1.5 py-0.5 rounded-lg"
-											title="Selected Model">
-											{isAuto ? t("chat:autoMode.selectedLLM", { selectedLLM }) : originModelId}
-										</div>
-									)} */}
 									{selectReason && (
 										<div
 											className="text-xs text-vscode-descriptionForeground border-vscode-dropdown-border/50 border px-1.5 py-0.5 rounded-lg"
@@ -1391,8 +1390,8 @@ export const ChatRowContent = ({
 									)}
 								</div>
 							)}
-							{(((cost === null || cost === undefined) && apiRequestFailedMessage) ||
-								apiReqStreamingFailedMessage) && (
+							{/* content */}
+							{showApiFetchErrorIcon ? (
 								<ErrorRow
 									type="api_failure"
 									message={apiRequestFailedMessage || apiReqStreamingFailedMessage || ""}
@@ -1422,7 +1421,7 @@ export const ChatRowContent = ({
 									}
 									errorDetails={apiReqStreamingFailedMessage}
 								/>
-							)}
+							) : null}
 						</>
 					)
 				}
@@ -1557,7 +1556,9 @@ export const ChatRowContent = ({
 							</div>
 						)
 					}
-
+					if (!message?.text?.trim()) {
+						return <div className="ml-2 pl-4 pb-1">{t("chat:emptyCompletionResult")}</div>
+					}
 					return (
 						<div>
 							<div style={headerStyle}>
@@ -1735,6 +1736,9 @@ export const ChatRowContent = ({
 					// Fallback for generic errors
 					return <ErrorRow type="error" message={message.text || t("chat:error")} isLast={isLast} />
 				case "completion_result":
+					if (!message?.text?.trim()) {
+						return <div className="ml-2 pl-4 pb-1">{t("chat:emptyCompletionResult")}</div>
+					}
 					return (
 						<>
 							<div style={headerStyle}>
@@ -1921,6 +1925,9 @@ export const ChatRowContent = ({
 					// Handled by BrowserSessionRow; prevent raw JSON (action/result) from rendering here
 					return null
 				default:
+					if (!message?.text?.trim()) {
+						return <div className="ml-2 pl-4 pb-1">{t("chat:emptyCompletionResult")}</div>
+					}
 					return (
 						<>
 							{title && (
@@ -1947,6 +1954,9 @@ export const ChatRowContent = ({
 				case "mistake_limit_reached":
 					return <ErrorRow type="mistake_limit" message={message.text || ""} isLast={isLast} />
 				case "command":
+					if (!message?.text?.trim()) {
+						return <div className="ml-2 pl-4 pb-1">{t("chat:emptyCompletionResult")}</div>
+					}
 					return (
 						<CommandExecution
 							executionId={message.ts.toString()}
@@ -2015,6 +2025,9 @@ export const ChatRowContent = ({
 						</>
 					)
 				case "completion_result":
+					if (!message?.text?.trim()) {
+						return <div className="ml-2 pl-4 pb-1">{t("chat:emptyCompletionResult")}</div>
+					}
 					if (message.text) {
 						return (
 							<div>
@@ -2038,6 +2051,9 @@ export const ChatRowContent = ({
 						return null // Don't render anything when we get a completion_result ask without text
 					}
 				case "followup":
+					if (!message?.text?.trim()) {
+						return <div className="ml-2 pl-4 pb-1">{t("chat:emptyCompletionResult")}</div>
+					}
 					return (
 						<>
 							{title && (
@@ -2062,8 +2078,8 @@ export const ChatRowContent = ({
 						</>
 					)
 				case "multiple_choice":
-					if (!message.text || !message.text.trim()) {
-						return null
+					if (!message?.text?.trim()) {
+						return <div className="ml-2 pl-4 pb-1">{t("chat:emptyCompletionResult")}</div>
 					}
 					return (
 						<>

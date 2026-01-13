@@ -219,6 +219,11 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 					}
 
 					stream = data
+
+					// todo: use supportsNativeTools to check if the model supports native tools
+					if (isNative && modelId.toLowerCase().includes("qwen-2.5-vl")) {
+						throw new Error("qwen-2.5-vl does not support native protocol")
+					}
 				} catch (error) {
 					throw handleOpenAIError(error, this.providerName)
 				}
@@ -696,7 +701,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 				// Buffer tool calls instead of yielding immediately (for native protocol)
 				if (isNative) {
 					bufferToolCalls(delta, finishReason)
-					
+
 					// Flush tool call buffer periodically based on time interval
 					const now = Date.now()
 					const shouldFlushToolCalls =
@@ -735,11 +740,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 			// This ensures no content is lost in the buffer
 			if (contentBuffer.length > 0) {
 				// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-				isDev &&
-					this.logger.info(
-						`[Flushing ${contentBuffer.length} remaining chars from buffer]`,
-						requestId,
-					)
+				isDev && this.logger.info(`[Flushing ${contentBuffer.length} remaining chars from buffer]`, requestId)
 				const chunks = flushBuffer()
 				for (const processedChunk of chunks) {
 					yield processedChunk
@@ -752,15 +753,11 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 				if (lastDeltaInfo.delta || lastDeltaInfo.finishReason) {
 					bufferToolCalls(lastDeltaInfo.delta, lastDeltaInfo.finishReason)
 				}
-				
+
 				// Then flush all buffered tool calls
 				if (toolCallBuffer.length > 0) {
 					// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-					isDev &&
-						this.logger.info(
-							`[Flushing ${toolCallBuffer.length} remaining tool calls]`,
-							requestId,
-						)
+					isDev && this.logger.info(`[Flushing ${toolCallBuffer.length} remaining tool calls]`, requestId)
 					const events = flushToolCallBuffer()
 					for (const event of events) {
 						yield event

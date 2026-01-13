@@ -1110,10 +1110,10 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		return -1
 	}, [messages])
 
-	const _browserSessionMessages = useMemo<ClineMessage[]>(() => {
-		if (browserSessionStartIndex === -1) return []
-		return messages.slice(browserSessionStartIndex)
-	}, [browserSessionStartIndex, messages])
+	// const _browserSessionMessages = useMemo<ClineMessage[]>(() => {
+	// 	if (browserSessionStartIndex === -1) return []
+	// 	return messages.slice(browserSessionStartIndex)
+	// }, [browserSessionStartIndex, messages])
 
 	// Show globe toggle only when in a task that has a browser session (active or inactive)
 	const showBrowserDockToggle = useMemo(
