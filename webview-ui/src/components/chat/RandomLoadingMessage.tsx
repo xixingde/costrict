@@ -158,7 +158,7 @@ export const WITTY_LOADING_PHRASES: Record<RandomLoadingMessageLanguage, string[
 
 export const RandomLoadingMessage = ({
 	language,
-	interval = 4000,
+	interval = 5000,
 	type = "general",
 	staticDisplay = false,
 }: {

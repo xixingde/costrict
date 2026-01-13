@@ -1525,7 +1525,7 @@ export const ChatRowContent = ({
 						}
 					})()
 
-					return isWaiting && waitSeconds !== undefined ? (
+					return isWaiting && waitSeconds !== undefined && isLast ? (
 						<div
 							className={`group text-sm transition-opacity opacity-100`}
 							style={{

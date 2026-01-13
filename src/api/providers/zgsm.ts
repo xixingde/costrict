@@ -462,7 +462,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 				...requestOptions,
 				...(metadata?.tools && { tools: this.convertToolsForOpenAI(metadata.tools) }),
 				...(metadata?.tool_choice && { tool_choice: metadata.tool_choice }),
-				...{ parallel_tool_calls: metadata?.parallelToolCalls ?? false },
+				...(metadata?.parallelToolCalls === true && { parallel_tool_calls: true }),
 			}
 		}
 
@@ -499,7 +499,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 				? {
 						...(metadata?.tools && { tools: this.convertToolsForOpenAI(metadata.tools) }),
 						...(metadata?.tool_choice && { tool_choice: metadata.tool_choice }),
-						...{ parallel_tool_calls: metadata?.parallelToolCalls ?? false },
+						...(metadata?.parallelToolCalls === true && { parallel_tool_calls: true }),
 					}
 				: undefined),
 			extra_body: {
@@ -968,7 +968,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 					? {
 							...(metadata?.tools && { tools: this.convertToolsForOpenAI(metadata.tools) }),
 							...(metadata?.tool_choice && { tool_choice: metadata.tool_choice }),
-							...{ parallel_tool_calls: metadata?.parallelToolCalls ?? false },
+							...(metadata?.parallelToolCalls === true && { parallel_tool_calls: true }),
 						}
 					: undefined),
 			}
@@ -1006,7 +1006,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 					? {
 							...(metadata?.tools && { tools: this.convertToolsForOpenAI(metadata.tools) }),
 							...(metadata?.tool_choice && { tool_choice: metadata.tool_choice }),
-							...{ parallel_tool_calls: metadata?.parallelToolCalls ?? false },
+							...(metadata?.parallelToolCalls === true && { parallel_tool_calls: true }),
 						}
 					: undefined),
 			}
