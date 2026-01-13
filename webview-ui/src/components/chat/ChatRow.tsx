@@ -1452,14 +1452,16 @@ export const ChatRowContent = ({
 									// }
 								} else {
 									body = t("chat:apiRequest.errorMessage.unknown")
-									docsURL = "mailto:zgsm@sangfor.com.cn?subject=Unknown API Error"
+									docsURL =
+										"mailto:zgsm@sangfor.com.cn?subject=Unknown API Error&body=[Please include full error details]"
 								}
 							} else if (message.text.indexOf("Connection error") === 0) {
 								body = t("chat:apiRequest.errorMessage.connection")
 							} else {
 								// Non-HTTP-status-code error message - store full text as errorDetails
 								body = t("chat:apiRequest.errorMessage.unknown")
-								docsURL = "mailto:zgsm@sangfor.com.cn?subject=Unknown API Error"
+								docsURL =
+									"mailto:zgsm@sangfor.com.cn?subject=Unknown API Error&body=[Please include full error details]"
 							}
 						}
 
@@ -1734,7 +1736,14 @@ export const ChatRowContent = ({
 					}
 
 					// Fallback for generic errors
-					return <ErrorRow type="error" message={message.text || t("chat:error")} isLast={isLast} />
+					return (
+						<ErrorRow
+							type="error"
+							message={message.text || t("chat:error")}
+							errorDetails={message.text}
+							isLast={isLast}
+						/>
+					)
 				case "completion_result":
 					if (!message?.text?.trim()) {
 						return <div className="ml-2 pl-4 pb-1">{t("chat:emptyCompletionResult")}</div>
@@ -1952,7 +1961,14 @@ export const ChatRowContent = ({
 		case "ask":
 			switch (message.ask) {
 				case "mistake_limit_reached":
-					return <ErrorRow type="mistake_limit" message={message.text || ""} isLast={isLast} />
+					return (
+						<ErrorRow
+							type="mistake_limit"
+							message={message.text || ""}
+							errorDetails={message.text}
+							isLast={isLast}
+						/>
+					)
 				case "command":
 					if (!message?.text?.trim()) {
 						return <div className="ml-2 pl-4 pb-1">{t("chat:emptyCompletionResult")}</div>
