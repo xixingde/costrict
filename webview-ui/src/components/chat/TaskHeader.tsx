@@ -474,8 +474,6 @@ const TaskHeader = ({
 				{/* Todo list - always shown at bottom when todos exist */}
 				{hasTodos && <TodoListDisplay todos={todos ?? (task as any)?.tool?.todos ?? []} />}
 			</div>
-			{/* <TodoListDisplay todos={todos ?? (task as any)?.tool?.todos ?? []} /> */}
-			{/* <CloudUpsellDialog open={isOpen} onOpenChange={closeUpsell} onConnect={handleConnect} /> */}
 		</div>
 	)
 }
