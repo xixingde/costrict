@@ -1671,6 +1671,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 						todos={latestTodos}
 						lastUserFeedbackIndex={groupedMessages.findIndex((msg) => msg.ts === lastUserFeedback?.ts)}
 						lastUserFeedback={lastUserFeedback?.text || ""}
+						isStreaming={isStreaming}
 						scrollToMessage={scrollToMessage}
 					/>
 

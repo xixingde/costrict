@@ -50,6 +50,7 @@ export interface TaskHeaderProps {
 	totalCost: number
 	aggregatedCost?: number
 	hasSubtasks?: boolean
+	isStreaming?: boolean
 	costBreakdown?: string
 	contextTokens: number
 	buttonsDisabled: boolean
@@ -77,6 +78,7 @@ const TaskHeader = ({
 	lastUserFeedback,
 	lastUserFeedbackIndex,
 	scrollToMessage,
+	isStreaming,
 }: TaskHeaderProps) => {
 	const { t } = useTranslation()
 	const { apiConfiguration, currentTaskItem, clineMessages, isBrowserSessionActive } = useExtensionState()
@@ -524,6 +526,7 @@ const TaskHeader = ({
 						<div
 							onClick={(e) => {
 								e.stopPropagation()
+								if (isStreaming || !lastUserFeedbackIndex) return
 								scrollToMessage?.(lastUserFeedbackIndex)
 							}}
 							className="mt-1 -mx-2.5 border-t border-vscode-sideBar-background flex items-center justify-start text-sm text-muted-foreground/70 pt-2 px-2.5 cursor-pointer select-none">
