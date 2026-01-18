@@ -1057,7 +1057,10 @@ export const ChatRowContent = ({
 								{t("chat:subtasks.newTaskContent")}
 							</div>
 							<div style={{ padding: "12px 16px", backgroundColor: "var(--vscode-editor-background)" }}>
-								<MarkdownBlock markdown={tool.content} />
+								<CollapsibleMarkdownBlock
+									markdown={tool.content}
+									collapseWithoutScroll={collapseWithoutScrollEnabled}
+								/>
 							</div>
 						</div>
 					</>
@@ -1228,6 +1231,16 @@ export const ChatRowContent = ({
 	switch (message.type) {
 		case "say":
 			switch (message.say) {
+				case "auto_switch_model":
+					return (
+						<ErrorRow
+							deleteMessageTs={deleteMessageTs}
+							type="auto_switch_model"
+							message={message.text || ""}
+							expandable={true}
+							isLast={isLast}
+						/>
+					)
 				case "rollback_xml_tool":
 					return (
 						<ErrorRow
