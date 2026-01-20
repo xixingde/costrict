@@ -21,6 +21,7 @@ import { CheckpointRestoreDialog } from "./components/chat/CheckpointRestoreDial
 import { DeleteMessageDialog, EditMessageDialog } from "./components/chat/MessageModificationConfirmationDialog"
 import ErrorBoundary from "./components/ErrorBoundary"
 // import { CloudView } from "./components/cloud/CloudView"
+import { WorktreesView } from "./components/worktrees"
 import { useAddNonInteractiveClickListener } from "./components/ui/hooks/useNonInteractiveClick"
 import { TooltipProvider } from "./components/ui/tooltip"
 import { STANDARD_TOOLTIP_DELAY, StandardTooltip } from "./components/ui/standard-tooltip"
@@ -33,7 +34,7 @@ import { useTranslation } from "react-i18next"
 import { EXPERIMENT_IDS } from "@roo/experiments"
 
 // type Tab = "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "cloud" | "zgsm-account" | "codeReview"
-type Tab = "settings" | "history" | "chat" | "marketplace" | "cloud" | "zgsm-account" | "codeReview"
+type Tab = "settings" | "history" | "chat" | "marketplace" | "cloud" | "zgsm-account" | "codeReview" | "worktrees"
 
 interface HumanRelayDialogState {
 	isOpen: boolean
@@ -45,7 +46,6 @@ interface ReauthConfirmationDialogState {
 	isOpen: boolean
 	messageTs: number
 }
-
 interface DeleteMessageDialogState {
 	isOpen: boolean
 	messageTs: number
@@ -80,6 +80,7 @@ const tabsByMessageAction: Partial<Record<NonNullable<ExtensionMessage["action"]
 	cloudButtonClicked: "cloud",
 	zgsmAccountButtonClicked: "zgsm-account",
 	codeReviewButtonClicked: "codeReview",
+	worktreesButtonClicked: "worktrees",
 }
 
 const App = () => {
@@ -349,6 +350,7 @@ const App = () => {
 			{tab === "zgsm-account" && (
 				<ZgsmAccountView apiConfiguration={apiConfiguration} onDone={() => switchTab("chat")} />
 			)}
+			{tab === "worktrees" && <WorktreesView onDone={() => switchTab("chat")} />}
 			<div className={`${isChatTab ? "fixed inset-0 flex flex-col" : "hidden"}`}>
 				<div className={`header flex items-center justify-between px-5 ${isChatTab ? "" : "hidden"}`}>
 					<TabList value={tab} onValueChange={(val) => switchTab(val as Tab)} className="header-left h-7">
