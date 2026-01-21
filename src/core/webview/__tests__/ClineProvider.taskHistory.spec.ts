@@ -23,12 +23,16 @@ vi.mock("fs/promises", () => ({
 
 vi.mock("axios", () => ({
 	default: {
-		get: vi.fn().mockResolvedValue({ data: { data: [] } }),
-		post: vi.fn(),
 		create: vi.fn().mockReturnValue({
 			get: vi.fn().mockResolvedValue({ data: { data: [] } }),
 			post: vi.fn(),
+			interceptors: {
+				request: { use: vi.fn(), eject: vi.fn() },
+				response: { use: vi.fn(), eject: vi.fn() },
+			},
 		}),
+		get: vi.fn().mockResolvedValue({ data: { data: [] } }),
+		post: vi.fn(),
 	},
 	get: vi.fn().mockResolvedValue({ data: { data: [] } }),
 	post: vi.fn(),
@@ -123,13 +127,15 @@ vi.mock("vscode", () => ({
 		showInformationMessage: vi.fn(),
 		showWarningMessage: vi.fn(),
 		showErrorMessage: vi.fn(),
+		onDidChangeActiveTextEditor: vi.fn(() => ({ dispose: vi.fn() })),
 		createOutputChannel: vi.fn().mockReturnValue({
-			name: "test-channel",
 			appendLine: vi.fn(),
+			append: vi.fn(),
 			clear: vi.fn(),
+			show: vi.fn(),
+			hide: vi.fn(),
 			dispose: vi.fn(),
 		}),
-		onDidChangeActiveTextEditor: vi.fn(() => ({ dispose: vi.fn() })),
 	},
 	workspace: {
 		getConfiguration: vi.fn().mockReturnValue({
