@@ -1812,7 +1812,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		if (this.abort) {
 			throw new Error(`[CoStrict#say] task ${this.taskId}.${this.instanceId} aborted`)
 		}
-		const isRateLimitRetry = !!(type === "api_req_retry_delayed" && text && text?.startsWith("Rate limiting for"))
+		const isRateLimitRetry =
+			this.apiConfiguration.apiProvider === "zgsm" &&
+			!!(type === "api_req_retry_delayed" && text && text?.startsWith("Rate limiting for"))
 
 		if (partial !== undefined) {
 			const lastMessage = this.clineMessages.at(-1)
