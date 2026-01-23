@@ -26,6 +26,7 @@ interface BuildToolsOptions {
 	maxConcurrentFileReads: number
 	browserToolEnabled: boolean
 	modelInfo?: ModelInfo
+	useLitePrompts?: boolean
 	diffEnabled: boolean
 	/**
 	 * If true, returns all tools without mode filtering, but also includes
@@ -94,6 +95,7 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 		maxConcurrentFileReads,
 		browserToolEnabled,
 		modelInfo,
+		useLitePrompts,
 		diffEnabled,
 		includeAllToolsWithRestrictions,
 	} = options
@@ -123,6 +125,7 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 		partialReadsEnabled,
 		maxConcurrentFileReads,
 		supportsImages,
+		useLitePrompts,
 	})
 
 	// Filter native tools based on mode restrictions.
