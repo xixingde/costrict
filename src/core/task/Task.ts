@@ -3712,6 +3712,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					} else {
 						// Reset counter when tools are used successfully
 						this.consecutiveNoToolUseCount = 0
+						// Record successful tool use in smart mistake detector
+						this.smartMistakeDetector?.recordSuccess()
 					}
 
 					// Push to stack if there's content OR if we're paused waiting for a subtask.
@@ -4649,6 +4651,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						await this.switchModel()
 						this.consecutiveMistakeCount = 0
 						this.smartMistakeDetector.clear()
+						this.smartMistakeDetector.markModelSwitched()
 						return
 					} catch (error) {
 						console.error("Failed to auto switch model:", error)
@@ -5037,12 +5040,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 
 		// 注意：这里需要根据实际情况跟踪错误类型
-		// 当前实现基于 consecutiveMistakeCount，可以后续扩展使用 MistakeType
-		if (this.consecutiveMistakeCount > 0) {
+		// Only add NO_TOOL_USE mistake if consecutiveMistakeCount is significant (> 1)
+		// This prevents false positives when task is completed or model is thinking
+		if (this.consecutiveMistakeCount > 1) {
 			this.smartMistakeDetector.addMistake(
 				MistakeType.NO_TOOL_USE,
 				`consecutiveMistakeCount: ${this.consecutiveMistakeCount}`,
 				"medium",
+				"model", // Explicitly mark as model-related error
 			)
 
 			if (this.smartMistakeDetector.shouldAutoSwitchModel()) {
@@ -5050,6 +5055,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					await this.switchModel()
 					this.consecutiveMistakeCount = 0
 					this.smartMistakeDetector.clear()
+					this.smartMistakeDetector.markModelSwitched()
 					return
 				} catch (error) {
 					console.error("Failed to auto switch model:", error)
