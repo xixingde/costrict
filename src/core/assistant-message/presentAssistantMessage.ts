@@ -1104,6 +1104,7 @@ function containsXmlToolMarkup(text: string): boolean {
 		"apply_diff",
 		"apply_patch",
 		"ask_followup_question",
+		"ask_multiple_choice",
 		"attempt_completion",
 		"browser_action",
 		"codebase_search",

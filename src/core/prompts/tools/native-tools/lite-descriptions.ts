@@ -1,3 +1,13 @@
+export function getLiteReadFileDescription(): string {
+	return `## read_file
+Read file contents with line numbers.
+Params: files (REQUIRED)
+- files: Array of file objects
+  - path (REQUIRED): File path relative to workspace
+  - line_ranges (optional): Array of [start, end] tuples for specific sections`
+}
+getLiteReadFileDescription.toolname = "read_file"
+
 export function getLiteWriteToFileDescription(): string {
 	return `## write_to_file
 Create/overwrite file with content.
@@ -110,6 +120,15 @@ Params: command (REQUIRED), args (REQUIRED)`
 getLiteRunSlashCommandDescription.toolname = "run_slash_command"
 
 // Native tools
+export function getLiteApplyDiffDescription(): string {
+	return `## apply_diff
+Apply precise, targeted modifications to an existing file using one or more search/replace blocks.
+Params: path (REQUIRED), diff (REQUIRED)
+- path: File path relative to workspace
+- diff: String containing search/replace blocks`
+}
+getLiteApplyDiffDescription.toolname = "apply_diff"
+
 export function getLiteApplyPatchDescription(): string {
 	return `## apply_patch
 Apply a patch to a file. supports creating new files, deleting files, and updating existing files with precise changes.
@@ -139,19 +158,40 @@ CRITICAL: Every question and every option MUST have an id field - results cannot
 }
 getLiteAskMultipleChoiceDescription.toolname = "ask_multiple_choice"
 
+export function getLiteSearchAndReplaceDescription(): string {
+	return `## search_and_replace
+Apply precise, targeted modifications using search and replace operations.
+Params: path (REQUIRED), operations (REQUIRED)
+- path: File path relative to workspace
+- operations: Array of search/replace operations
+  - search (REQUIRED): Exact text to find
+  - replace (REQUIRED): Text to replace with`
+}
+getLiteSearchAndReplaceDescription.toolname = "search_and_replace"
+
+export function getLiteSearchReplaceDescription(): string {
+	return `## search_replace
+Replace ONE occurrence of old_string with new_string in a file.
+Params: file_path (REQUIRED), old_string (REQUIRED), new_string (REQUIRED)
+- file_path: Path to the file (relative or absolute)
+- old_string: Text to replace (must be unique, include 3-5 lines of context)
+- new_string: Edited text to replace with`
+}
+getLiteSearchReplaceDescription.toolname = "search_replace"
+
 export const xmlLiteToolGuide = `
-# Tool Call Format (CRITICAL):
+# Response Format (CRITICAL):
 When calling a tool, you MUST wrap the tool call parameters in a <tool_call> XML tag containing a valid JSON object.
 
 Required format:
 \`\`\`xml
 <tool_call>
 {
-		"name": "tool_name_here",
-		"arguments": {
-				"param1": "value1",
-				"param2": "value2"
-		}
+	"name": "tool_name_here",
+	"arguments": {
+		"param1": "value1",
+		"param2": "value2"
+	}
 }
 </tool_call>
 \`\`\`
@@ -165,10 +205,12 @@ Requirements:
 `
 
 export const getGeminiCliLiteToolGuide = () => {
-	return `
-${xmlLiteToolGuide}
+	return `---- CRITICAL TOOL RULES (MUST FOLLOW) ----
 
-# Available Tools
+# User Local Available Tools
+
+${getLiteReadFileDescription()}
+
 ${getLiteWriteToFileDescription()}
 
 ${getLiteSearchFilesDescription()}
@@ -204,5 +246,15 @@ ${getLiteApplyPatchDescription()}
 ${getLiteEditFileDescription()}
 
 ${getLiteAskMultipleChoiceDescription()}
+
+${getLiteApplyDiffDescription()}
+
+${getLiteSearchAndReplaceDescription()}
+
+${getLiteSearchReplaceDescription()}
+
+${xmlLiteToolGuide}
+
+-----------------------------------------
 `
 }

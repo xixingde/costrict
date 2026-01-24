@@ -289,9 +289,13 @@ export class GeminiCliHandler extends BaseProvider implements SingleCompletionHa
 				contents: [
 					{
 						role: "user",
-						parts: [{ text: systemInstruction + `\n\n${getGeminiCliLiteToolGuide()}` }],
+						parts: [{ text: systemInstruction + "\n\n" + getGeminiCliLiteToolGuide() }],
 					},
 					...contents,
+					{
+						role: "user",
+						parts: [{ text: getGeminiCliLiteToolGuide() }],
+					},
 				],
 				generationConfig: {
 					temperature: this.options.modelTemperature ?? 0.7,
@@ -320,7 +324,7 @@ export class GeminiCliHandler extends BaseProvider implements SingleCompletionHa
 
 			// Process the SSE stream
 			let lastUsageMetadata: any = undefined
-			const matcher = new TagMatcher(
+			const toolCallMatcher = new TagMatcher(
 				"tool_call",
 				(chunk) => {
 					return {
@@ -345,9 +349,18 @@ export class GeminiCliHandler extends BaseProvider implements SingleCompletionHa
 									text: part.text,
 								}
 							} else {
-								for (const chunk of matcher.update(part.text)) {
+								for (const chunk of toolCallMatcher.update(part.text)) {
 									yield chunk as ApiStreamChunk
 								}
+							}
+						} else if (part.functionCall) {
+							const toolCallInfo = {
+								name: part.functionCall.name,
+								arguments: part.functionCall.arguments || part.functionCall.args || {},
+							}
+							yield {
+								type: "fake_tool_call",
+								text: JSON.stringify(toolCallInfo),
 							}
 						}
 					}
@@ -360,7 +373,7 @@ export class GeminiCliHandler extends BaseProvider implements SingleCompletionHa
 
 				// Check if this is the final chunk
 				if (candidate?.finishReason) {
-					for (const chunk of matcher.final()) {
+					for (const chunk of toolCallMatcher.final()) {
 						yield chunk as ApiStreamChunk
 					}
 					break
