@@ -244,7 +244,6 @@ describe("addCustomInstructions", () => {
 			undefined, // customModePrompts
 			undefined, // customModes
 			undefined, // globalCustomInstructions
-			undefined, // diffEnabled
 			undefined, // experiments
 			true, // enableMcpServerCreation
 			"en", // language
@@ -267,7 +266,6 @@ describe("addCustomInstructions", () => {
 			undefined, // customModePrompts
 			undefined, // customModes
 			undefined, // globalCustomInstructions
-			undefined, // diffEnabled
 			undefined, // experiments
 			true, // enableMcpServerCreation
 			"en", // language
@@ -292,7 +290,6 @@ describe("addCustomInstructions", () => {
 			undefined, // customModePrompts
 			undefined, // customModes,
 			undefined, // globalCustomInstructions
-			undefined, // diffEnabled
 			undefined, // experiments
 			true, // enableMcpServerCreation
 			"en", // language
@@ -318,7 +315,6 @@ describe("addCustomInstructions", () => {
 			undefined, // customModePrompts
 			undefined, // customModes,
 			undefined, // globalCustomInstructions
-			undefined, // diffEnabled
 			undefined, // experiments
 			false, // enableMcpServerCreation
 			"en", // language
@@ -342,7 +338,6 @@ describe("addCustomInstructions", () => {
 			undefined, // customModePrompts
 			undefined, // customModes,
 			undefined, // globalCustomInstructions
-			undefined, // diffEnabled
 			undefined, // experiments
 			true, // enableMcpServerCreation
 			"en", // language

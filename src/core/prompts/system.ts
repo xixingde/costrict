@@ -49,28 +49,27 @@ export function getPromptComponent(
 }
 
 async function generatePrompt(data: {
-	context: vscode.ExtensionContext
-	cwd: string
-	supportsComputerUse: boolean
-	mode: Mode
-	mcpHub?: McpHub
-	diffStrategy?: DiffStrategy
-	browserViewportSize?: string
-	promptComponent?: PromptComponent
-	customModeConfigs?: ModeConfig[]
-	globalCustomInstructions?: string
-	diffEnabled?: boolean
-	experiments?: Record<string, boolean>
-	enableMcpServerCreation?: boolean
-	language?: string
-	rooIgnoreInstructions?: string
-	partialReadsEnabled?: boolean
+	context: vscode.ExtensionContext,
+	cwd: string,
+	supportsComputerUse: boolean,
+	mode: Mode,
+	mcpHub?: McpHub,
+	diffStrategy?: DiffStrategy,
+	browserViewportSize?: string,
+	promptComponent?: PromptComponent,
+	customModeConfigs?: ModeConfig[],
+	globalCustomInstructions?: string,
+	experiments?: Record<string, boolean>,
+	enableMcpServerCreation?: boolean,
+	language?: string,
+	rooIgnoreInstructions?: string,
+	partialReadsEnabled?: boolean,
 	parallelToolCallsEnabled?: boolean
-	settings?: SystemPromptSettings
-	todoList?: TodoItem[]
-	modelId?: string
+	settings?: SystemPromptSettings,
+	todoList?: TodoItem[],
+	modelId?: string,
 	shell?: string
-	skillsManager?: SkillsManager
+	skillsManager?: SkillsManager,
 }): Promise<string> {
 	let {
 		context,
@@ -83,7 +82,6 @@ async function generatePrompt(data: {
 		promptComponent,
 		customModeConfigs,
 		globalCustomInstructions,
-		diffEnabled,
 		experiments,
 		enableMcpServerCreation,
 		language,
@@ -96,13 +94,11 @@ async function generatePrompt(data: {
 		modelId,
 		shell,
 	} = data
-
 	if (!context) {
 		throw new Error("Extension context is required for generating system prompt")
 	}
 	shell = shell || getShell(settings?.terminalShellIntegrationDisabled)
-	// If diff is disabled, don't pass the diffStrategy
-	const effectiveDiffStrategy = diffEnabled ? diffStrategy : undefined
+
 
 	// Get the full mode config to ensure we have the role definition (used for groups, etc.)
 	const modeConfig = getModeBySlug(mode, customModeConfigs) || modes.find((m) => m.slug === mode) || modes[0]
@@ -118,7 +114,7 @@ async function generatePrompt(data: {
 	const [modesSection, mcpServersSection, skillsSection] = await Promise.all([
 		getModesSection(context),
 		shouldIncludeMcp
-			? getMcpServersSection(mcpHub, effectiveDiffStrategy, enableMcpServerCreation, false)
+			? getMcpServersSection(mcpHub, diffStrategy, enableMcpServerCreation, false)
 			: Promise.resolve(""),
 		getSkillsSection(skillsManager, mode as string),
 	])
@@ -170,7 +166,6 @@ export const SYSTEM_PROMPT = async (
 	customModePrompts?: CustomModePrompts,
 	customModes?: ModeConfig[],
 	globalCustomInstructions?: string,
-	diffEnabled?: boolean,
 	experiments?: Record<string, boolean>,
 	enableMcpServerCreation?: boolean,
 	language?: string,
@@ -232,21 +227,17 @@ ${fileCustomSystemPrompt}
 ${customInstructions}`
 	}
 
-	// If diff is disabled, don't pass the diffStrategy
-	const effectiveDiffStrategy = diffEnabled ? diffStrategy : undefined
-
 	return generatePrompt({
 		context,
 		cwd,
 		supportsComputerUse,
 		mode: currentMode.slug,
 		mcpHub,
-		diffStrategy: effectiveDiffStrategy,
+		diffStrategy,
 		browserViewportSize,
 		promptComponent,
 		customModeConfigs: customModes,
 		globalCustomInstructions,
-		diffEnabled,
 		experiments,
 		enableMcpServerCreation,
 		language,

@@ -177,7 +177,7 @@ export class ClineProvider
 
 	public isViewLaunched = false
 	public settingsImportedAt?: number
-	public readonly latestAnnouncementId = "jan-2026-v3.42.0-chatgpt-usage-limits-claude-code-removed-grok-free-ends" // v3.42.0 ChatGPT Usage Limits, Claude Code Removed, Grok Code Fast Free Ends
+	public readonly latestAnnouncementId = "jan-2026-v3.43.0-intelligent-context-condensation" // v3.43.0 Intelligent Context Condensation
 	public readonly providerSettingsManager: ProviderSettingsManager
 	public readonly customModesManager: CustomModesManager
 
@@ -1117,27 +1117,15 @@ export class ClineProvider
 			}
 		}
 
-		const {
-			apiConfiguration,
-			diffEnabled: enableDiff,
-			enableCheckpoints,
-			useZgsmCustomConfig,
-			checkpointTimeout,
-			fuzzyMatchThreshold,
-			experimentSettings,
-			experiments,
-			// cloudUserInfo,
-			// taskSyncEnabled,
-		} = await this.getState()
+		const { apiConfiguration, enableCheckpoints, checkpointTimeout, experiments, useZgsmCustomConfig, experimentSettings } =
+			await this.getState()
 
 		const task = new Task({
 			provider: this,
 			apiConfiguration,
-			enableDiff,
 			enableCheckpoints,
 			useZgsmCustomConfig,
 			checkpointTimeout,
-			fuzzyMatchThreshold,
 			consecutiveMistakeLimit: apiConfiguration.consecutiveMistakeLimit,
 			historyItem,
 			experiments,
@@ -2158,7 +2146,6 @@ export class ClineProvider
 			soundEnabled,
 			ttsEnabled,
 			ttsSpeed,
-			diffEnabled,
 			enableCheckpoints,
 			useZgsmCustomConfig,
 			zgsmCodebaseIndexEnabled,
@@ -2181,7 +2168,6 @@ export class ClineProvider
 			terminalZshOhMy,
 			terminalZshP10k,
 			terminalZdotdir,
-			fuzzyMatchThreshold,
 			mcpEnabled,
 			enableMcpServerCreation,
 			currentApiConfigName,
@@ -2314,7 +2300,6 @@ export class ClineProvider
 			soundEnabled: soundEnabled ?? false,
 			ttsEnabled: ttsEnabled ?? false,
 			ttsSpeed: ttsSpeed ?? 1.0,
-			diffEnabled: diffEnabled ?? true,
 			enableCheckpoints: enableCheckpoints ?? true,
 			useZgsmCustomConfig: useZgsmCustomConfig ?? false,
 			zgsmCodebaseIndexEnabled: zgsmCodebaseIndexEnabled ?? true,
@@ -2340,7 +2325,6 @@ export class ClineProvider
 			terminalZshOhMy: terminalZshOhMy ?? false,
 			terminalZshP10k: terminalZshP10k ?? false,
 			terminalZdotdir: terminalZdotdir ?? false,
-			fuzzyMatchThreshold: fuzzyMatchThreshold ?? 1.0,
 			mcpEnabled: mcpEnabled ?? true,
 			enableMcpServerCreation: enableMcpServerCreation ?? true,
 			currentApiConfigName: currentApiConfigName ?? "default",
@@ -2585,7 +2569,6 @@ export class ClineProvider
 			soundEnabled: stateValues.soundEnabled ?? false,
 			ttsEnabled: stateValues.ttsEnabled ?? false,
 			ttsSpeed: stateValues.ttsSpeed ?? 1.0,
-			diffEnabled: stateValues.diffEnabled ?? true,
 			enableCheckpoints: stateValues.enableCheckpoints ?? true,
 			useZgsmCustomConfig: stateValues.useZgsmCustomConfig ?? false,
 			zgsmCodebaseIndexEnabled: stateValues.zgsmCodebaseIndexEnabled ?? true,
@@ -2596,7 +2579,6 @@ export class ClineProvider
 			remoteBrowserHost: stateValues.remoteBrowserHost,
 			remoteBrowserEnabled: stateValues.remoteBrowserEnabled ?? false,
 			cachedChromeHostUrl: stateValues.cachedChromeHostUrl as string | undefined,
-			fuzzyMatchThreshold: stateValues.fuzzyMatchThreshold ?? 1.0,
 			writeDelayMs: stateValues.writeDelayMs ?? DEFAULT_WRITE_DELAY_MS,
 			terminalOutputLineLimit: stateValues.terminalOutputLineLimit ?? 500,
 			terminalOutputCharacterLimit:
@@ -3158,10 +3140,8 @@ export class ClineProvider
 		const {
 			apiConfiguration,
 			organizationAllowList,
-			diffEnabled: enableDiff,
 			enableCheckpoints,
 			checkpointTimeout,
-			fuzzyMatchThreshold,
 			experiments,
 			experimentSettings,
 			cloudUserInfo,
@@ -3184,10 +3164,8 @@ export class ClineProvider
 		const task = new Task({
 			provider: this,
 			apiConfiguration,
-			enableDiff,
 			enableCheckpoints,
 			checkpointTimeout,
-			fuzzyMatchThreshold,
 			consecutiveMistakeLimit: apiConfiguration.consecutiveMistakeLimit,
 			task: text,
 			images,

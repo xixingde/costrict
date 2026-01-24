@@ -111,7 +111,6 @@ import { NativeToolCallParser } from "../assistant-message/NativeToolCallParser"
 import { manageContext, willManageContext } from "../context-management"
 import { ClineProvider } from "../webview/ClineProvider"
 import { MultiSearchReplaceDiffStrategy } from "../diff/strategies/multi-search-replace"
-import { MultiFileSearchReplaceDiffStrategy } from "../diff/strategies/multi-file-search-replace"
 import {
 	type ApiMessage,
 	readApiMessages,
@@ -152,13 +151,11 @@ const MAX_CONTEXT_WINDOW_RETRIES = 3 // Maximum retries for context window error
 export interface TaskOptions extends CreateTaskOptions {
 	provider: ClineProvider
 	apiConfiguration: ProviderSettings
-	enableDiff?: boolean
 	enableCheckpoints?: boolean
 	useZgsmCustomConfig?: boolean
 	zgsmCodebaseIndexEnabled?: boolean
 	checkpointTimeout?: number
 	enableBridge?: boolean
-	fuzzyMatchThreshold?: number
 	consecutiveMistakeLimit?: number
 	task?: string
 	images?: string[]
@@ -343,8 +340,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// Editing
 	diffViewProvider: DiffViewProvider
 	diffStrategy?: DiffStrategy
-	diffEnabled: boolean = false
-	fuzzyMatchThreshold: number
 	didEditFile: boolean = false
 
 	// LLM Messages & Chat Messages
@@ -455,11 +450,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	constructor({
 		provider,
 		apiConfiguration,
-		enableDiff = false,
 		enableCheckpoints = true,
 		checkpointTimeout = DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 		enableBridge = false,
-		fuzzyMatchThreshold = 1.0,
 		consecutiveMistakeLimit = DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
 		task,
 		images,
@@ -550,8 +543,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				}
 			}
 		})
-		this.diffEnabled = enableDiff
-		this.fuzzyMatchThreshold = fuzzyMatchThreshold
 		this.consecutiveMistakeLimit = consecutiveMistakeLimit ?? DEFAULT_CONSECUTIVE_MISTAKE_LIMIT
 		this.providerRef = new WeakRef(provider)
 		this.globalStoragePath = provider.context.globalStorageUri.fsPath
@@ -614,23 +605,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Listen for provider profile changes to update parser state
 		this.setupProviderProfileChangeListener(provider)
 
-		// Only set up diff strategy if diff is enabled.
-		if (this.diffEnabled) {
-			// Default to old strategy, will be updated if experiment is enabled.
-			this.diffStrategy = new MultiSearchReplaceDiffStrategy(this.fuzzyMatchThreshold)
-
-			// Check experiment asynchronously and update strategy if needed.
-			provider.getState().then((state) => {
-				const isMultiFileApplyDiffEnabled = experiments.isEnabled(
-					state.experiments ?? {},
-					EXPERIMENT_IDS.MULTI_FILE_APPLY_DIFF,
-				)
-
-				if (isMultiFileApplyDiffEnabled) {
-					this.diffStrategy = new MultiFileSearchReplaceDiffStrategy(this.fuzzyMatchThreshold)
-				}
-			})
-		}
+		// Set up diff strategy
+		this.diffStrategy = new MultiSearchReplaceDiffStrategy()
 
 		this.toolRepetitionDetector = new ToolRepetitionDetector(this.consecutiveMistakeLimit)
 
@@ -1088,7 +1064,27 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			const effectiveHistoryForValidation = getEffectiveApiHistory(this.apiConversationHistory)
 			const lastEffective = effectiveHistoryForValidation[effectiveHistoryForValidation.length - 1]
 			const historyForValidation = lastEffective?.role === "assistant" ? effectiveHistoryForValidation : []
-			const validatedMessage = validateAndFixToolResultIds(message, historyForValidation)
+
+			// If the previous effective message is NOT an assistant, convert tool_result blocks to text blocks.
+			// This prevents orphaned tool_results from being filtered out by getEffectiveApiHistory.
+			// This can happen when condensing occurs after the assistant sends tool_uses but before
+			// the user responds - the tool_use blocks get condensed away, leaving orphaned tool_results.
+			let messageToAdd = message
+			if (lastEffective?.role !== "assistant" && Array.isArray(message.content)) {
+				messageToAdd = {
+					...message,
+					content: message.content.map((block) =>
+						block.type === "tool_result"
+							? {
+									type: "text" as const,
+									text: `Tool result:\n${typeof block.content === "string" ? block.content : JSON.stringify(block.content)}`,
+								}
+							: block,
+					),
+				}
+			}
+
+			const validatedMessage = validateAndFixToolResultIds(messageToAdd, historyForValidation)
 			const messageWithTs = { ...validatedMessage, ts: Date.now() }
 			this.apiConversationHistory.push(messageWithTs)
 		}
@@ -1722,7 +1718,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				maxConcurrentFileReads: state?.maxConcurrentFileReads ?? 5,
 				browserToolEnabled: state?.browserToolEnabled ?? true,
 				modelInfo,
-				diffEnabled: this.diffEnabled,
 				includeAllToolsWithRestrictions: false,
 			})
 			allTools = toolsResult.tools
@@ -3943,7 +3938,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				customModePrompts,
 				customModes,
 				customInstructions,
-				this.diffEnabled,
 				experiments,
 				enableMcpServerCreation,
 				language,
@@ -4019,7 +4013,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				maxConcurrentFileReads: state?.maxConcurrentFileReads ?? 5,
 				browserToolEnabled: state?.browserToolEnabled ?? true,
 				modelInfo,
-				diffEnabled: this.diffEnabled,
 				includeAllToolsWithRestrictions: false,
 			})
 			allTools = toolsResult.tools
@@ -4240,7 +4233,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						maxConcurrentFileReads: state?.maxConcurrentFileReads ?? 5,
 						browserToolEnabled: state?.browserToolEnabled ?? true,
 						modelInfo,
-						diffEnabled: this.diffEnabled,
 						includeAllToolsWithRestrictions: false,
 					})
 					contextMgmtTools = toolsResult.tools
@@ -4397,7 +4389,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				browserToolEnabled: state?.browserToolEnabled ?? true,
 				modelInfo,
 				useLitePrompts: experiments?.useLitePrompts ?? false,
-				diffEnabled: this.diffEnabled,
 				includeAllToolsWithRestrictions: supportsAllowedFunctionNames,
 			})
 			allTools = toolsResult.tools
