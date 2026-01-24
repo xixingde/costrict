@@ -5039,7 +5039,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			return
 		}
 
-		// 注意：这里需要根据实际情况跟踪错误类型
+		// Note: Track error types based on actual situation
 		// Only add NO_TOOL_USE mistake if consecutiveMistakeCount is significant (> 1)
 		// This prevents false positives when task is completed or model is thinking
 		if (this.consecutiveMistakeCount > 1) {
@@ -5066,9 +5066,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		const checkResult = this.smartMistakeDetector.checkLimit(this.consecutiveMistakeLimit)
 
-		// 如果触发限制或存在警告
+		// If limit triggered or warning exists
 		if (checkResult.shouldTrigger || checkResult.warning) {
-			// 记录遥测数据
+			// Capture telemetry data
 			TelemetryService.instance.captureConsecutiveMistakeError(this.taskId)
 			TelemetryService.instance.captureException(
 				new ConsecutiveMistakeError(
@@ -5130,16 +5130,16 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			.sort((a, b) => {
 				const aModel = a[1]
 				const bModel = b[1]
-				if (aModel.contextWindow === bModel.contextWindow) {
-					return aModel.creditConsumption! - bModel.creditConsumption!
+				if (aModel.creditConsumption === bModel.creditConsumption) {
+					return bModel.contextWindow - aModel.contextWindow
 				}
-				return bModel.contextWindow - aModel.contextWindow
+				return aModel.creditConsumption! - bModel.creditConsumption!
 			})
 			.slice(0, 5)
 
 		const modelId = top5Models[(top5Models.length * Math.random()) << 0][0]
 
-		// todo: zgsm 提供商，这里需要加个需求，开启智能错误检测 时，智能错误支持自动切换模型
+		// TODO: For zgsm provider, add requirement to support automatic model switching when smart error detection is enabled
 		const provider = await this.providerRef.deref()
 
 		if (provider) {

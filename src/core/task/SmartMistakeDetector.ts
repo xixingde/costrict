@@ -61,10 +61,10 @@ export interface MistakeCheckResult {
  */
 const MISTAKE_WEIGHTS: Record<MistakeType, number> = {
 	[MistakeType.NO_TOOL_USE]: 1,
-	[MistakeType.TOOL_FAILURE]: 2,
-	[MistakeType.REPEATED_ACTION]: 1.5,
+	[MistakeType.TOOL_FAILURE]: 1,
+	[MistakeType.REPEATED_ACTION]: 0.5,
 	[MistakeType.INVALID_INPUT]: 1,
-	[MistakeType.TIMEOUT]: 2,
+	[MistakeType.TIMEOUT]: 1,
 }
 
 /**
@@ -292,7 +292,7 @@ export class SmartMistakeDetector {
 	 */
 	private calculateWeightedScore(): number {
 		return this.mistakes.reduce((score, mistake) => {
-			const typeWeight = MISTAKE_WEIGHTS[mistake.type] || 1
+			const typeWeight = MISTAKE_WEIGHTS[mistake.type] || 0.5
 			const severityWeight = SEVERITY_WEIGHTS[mistake.severity] || 1
 			return score + typeWeight * severityWeight
 		}, 0)
