@@ -20,7 +20,6 @@ import {
 	getSystemInfoSection,
 	getObjectiveSection,
 	getSharedToolUseSection,
-	getMcpServersSection,
 	getToolUseGuidelinesSection,
 	getCapabilitiesSection,
 	getModesSection,
@@ -49,27 +48,27 @@ export function getPromptComponent(
 }
 
 async function generatePrompt(data: {
-	context: vscode.ExtensionContext,
-	cwd: string,
-	supportsComputerUse: boolean,
-	mode: Mode,
-	mcpHub?: McpHub,
-	diffStrategy?: DiffStrategy,
-	browserViewportSize?: string,
-	promptComponent?: PromptComponent,
-	customModeConfigs?: ModeConfig[],
-	globalCustomInstructions?: string,
-	experiments?: Record<string, boolean>,
-	enableMcpServerCreation?: boolean,
-	language?: string,
-	rooIgnoreInstructions?: string,
-	partialReadsEnabled?: boolean,
+	context: vscode.ExtensionContext
+	cwd: string
+	supportsComputerUse: boolean
+	mode: Mode
+	mcpHub?: McpHub
+	diffStrategy?: DiffStrategy
+	browserViewportSize?: string
+	promptComponent?: PromptComponent
+	customModeConfigs?: ModeConfig[]
+	globalCustomInstructions?: string
+	experiments?: Record<string, boolean>
+	enableMcpServerCreation?: boolean
+	language?: string
+	rooIgnoreInstructions?: string
+	partialReadsEnabled?: boolean
 	parallelToolCallsEnabled?: boolean
-	settings?: SystemPromptSettings,
-	todoList?: TodoItem[],
-	modelId?: string,
+	settings?: SystemPromptSettings
+	todoList?: TodoItem[]
+	modelId?: string
 	shell?: string
-	skillsManager?: SkillsManager,
+	skillsManager?: SkillsManager
 }): Promise<string> {
 	let {
 		context,
@@ -99,7 +98,6 @@ async function generatePrompt(data: {
 	}
 	shell = shell || getShell(settings?.terminalShellIntegrationDisabled)
 
-
 	// Get the full mode config to ensure we have the role definition (used for groups, etc.)
 	const modeConfig = getModeBySlug(mode, customModeConfigs) || modes.find((m) => m.slug === mode) || modes[0]
 	const { roleDefinition, baseInstructions } = getModeSelection(mode, promptComponent, customModeConfigs)
@@ -111,11 +109,11 @@ async function generatePrompt(data: {
 
 	const codeIndexManager = CodeIndexManager.getInstance(context, cwd)
 
-	const [modesSection, mcpServersSection, skillsSection] = await Promise.all([
+	// Tool calling is native-only.
+	const effectiveProtocol = "native"
+
+	const [modesSection, skillsSection] = await Promise.all([
 		getModesSection(context),
-		shouldIncludeMcp
-			? getMcpServersSection(mcpHub, diffStrategy, enableMcpServerCreation, false)
-			: Promise.resolve(""),
 		getSkillsSection(skillsManager, mode as string),
 	])
 
@@ -131,9 +129,7 @@ ${markdownFormattingSection()}
 
 ${getSharedToolUseSection(experiments)}${toolsCatalog}
 
-	${useLitePrompts ? getLiteToolUseGuidelinesSection(experiments) : getToolUseGuidelinesSection(experiments)}
-
-${mcpServersSection}
+${useLitePrompts ? getLiteToolUseGuidelinesSection(experiments) : getToolUseGuidelinesSection(experiments)}
 
 ${useLitePrompts ? getLiteCapabilitiesSection(cwd, shouldIncludeMcp ? mcpHub : undefined) : getCapabilitiesSection(cwd, shouldIncludeMcp ? mcpHub : undefined)}
 

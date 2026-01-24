@@ -70,6 +70,7 @@ export const ExperimentalSettings = ({
 					.filter(([key]) => key !== "MULTIPLE_NATIVE_TOOL_CALLS")
 					// Hide CHAT_SEARCH - moved to UI settings
 					.filter(([key]) => key !== "CHAT_SEARCH")
+					.filter(([key]) => key !== "POWER_STEERING")
 					.map((config) => {
 						// Use the same translation key pattern as ExperimentalFeature
 						const experimentKey = config[0]
