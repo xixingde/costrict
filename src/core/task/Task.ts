@@ -435,8 +435,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	private readonly TOKEN_USAGE_EMIT_INTERVAL_MS = 2000 // 2 seconds
 	private debouncedEmitTokenUsage: ReturnType<typeof debounce>
 
-	// Cloud Sync Tracking
-	private cloudSyncedMessageTimestamps: Set<number> = new Set()
+	// // Cloud Sync Tracking
+	// private cloudSyncedMessageTimestamps: Set<number> = new Set()
 
 	// Initial status for the task's history item (set at creation time to avoid race conditions)
 	private readonly initialStatus?: "active" | "delegated" | "completed"
@@ -1188,14 +1188,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		restoreTodoListForTask(this)
 		await this.saveClineMessages()
 
-		// When overwriting messages (e.g., during task resume), repopulate the cloud sync tracking Set
-		// with timestamps from all non-partial messages to prevent re-syncing previously synced messages
-		this.cloudSyncedMessageTimestamps.clear()
-		for (const msg of newMessages) {
-			if (msg.partial !== true) {
-				this.cloudSyncedMessageTimestamps.add(msg.ts)
-			}
-		}
+		// // When overwriting messages (e.g., during task resume), repopulate the cloud sync tracking Set
+		// // with timestamps from all non-partial messages to prevent re-syncing previously synced messages
+		// this.cloudSyncedMessageTimestamps.clear()
+		// for (const msg of newMessages) {
+		// 	if (msg.partial !== true) {
+		// 		this.cloudSyncedMessageTimestamps.add(msg.ts)
+		// 	}
+		// }
 	}
 
 	private async updateClineMessage(message: ClineMessage) {
@@ -1522,6 +1522,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		chatType?: "system" | "user",
 		isCommandInput?: boolean,
 	) {
+		this.smartMistakeDetector?.clear()
 		// Clear any pending auto-approval timeout when user responds
 		this.cancelAutoApprovalTimeout()
 
@@ -2042,6 +2043,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	private async resumeTaskFromHistory() {
+		this.smartMistakeDetector?.clear()
 		// if (this.enableBridge) {
 		// 	try {
 		// 		await BridgeOrchestrator.subscribeToTask(this)
