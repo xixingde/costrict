@@ -54,6 +54,7 @@ import {
 	ConsecutiveMistakeError,
 	MAX_MCP_TOOLS_THRESHOLD,
 	countEnabledMcpTools,
+	zgsmModelsConfig,
 } from "@roo-code/types"
 // import { CloudService, BridgeOrchestrator } from "@roo-code/cloud"
 import { TelemetryService } from "@roo-code/telemetry"
@@ -445,7 +446,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	// Smart Mistake Detection
 	private smartMistakeDetector?: SmartMistakeDetector
-	private useSmartMistakeDetection: boolean = false
+	private useSmartMistakeDetection: boolean = true
 
 	constructor({
 		provider,
@@ -3422,7 +3423,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// Content was only accumulated during streaming, now parse and execute tool calls
 				if (assistantXmlToolCallId && assistantXmlToolMessage) {
 					try {
-						const toolCallData = JSON.parse(assistantXmlToolMessage)
+						const toolCallData = parseJSON(assistantXmlToolMessage)
 						if (toolCallData && toolCallData.name && toolCallData.arguments) {
 							// Convert arguments to JSON string if not already
 							const argumentsStr =
@@ -3484,7 +3485,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				for (const event of finalizeEvents) {
 					if (event.type === "tool_call_end") {
 						// Finalize the streaming tool call
-						const finalToolUse = NativeToolCallParser.finalizeStreamingToolCall(event.id)
+						const finalToolUse = NativeToolCallParser.finalizeStreamingToolCall(
+							event.id,
+							this?.apiConfiguration?.apiProvider === "zgsm",
+						)
 
 						// Get the index for this tool call
 						const toolUseIndex = this.streamingToolCallIndices.get(event.id)
@@ -5176,15 +5180,18 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 	async switchModel() {
 		const oldModelId = getModelId(this.apiConfiguration)
-		const models = Object.entries(getModelsFromCache("zgsm") || {}).filter((m) => {
+		const models = getModelsFromCache("zgsm") || {}
+		const modelList = Object.entries(getModelsFromCache("zgsm") || {}).filter((m) => {
 			return oldModelId !== m[0]
 		})
-		// this.model
-		if (models.length === 0) {
+
+		if (modelList.length === 0) {
 			throw new Error("No available models")
 		}
+		const currentModel = models[oldModelId as string]
+		const currentModelContextWindow = currentModel?.contextWindow ?? zgsmModelsConfig.default.contextWindow
 
-		const top5Models = models
+		const top5Models = modelList
 			.sort((a, b) => {
 				const aModel = a[1]
 				const bModel = b[1]
@@ -5193,6 +5200,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				}
 				return aModel.creditConsumption! - bModel.creditConsumption!
 			})
+			.filter((m) => m[1].contextWindow < currentModelContextWindow)
 			.slice(0, 5)
 
 		const modelId = top5Models[(top5Models.length * Math.random()) << 0][0]
