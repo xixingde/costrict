@@ -578,14 +578,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// For history items, use the stored values; for new tasks, we'll set them
 		// after getting state.
 		if (historyItem) {
-			this.updateModel(historyItem.mode || defaultModeSlug)
+			this.updateMode(historyItem.mode || defaultModeSlug)
 			this._taskApiConfigName = historyItem.apiConfigName
 			this.taskModeReady = Promise.resolve()
 			this.taskApiConfigReady = Promise.resolve()
 			TelemetryService.instance.captureTaskRestarted(this.taskId)
 		} else {
 			// For new tasks, don't set the mode/apiConfigName yet - wait for async initialization.
-			this.updateModel()
+			this.updateMode()
 			this._taskApiConfigName = undefined
 			this.taskModeReady = this.initializeTaskMode(provider)
 			this.taskApiConfigReady = this.initializeTaskApiConfigName(provider)
@@ -645,6 +645,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				this.api?.setChatType?.("user")
 				this.startTask(task, images)
 			} else if (historyItem) {
+				this.smartMistakeDetector?.clear()
 				this.resumeTaskFromHistory()
 			} else {
 				throw new Error("Either historyItem or task/images must be provided")
@@ -676,10 +677,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	private async initializeTaskMode(provider: ClineProvider): Promise<void> {
 		try {
 			const state = await provider.getState()
-			this.updateModel(state?.mode || defaultModeSlug)
+			this.updateMode(state?.mode || defaultModeSlug)
 		} catch (error) {
 			// If there's an error getting state, use the default mode
-			this.updateModel(defaultModeSlug)
+			this.updateMode(defaultModeSlug)
 			// Use the provider's log method for better error visibility
 			const errorMessage = `Failed to initialize task mode: ${error instanceof Error ? error.message : String(error)}`
 			provider.log(errorMessage)
@@ -1522,7 +1523,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		chatType?: "system" | "user",
 		isCommandInput?: boolean,
 	) {
-		this.smartMistakeDetector?.clear()
+		if (askResponse === "yesButtonClicked") {
+			this.smartMistakeDetector?.clear()
+		}
+
 		// Clear any pending auto-approval timeout when user responds
 		this.cancelAutoApprovalTimeout()
 
@@ -2043,7 +2047,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	private async resumeTaskFromHistory() {
-		this.smartMistakeDetector?.clear()
 		// if (this.enableBridge) {
 		// 	try {
 		// 		await BridgeOrchestrator.subscribeToTask(this)
@@ -3759,6 +3762,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					if (!didToolUse) {
 						// Increment consecutive no-tool-use counter
 						this.consecutiveNoToolUseCount++
+						this.smartMistakeDetector?.addMistake(MistakeType.NO_TOOL_USE, `NO_TOOL_USE`, "high")
 
 						// Only show error and count toward mistake limit after 2 consecutive failures
 						if (this.consecutiveNoToolUseCount >= 2) {
@@ -3803,6 +3807,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 					// Increment consecutive no-assistant-messages counter
 					this.consecutiveNoAssistantMessagesCount++
+					this.smartMistakeDetector?.addMistake(
+						MistakeType.INVALID_INPUT,
+						`MODEL_NO_ASSISTANT_MESSAGES`,
+						"high",
+					)
 
 					// Only show error and count toward mistake limit after 2 consecutive failures
 					// This provides a "grace retry" - first failure retries silently
@@ -5127,8 +5136,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				}
 			}
 		}
-
-		const checkResult = this.smartMistakeDetector.checkLimit(this.consecutiveMistakeLimit)
+		const consecutiveMistakeLimit = this?.apiConfiguration?.consecutiveMistakeLimit ?? this.consecutiveMistakeLimit
+		const checkResult = this.smartMistakeDetector.checkLimit(consecutiveMistakeLimit)
 
 		// If limit triggered or warning exists
 		if (checkResult.shouldTrigger || checkResult.warning) {
@@ -5136,10 +5145,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			TelemetryService.instance.captureConsecutiveMistakeError(this.taskId)
 			TelemetryService.instance.captureException(
 				new ConsecutiveMistakeError(
-					`Task reached consecutive mistake limit (${this.consecutiveMistakeLimit})`,
+					`Task reached consecutive mistake limit (${consecutiveMistakeLimit})`,
 					this.taskId,
 					this.consecutiveMistakeCount,
-					this.consecutiveMistakeLimit,
+					consecutiveMistakeLimit,
 					"no_tools_used",
 					this.apiConfiguration.apiProvider,
 					getModelId(this.apiConfiguration),
@@ -5173,52 +5182,56 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				}
 			}
 
-			this.consecutiveMistakeCount = 0
-			this.smartMistakeDetector.clear()
+			// this.consecutiveMistakeCount = 0
+			// this.smartMistakeDetector.clear()
 		}
 	}
-	updateModel(mode?: string) {
+	updateMode(mode?: string) {
 		this._taskMode = mode
 	}
 	async switchModel() {
-		const oldModelId = getModelId(this.apiConfiguration)
-		const models = getModelsFromCache("zgsm") || {}
-		const modelList = Object.entries(getModelsFromCache("zgsm") || {}).filter((m) => {
-			return oldModelId !== m[0]
-		})
-
-		if (modelList.length === 0) {
-			throw new Error("No available models")
-		}
-		const currentModel = models[oldModelId as string]
-		const currentModelContextWindow = currentModel?.contextWindow ?? zgsmModelsConfig.default.contextWindow
-
-		const top5Models = modelList
-			.sort((a, b) => {
-				const aModel = a[1]
-				const bModel = b[1]
-				if (aModel.creditConsumption === bModel.creditConsumption) {
-					return bModel.contextWindow - aModel.contextWindow
-				}
-				return aModel.creditConsumption! - bModel.creditConsumption!
+		try {
+			const oldModelId = getModelId(this.apiConfiguration)
+			const models = getModelsFromCache("zgsm") || {}
+			const modelList = Object.entries(getModelsFromCache("zgsm") || {}).filter((m) => {
+				return oldModelId !== m[0]
 			})
-			.filter((m) => m[1].contextWindow < currentModelContextWindow)
-			.slice(0, 5)
 
-		const modelId = top5Models[(top5Models.length * Math.random()) << 0][0]
+			if (modelList.length === 0) {
+				throw new Error("No available models")
+			}
+			const currentModel = models[oldModelId as string]
+			const currentModelContextWindow = currentModel?.contextWindow ?? zgsmModelsConfig.default.contextWindow
 
-		// TODO: For zgsm provider, add requirement to support automatic model switching when smart error detection is enabled
-		const provider = await this.providerRef.deref()
+			const top5Models = modelList
+				.sort((a, b) => {
+					const aModel = a[1]
+					const bModel = b[1]
+					if (aModel.creditConsumption === bModel.creditConsumption) {
+						return bModel.contextWindow - aModel.contextWindow
+					}
+					return aModel.creditConsumption! - bModel.creditConsumption!
+				})
+				.filter((m) => m[1].contextWindow >= currentModelContextWindow)
+				.slice(0, 5)
 
-		if (provider) {
-			await provider.upsertProviderProfile(this._taskApiConfigName!, {
-				// ...provider.getProviderProfile(this._taskApiConfigName!)
-				...this.apiConfiguration,
-				zgsmModelId: modelId || "Auto",
-			})
+			const modelId = top5Models[(top5Models.length * Math.random()) << 0][0]
+
+			// TODO: For zgsm provider, add requirement to support automatic model switching when smart error detection is enabled
+			const provider = await this.providerRef.deref()
+
+			if (provider) {
+				await provider.upsertProviderProfile(this._taskApiConfigName!, {
+					// ...provider.getProviderProfile(this._taskApiConfigName!)
+					...this.apiConfiguration,
+					zgsmModelId: modelId || "Auto",
+				})
+			}
+
+			await this.say("auto_switch_model", `${oldModelId} --> ${modelId}`)
+		} catch (error) {
+			console.log("switchModel error", error)
 		}
-
-		await this.say("auto_switch_model", `${oldModelId} --> ${modelId}`)
 	}
 
 	private async handleLegacyMistakeLimit(currentUserContent: Anthropic.Messages.ContentBlockParam[]): Promise<void> {
