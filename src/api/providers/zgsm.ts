@@ -38,7 +38,7 @@ import { getEditorType } from "../../utils/getEditorType"
 import { ChatCompletionChunk } from "openai/resources/index.mjs"
 import { convertToZAiFormat } from "../transform/zai-format"
 import { isDebug } from "../../utils/getDebugState"
-import { xmlLiteToolGuide } from "../../core/prompts/tools/native-tools/lite-descriptions"
+import { xmlLiteToolGuide } from "../../core/prompts/tools/lite-descriptions"
 
 const autoModeModelId = "Auto"
 const isDev = process.env.NODE_ENV === "development"
