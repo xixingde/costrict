@@ -1468,7 +1468,7 @@ export const ChatRowContent = ({
 						// retry information using this "tag" as a convention
 						const retryTimerMatch = message.text.match(/<retry_timer>(.*?)<\/retry_timer>/)
 						const retryTimer = retryTimerMatch && retryTimerMatch[1] ? parseInt(retryTimerMatch[1], 10) : 0
-						rawError = message.text.replace(/<retry_timer>(.*?)<\/retry_timer>/, "").trim()
+						rawError = message.text.replace(/<retry_timer>(.*?)<\/retry_timer>/, "")?.trim()
 						retryInfo = retryTimer > 0 && (
 							<p
 								className={cn(

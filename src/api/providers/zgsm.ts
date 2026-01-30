@@ -383,7 +383,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 						],
 					}
 				: { role: "system" as const, content: systemPrompt }
-			if (_mid?.includes("glm") || isMiniMax || _mid?.includes("claude")) {
+			if (_mid?.includes("kimi") || _mid?.includes("glm") || isMiniMax || _mid?.includes("claude")) {
 				convertedMessages = [
 					{ role: "system", content: systemPrompt },
 					...convertToZAiFormat(messages, { mergeToolResultText: true }),
@@ -908,6 +908,14 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 		const params = getModelParams({ format: "zgsm", modelId: id, model: info, settings: this.options })
 		if (!info.id) {
 			info.id = id
+		}
+		if (
+			(id.toLowerCase().includes("kimi") ||
+				id.toLowerCase().includes("minimax") ||
+				id.toLowerCase().includes("glm")) &&
+			info.preserveReasoning == null
+		) {
+			info.preserveReasoning = true
 		}
 		return { id, info, ...params }
 	}
