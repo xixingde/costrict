@@ -27,7 +27,7 @@ export function getCurrentLanguage(): string {
  */
 export function changeLanguage(language: string): void {
 	i18next.changeLanguage(language)
-	setTimeout(changeZgsmLanguage, 100)
+	changeZgsmLanguage()
 }
 
 /**

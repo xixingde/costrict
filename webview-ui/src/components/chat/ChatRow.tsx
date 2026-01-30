@@ -1281,9 +1281,11 @@ export const ChatRowContent = ({
 						</div>
 					)
 				case "reasoning":
+					const reasoningText = message?.text?.split?.("[thinking (empty)]").join("") || ""
+					if (!reasoningText) return null
 					return (
 						<ReasoningBlock
-							content={message.text || ""}
+							content={reasoningText}
 							ts={message.ts}
 							isStreaming={isStreaming}
 							isLast={isLast}
