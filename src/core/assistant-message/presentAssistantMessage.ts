@@ -2,7 +2,7 @@ import { serializeError } from "serialize-error"
 import { Anthropic } from "@anthropic-ai/sdk"
 
 import type { ToolName, ClineAsk, ToolProgressStatus } from "@roo-code/types"
-import { ConsecutiveMistakeError } from "@roo-code/types"
+import { ConsecutiveMistakeError, TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 import { customToolRegistry } from "@roo-code/core"
 
@@ -14,7 +14,6 @@ import type { ToolResponse, ToolUse, McpToolUse } from "../../shared/tools"
 import { AskIgnoredError } from "../task/AskIgnoredError"
 import { Task } from "../task/Task"
 
-import { fetchInstructionsTool } from "../tools/FetchInstructionsTool"
 import { listFilesTool } from "../tools/ListFilesTool"
 import { readFileTool } from "../tools/ReadFileTool"
 import { readCommandOutputTool } from "../tools/ReadCommandOutputTool"
@@ -35,6 +34,7 @@ import { attemptCompletionTool, AttemptCompletionCallbacks } from "../tools/Atte
 import { newTaskTool } from "../tools/NewTaskTool"
 import { updateTodoListTool } from "../tools/UpdateTodoListTool"
 import { runSlashCommandTool } from "../tools/RunSlashCommandTool"
+import { skillTool } from "../tools/SkillTool"
 import { generateImageTool } from "../tools/GenerateImageTool"
 import { applyDiffTool as applyDiffToolClass } from "../tools/ApplyDiffTool"
 import { isValidToolName, validateToolUse } from "../tools/validateToolUse"
@@ -364,8 +364,6 @@ export async function presentAssistantMessage(cline: Task) {
 							return readFileTool.getReadFileToolDescription(block.name, block.nativeArgs)
 						}
 						return readFileTool.getReadFileToolDescription(block.name, block.params)
-					case "fetch_instructions":
-						return `[${block.name} for '${block.params.task}']`
 					case "write_to_file":
 						return `[${block.name} for '${block.params.path}']`
 					case "apply_diff":
@@ -413,6 +411,8 @@ export async function presentAssistantMessage(cline: Task) {
 					}
 					case "run_slash_command":
 						return `[${block.name} for '${block.params.command}'${block.params.args ? ` with args: ${block.params.args}` : ""}]`
+					case "skill":
+						return `[${block.name} for '${block.params.skill}'${block.params.args ? ` with args: ${block.params.args}` : ""}]`
 					case "generate_image":
 						return `[${block.name} for '${block.params.path}']`
 					default:
@@ -632,6 +632,15 @@ export async function presentAssistantMessage(cline: Task) {
 				const recordName = isCustomTool ? "custom_tool" : block.name
 				cline.recordToolUsage(recordName)
 				TelemetryService.instance.captureToolUsage(cline.taskId, recordName)
+
+				// Track legacy format usage for read_file tool (for migration monitoring)
+				if (block.name === "read_file" && block.usedLegacyFormat) {
+					const modelInfo = cline.api.getModel()
+					TelemetryService.instance.captureEvent(TelemetryEventName.READ_FILE_LEGACY_FORMAT_USED, {
+						taskId: cline.taskId,
+						model: modelInfo?.id,
+					})
+				}
 			}
 
 			// Validate tool use before execution - ONLY for complete (non-partial) blocks.
@@ -792,13 +801,6 @@ export async function presentAssistantMessage(cline: Task) {
 						pushToolResult,
 					})
 					break
-				case "fetch_instructions":
-					await fetchInstructionsTool.handle(cline, block as ToolUse<"fetch_instructions">, {
-						askApproval,
-						handleError,
-						pushToolResult,
-					})
-					break
 				case "list_files":
 					await listFilesTool.handle(cline, block as ToolUse<"list_files">, {
 						askApproval,
@@ -904,6 +906,13 @@ export async function presentAssistantMessage(cline: Task) {
 				}
 				case "run_slash_command":
 					await runSlashCommandTool.handle(cline, block as ToolUse<"run_slash_command">, {
+						askApproval,
+						handleError,
+						pushToolResult,
+					})
+					break
+				case "skill":
+					await skillTool.handle(cline, block as ToolUse<"skill">, {
 						askApproval,
 						handleError,
 						pushToolResult,
@@ -1089,7 +1098,6 @@ function containsXmlToolMarkup(text: string): boolean {
 		"codebase_search",
 		"edit_file",
 		"execute_command",
-		"fetch_instructions",
 		"generate_image",
 		"list_files",
 		"new_task",
