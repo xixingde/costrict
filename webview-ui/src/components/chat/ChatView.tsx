@@ -708,6 +708,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				// - Task is busy (sendingDisabled)
 				// - API request in progress (isStreaming)
 				// - Queue has items (preserve message order during drain)
+				// - Command is running (command_output) - user's message should be queued for AI, not sent to terminal
 				if (sendingDisabled || isStreaming || messageQueue.length > 0) {
 					try {
 						vscode.postMessage({ type: "queueMessage", text, images })
@@ -1743,9 +1744,20 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 	useImperativeHandle(ref, () => ({
 		acceptInput: () => {
+			const hasInput = inputValue?.trim() || selectedImages?.length > 0
+
+			// // Special case: during command_output, queue the message instead of
+			// // triggering the primary button action (which would lose the message)
+			// if (clineAskRef.current === "command_output" && hasInput) {
+			// 	vscode.postMessage({ type: "queueMessage", text: inputValue.trim(), images: selectedImages })
+			// 	setInputValue("")
+			// 	setSelectedImages([])
+			// 	return
+			// }
+
 			if (enableButtons && primaryButtonText) {
 				handlePrimaryButtonClick(inputValue, selectedImages)
-			} else if (!sendingDisabled && !isProfileDisabled && (inputValue?.trim() || selectedImages.length > 0)) {
+			} else if (!sendingDisabled && !isProfileDisabled && hasInput) {
 				handleSendMessage(inputValue, selectedImages)
 			}
 		},

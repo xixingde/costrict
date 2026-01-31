@@ -47,6 +47,7 @@ import { fixBrowserLaunchAction } from "../../utils/fixbrowserLaunchAction"
 import { fixNativeToolname } from "../../utils/fixNativeToolname"
 // import { isNativeProtocol } from "@roo-code/types"
 // import { resolveToolProtocol } from "../../utils/resolveToolProtocol"
+import { sanitizeToolUseId } from "../../utils/tool-id"
 
 /**
  * Processes and presents assistant message content to the user interface.
@@ -125,7 +126,7 @@ export async function presentAssistantMessage(cline: Task) {
 				if (toolCallId) {
 					cline.pushToolResultToUserContent({
 						type: "tool_result",
-						tool_use_id: toolCallId,
+						tool_use_id: sanitizeToolUseId(toolCallId),
 						content: errorMessage,
 						is_error: true,
 					})
@@ -183,7 +184,7 @@ export async function presentAssistantMessage(cline: Task) {
 				if (toolCallId) {
 					cline.pushToolResultToUserContent({
 						type: "tool_result",
-						tool_use_id: toolCallId,
+						tool_use_id: sanitizeToolUseId(toolCallId),
 						content: resultContent,
 					})
 
@@ -429,7 +430,7 @@ export async function presentAssistantMessage(cline: Task) {
 
 				cline.pushToolResultToUserContent({
 					type: "tool_result",
-					tool_use_id: toolCallId,
+					tool_use_id: sanitizeToolUseId(toolCallId),
 					content: errorMessage,
 					is_error: true,
 				})
@@ -466,7 +467,7 @@ export async function presentAssistantMessage(cline: Task) {
 					// continue gracefully.
 					cline.pushToolResultToUserContent({
 						type: "tool_result",
-						tool_use_id: toolCallId,
+						tool_use_id: sanitizeToolUseId(toolCallId),
 						content: formatResponse.toolError(errorMessage),
 						is_error: true,
 					})
@@ -523,7 +524,7 @@ export async function presentAssistantMessage(cline: Task) {
 
 				cline.pushToolResultToUserContent({
 					type: "tool_result",
-					tool_use_id: toolCallId,
+					tool_use_id: sanitizeToolUseId(toolCallId),
 					content: resultContent,
 				})
 
@@ -676,7 +677,7 @@ export async function presentAssistantMessage(cline: Task) {
 					// Push tool_result directly without setting didAlreadyUseTool
 					cline.pushToolResultToUserContent({
 						type: "tool_result",
-						tool_use_id: toolCallId,
+						tool_use_id: sanitizeToolUseId(toolCallId),
 						content: typeof errorContent === "string" ? errorContent : "(validation error)",
 						is_error: true,
 					})
@@ -986,7 +987,7 @@ export async function presentAssistantMessage(cline: Task) {
 					// This prevents the stream from being interrupted with "Response interrupted by tool use result"
 					cline.pushToolResultToUserContent({
 						type: "tool_result",
-						tool_use_id: toolCallId,
+						tool_use_id: sanitizeToolUseId(toolCallId),
 						content: formatResponse.toolError(errorMessage),
 						is_error: true,
 					})
