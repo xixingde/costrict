@@ -15,6 +15,7 @@
 import path from "path"
 
 import { isBinaryFile } from "isbinaryfile"
+import { isBinaryFileWithEncodingDetection } from "../../../utils/encoding"
 
 import { readFileTool, ReadFileTool } from "../ReadFileTool"
 import { formatResponse } from "../../prompts/responses"
@@ -43,9 +44,11 @@ vi.mock("fs/promises", () => ({
 	stat: vi.fn(),
 }))
 
-// vi.mock("isbinaryfile")
+vi.mock("isbinaryfile", () => ({
+	isBinaryFile: vi.fn().mockResolvedValue(false),
+}))
 vi.mock("../../../utils/encoding", () => ({
-	isBinaryFileWithEncodingDetection: vi.fn(),
+	isBinaryFileWithEncodingDetection: vi.fn().mockResolvedValue(false),
 }))
 
 vi.mock("../../../integrations/misc/extract-text", () => ({
@@ -121,6 +124,7 @@ const mockedFsReadFile = vi.mocked(fsPromises.readFile)
 const mockedFsStat = vi.mocked(fsPromises.stat)
 
 const mockedIsBinaryFile = vi.mocked(isBinaryFile)
+const mockedIsBinaryFileWithEncodingDetection = vi.mocked(isBinaryFileWithEncodingDetection)
 const mockedExtractTextFromFile = vi.mocked(extractTextFromFile)
 const mockedReadWithSlice = vi.mocked(readWithSlice)
 const mockedReadWithIndentation = vi.mocked(readWithIndentation)
@@ -188,6 +192,7 @@ describe("ReadFileTool", () => {
 		// Default mock implementations
 		mockedFsStat.mockResolvedValue({ isDirectory: () => false } as any)
 		mockedIsBinaryFile.mockResolvedValue(false)
+		mockedIsBinaryFileWithEncodingDetection.mockResolvedValue(false)
 		mockedFsReadFile.mockResolvedValue(Buffer.from("test content"))
 		mockedReadWithSlice.mockReturnValue({
 			content: "1 | test content",
@@ -315,7 +320,7 @@ describe("ReadFileTool", () => {
 
 	describe("image handling", () => {
 		beforeEach(() => {
-			mockedIsBinaryFile.mockResolvedValue(true)
+			mockedIsBinaryFileWithEncodingDetection.mockResolvedValue(true)
 			mockedIsSupportedImageFormat.mockReturnValue(true)
 		})
 
@@ -414,7 +419,7 @@ describe("ReadFileTool", () => {
 
 	describe("binary file handling", () => {
 		beforeEach(() => {
-			mockedIsBinaryFile.mockResolvedValue(true)
+			mockedIsBinaryFileWithEncodingDetection.mockResolvedValue(true)
 			mockedIsSupportedImageFormat.mockReturnValue(false)
 		})
 
@@ -469,7 +474,7 @@ describe("ReadFileTool", () => {
 
 	describe("text file processing", () => {
 		beforeEach(() => {
-			mockedIsBinaryFile.mockResolvedValue(false)
+			mockedIsBinaryFileWithEncodingDetection.mockResolvedValue(false)
 		})
 
 		it("should read text file with slice mode (default)", async () => {

@@ -333,14 +333,12 @@ When modes with the same slug exist in both files, the workspace-specific .roomo
 If asked to create a project mode, create it in .roomodes in the workspace root. If asked to create a global mode, use the global custom modes file.
 
 - The following fields are required and must not be empty:
-
     - slug: A valid slug (lowercase letters, numbers, and hyphens). Must be unique, and shorter is better.
     - name: The display name for the mode
     - roleDefinition: A detailed description of the mode's role and capabilities
     - groups: Array of allowed tool groups (can be empty). Each group can be specified either as a string (e.g., "edit" to allow editing any file) or with file restrictions (e.g., ["edit", { fileRegex: "\\.md$", description: "Markdown files only" }] to only allow editing markdown files)
 
 - The following fields are optional but highly recommended:
-
     - description: A short, human-readable description of what this mode does (5 words)
     - whenToUse: A clear description of when this mode should be selected and what types of tasks it's best suited for. This helps the Orchestrator mode make better decisions.
     - customInstructions: Additional instructions for how the mode should operate
