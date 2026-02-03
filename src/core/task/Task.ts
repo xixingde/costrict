@@ -66,7 +66,7 @@ import { ApiStream, GroundingSource } from "../../api/transform/stream"
 import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
 
 // shared
-import { findLast, findLastIndex } from "../../shared/array"
+import { findLastIndex } from "../../shared/array"
 import { combineApiRequests } from "../../shared/combineApiRequests"
 import { combineCommandSequences } from "../../shared/combineCommandSequences"
 import { t } from "../../i18n"
@@ -1926,7 +1926,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			cost,
 			newContextTokens = 0,
 			error,
-			errorDetails,
+			// errorDetails,
 			condenseId,
 		} = await summarizeConversation({
 			messages: this.apiConversationHistory,
@@ -3019,7 +3019,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// This is especially important for tools and background usage collection
 				this.cachedStreamingModel = this.api.getModel()
 				const streamModelInfo = this.cachedStreamingModel.info
-				const cachedModelId = this.cachedStreamingModel.id
+				// const cachedModelId = this.cachedStreamingModel.id
 
 				// Yields only if the first chunk is successful, otherwise will
 				// allow the user to retry the request (most likely due to rate
@@ -3653,7 +3653,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// the assistant message is already in history. Otherwise, tool_result blocks would appear
 				// BEFORE their corresponding tool_use blocks, causing API errors.
 				if (!assistantMessage?.length) {
-					await pWaitFor(() => assistantMessage.length > 0, { timeout: 1_000 }).catch(() => {
+					await pWaitFor(() => assistantMessage.length > 0, { timeout: 3_000 }).catch(() => {
 						console.error("assistantMessage was empty after 3 seconds")
 					})
 				}
@@ -4102,6 +4102,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				this.api.getModel().id,
 				undefined,
 				provider.getSkillsManager(),
+				experiments?.useLitePrompts ?? false,
 			)
 		})()
 	}
@@ -4281,14 +4282,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		const {
 			apiConfiguration,
 			autoApprovalEnabled,
-			requestDelaySeconds,
+			// requestDelaySeconds,
 			mode,
 			zgsmCodeMode,
 			autoCondenseContext = true,
 			autoCondenseContextPercent = 100,
 			profileThresholds = {},
 			showSpeedInfo = false,
-			automaticallyFocus = false,
+			// automaticallyFocus = false,
 			experiments,
 		} = state ?? {}
 
