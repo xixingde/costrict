@@ -114,6 +114,7 @@ async function generatePrompt(data: {
 	// Tool calling is native-only.
 	const effectiveProtocol = "native"
 
+	// Get modes section, and skills section only if enabled for this mode
 	const [modesSection, skillsSection] = await Promise.all([
 		getModesSection(context, zgsmCodeMode),
 		getSkillsSection(skillsManager, mode as string),
@@ -122,33 +123,38 @@ async function generatePrompt(data: {
 	// Tools catalog is not included in the system prompt.
 	const toolsCatalog = ""
 
+	const usePurePrompts = modeConfig.pure === true
 	// Check if lite prompts experiment is enabled
 	const useLitePrompts = experimentsUtil.isEnabled(experiments ?? {}, EXPERIMENT_IDS.USE_LITE_PROMPTS)
 
 	const basePrompt = `${roleDefinition}
 
-${markdownFormattingSection()}
+${usePurePrompts ? "" : markdownFormattingSection()}
 
-${getSharedToolUseSection()}${toolsCatalog}
+${usePurePrompts ? "" : getSharedToolUseSection()}${toolsCatalog}
 
-${useLitePrompts ? getLiteToolUseGuidelinesSection() : getToolUseGuidelinesSection()}
+${usePurePrompts ? "" : useLitePrompts ? getLiteToolUseGuidelinesSection() : getToolUseGuidelinesSection()}
 
-${useLitePrompts ? getLiteCapabilitiesSection(cwd, shouldIncludeMcp ? mcpHub : undefined) : getCapabilitiesSection(cwd, shouldIncludeMcp ? mcpHub : undefined)}
+${usePurePrompts ? "" : useLitePrompts ? getLiteCapabilitiesSection(cwd, shouldIncludeMcp ? mcpHub : undefined) : getCapabilitiesSection(cwd, shouldIncludeMcp ? mcpHub : undefined)}
 
 ${modesSection}
-${skillsSection ? `\n${skillsSection}` : ""}
-${getRulesSection(cwd, settings, experiments)}
+${usePurePrompts ? "" : `\n${skillsSection}`}
+${usePurePrompts ? "" : getRulesSection(cwd, settings, experiments)}
 
-${getSystemInfoSection(cwd, shell)}
+${usePurePrompts ? "" : getSystemInfoSection(cwd, shell)}
 
-${useLitePrompts ? getLiteObjectiveSection() : getObjectiveSection()}
+${usePurePrompts ? "" : useLitePrompts ? getLiteObjectiveSection() : getObjectiveSection()}
 
-${await addCustomInstructions(baseInstructions, globalCustomInstructions || "", cwd, mode, {
-	language: language ?? formatLanguage(await defaultLang()),
-	rooIgnoreInstructions,
-	settings,
-	shell,
-})}`
+${
+	usePurePrompts
+		? ""
+		: await addCustomInstructions(baseInstructions, globalCustomInstructions || "", cwd, mode, {
+				language: language ?? formatLanguage(await defaultLang()),
+				rooIgnoreInstructions,
+				settings,
+				shell,
+			})
+}`
 
 	return basePrompt
 }
