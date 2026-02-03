@@ -72,6 +72,7 @@ export const modeConfigSchema = z.object({
 	source: z.enum(["global", "project"]).optional(),
 	zgsmCodeModeGroup: z.string().default("vibe").optional(),
 	apiProvider: z.string().optional(),
+	subagents: z.array(z.string()).default([]).optional(),
 	pure: z.boolean().default(false).optional(),
 })
 
@@ -227,6 +228,7 @@ const WORKFLOW_MODES: readonly modelType[] = [
 			"modes",
 			"mcp",
 		],
+		subagents: ["plan-apply", "code"],
 		pure: true,
 		source: "project",
 		zgsmCodeModeGroup: "plan",

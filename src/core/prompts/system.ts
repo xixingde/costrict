@@ -116,7 +116,7 @@ async function generatePrompt(data: {
 
 	// Get modes section, and skills section only if enabled for this mode
 	const [modesSection, skillsSection] = await Promise.all([
-		getModesSection(context, zgsmCodeMode),
+		getModesSection(context, zgsmCodeMode, mode as string),
 		getSkillsSection(skillsManager, mode as string),
 	])
 
