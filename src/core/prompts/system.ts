@@ -29,6 +29,8 @@ import {
 	getLiteToolUseGuidelinesSection,
 	getLiteCapabilitiesSection,
 	getLiteObjectiveSection,
+	getLiteSharedToolUseSection,
+	getLiteRulesSection,
 } from "./sections"
 import { experiments as experimentsUtil, EXPERIMENT_IDS } from "../../shared/experiments"
 import { defaultLang } from "../../utils/language"
@@ -131,15 +133,15 @@ async function generatePrompt(data: {
 
 ${usePurePrompts ? "" : markdownFormattingSection()}
 
-${usePurePrompts ? "" : getSharedToolUseSection()}${toolsCatalog}
+${usePurePrompts ? "" : useLitePrompts ? getLiteSharedToolUseSection() : getSharedToolUseSection()}${toolsCatalog}
 
 ${usePurePrompts ? "" : useLitePrompts ? getLiteToolUseGuidelinesSection() : getToolUseGuidelinesSection()}
 
 ${usePurePrompts ? "" : useLitePrompts ? getLiteCapabilitiesSection(cwd, shouldIncludeMcp ? mcpHub : undefined) : getCapabilitiesSection(cwd, shouldIncludeMcp ? mcpHub : undefined)}
 
 ${modesSection}
-${usePurePrompts ? "" : `\n${skillsSection}`}
-${usePurePrompts ? "" : getRulesSection(cwd, settings, experiments)}
+${usePurePrompts ? "" : skillsSection ? `\n${skillsSection}` : ""}
+${usePurePrompts ? "" : useLitePrompts ? getLiteRulesSection(cwd, settings, experiments) : getRulesSection(cwd, settings, experiments)}
 
 ${usePurePrompts ? "" : getSystemInfoSection(cwd, shell)}
 
@@ -178,6 +180,7 @@ export const SYSTEM_PROMPT = async (
 	modelId?: string,
 	parallelToolCallsEnabled?: boolean,
 	skillsManager?: SkillsManager,
+	useLitePrompts?: boolean,
 ): Promise<string> => {
 	if (!context) {
 		throw new Error("Extension context is required for generating system prompt")
@@ -218,6 +221,7 @@ export const SYSTEM_PROMPT = async (
 				rooIgnoreInstructions,
 				settings,
 				shell,
+				useLitePrompts,
 			},
 		)
 
