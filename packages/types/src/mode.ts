@@ -1,6 +1,11 @@
 import { z } from "zod"
 
 import { toolGroupsSchema } from "./tool.js"
+import { QUICK_EXPLORE_AGENT_ROLE_DEFINITION } from "./costrict/quick-explore-agent.js"
+import { PLAN_AGENT_ROLE_DEFINITION } from "./costrict/plan-agent.js"
+import { TASK_CHECK_AGENT_ROLE_DEFINITION } from "./costrict/task-check-agent.js"
+import { CODING_AGENT_ROLE_DEFINITION } from "./costrict/coding-agent.js"
+import { SUB_CODING_AGENT_ROLE_DEFINITION } from "./costrict/sub-coding-agent.js"
 
 /**
  * GroupOptions
@@ -72,6 +77,9 @@ export const modeConfigSchema = z.object({
 	source: z.enum(["global", "project"]).optional(),
 	zgsmCodeModeGroup: z.string().default("vibe").optional(),
 	apiProvider: z.string().optional(),
+	subagents: z.array(z.string()).default([]).optional(),
+	pure: z.boolean().default(false).optional(),
+	disableSwitchMode: z.boolean().default(false).optional(),
 })
 
 export type ModeConfig = z.infer<typeof modeConfigSchema>
@@ -208,8 +216,7 @@ const WORKFLOW_MODES: readonly modelType[] = [
 	{
 		slug: "plan",
 		name: "💡 Plan",
-		roleDefinition:
-			"You are CoStrict, Your Goal is understand user's demand and Create actionable implementation blueprints.",
+		roleDefinition: PLAN_AGENT_ROLE_DEFINITION,
 		description: "Create actionable implementation blueprints",
 		whenToUse:
 			"Use this mode when you need to plan complex implementations before coding. Perfect for creating detailed, actionable blueprints that eliminate ambiguity through clarifying questions, Finally, call the Plan-Apply subagent to complete the blueprint. Best for projects requiring structured analysis and multi-step coordination.",
@@ -224,8 +231,57 @@ const WORKFLOW_MODES: readonly modelType[] = [
 			],
 			"command",
 			"modes",
-			"mcp",
 		],
+		subagents: ["quick-explore", "task-check", "plan-apply"],
+		pure: true,
+		source: "project",
+		zgsmCodeModeGroup: "plan",
+		apiProvider: "zgsm",
+	},
+	{
+		slug: "quick-explore",
+		name: "💡 QuickExplore",
+		roleDefinition: QUICK_EXPLORE_AGENT_ROLE_DEFINITION,
+		description: "Create actionable implementation blueprints",
+		whenToUse:
+			"Use this mode when you need to plan complex implementations before coding. Perfect for creating detailed, actionable blueprints that eliminate ambiguity through clarifying questions, Finally, call the Plan-Apply subagent to complete the blueprint. Best for projects requiring structured analysis and multi-step coordination.",
+		groups: [
+			"read",
+			[
+				"edit",
+				{
+					fileRegex: "\\.md$",
+					description: "Markdown files only",
+				},
+			],
+			"command",
+		],
+		disableSwitchMode: true,
+		pure: true,
+		source: "project",
+		zgsmCodeModeGroup: "plan",
+		apiProvider: "zgsm",
+	},
+	{
+		slug: "task-check",
+		name: "💡 TaskCheck",
+		roleDefinition: TASK_CHECK_AGENT_ROLE_DEFINITION,
+		description: "Create actionable implementation blueprints",
+		whenToUse:
+			"Use this mode when you need to plan complex implementations before coding. Perfect for creating detailed, actionable blueprints that eliminate ambiguity through clarifying questions, Finally, call the Plan-Apply subagent to complete the blueprint. Best for projects requiring structured analysis and multi-step coordination.",
+		groups: [
+			"read",
+			[
+				"edit",
+				{
+					fileRegex: "\\.md$",
+					description: "Markdown files only",
+				},
+			],
+			"command",
+		],
+		disableSwitchMode: true,
+		pure: true,
 		source: "project",
 		zgsmCodeModeGroup: "plan",
 		apiProvider: "zgsm",
@@ -233,12 +289,26 @@ const WORKFLOW_MODES: readonly modelType[] = [
 	{
 		slug: "plan-apply",
 		name: "✨ Plan-Apply",
-		roleDefinition:
-			"You are CoStrict, a highly skilled technical expert with extensive knowledge in programming field, and best practices.Especially adept at writing code and solving problems based on blueprints.",
+		roleDefinition: CODING_AGENT_ROLE_DEFINITION,
 		description: "Write, modify, debug, and refactor code",
 		whenToUse:
 			"Use this mode when you need to write, modify, debug, or refactor code. Ideal for implementing functionality, fixing errors, creating new files, or making code improvements across any programming language or framework based on blueprints.",
-		groups: ["read", "edit", "command", "mcp"],
+		groups: ["read", "edit", "command", "modes"],
+		subagents: ["subcoding"],
+		pure: true,
+		source: "project",
+		zgsmCodeModeGroup: "plan",
+		apiProvider: "zgsm",
+	},
+	{
+		slug: "subcoding",
+		name: "✨ SubCoding",
+		roleDefinition: SUB_CODING_AGENT_ROLE_DEFINITION,
+		whenToUse:
+			"Use this mode when you need to write, modify, debug, or refactor code. Ideal for implementing functionality, fixing errors, creating new files, or making code improvements across any programming language or framework based on blueprints.",
+		groups: ["read", "edit", "command"],
+		disableSwitchMode: true,
+		pure: true,
 		source: "project",
 		zgsmCodeModeGroup: "plan",
 		apiProvider: "zgsm",
