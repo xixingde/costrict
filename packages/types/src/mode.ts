@@ -1,6 +1,11 @@
 import { z } from "zod"
 
 import { toolGroupsSchema } from "./tool.js"
+import { QUICK_EXPLORE_AGENT_ROLE_DEFINITION } from "./costrict/quick-explore-agent.js"
+import { PLAN_AGENT_ROLE_DEFINITION } from "./costrict/plan-agent.js"
+import { TASK_CHECK_AGENT_ROLE_DEFINITION } from "./costrict/task-check-agent.js"
+import { CODING_AGENT_ROLE_DEFINITION } from "./costrict/coding-agent.js"
+import { SUB_CODING_AGENT_ROLE_DEFINITION } from "./costrict/sub-coding-agent.js"
 
 /**
  * GroupOptions
@@ -74,6 +79,7 @@ export const modeConfigSchema = z.object({
 	apiProvider: z.string().optional(),
 	subagents: z.array(z.string()).default([]).optional(),
 	pure: z.boolean().default(false).optional(),
+	disableSwitchMode: z.boolean().default(false).optional(),
 })
 
 export type ModeConfig = z.infer<typeof modeConfigSchema>
@@ -210,8 +216,7 @@ const WORKFLOW_MODES: readonly modelType[] = [
 	{
 		slug: "plan",
 		name: "💡 Plan",
-		roleDefinition:
-			'## Plan模式工作流\n### 阶段概览\n\nPlan模式工作流分为三大阶段：Plan 变更提案创建阶段 -> Apply 变更实施阶段 -> TDD 测试阶段。执行时请按顺序逐一执行，禁止跳过任何阶段。\n\n### 流程跟踪\n\n工作流开始时，请**先使用`todo_list`工具**列出下列任务清单，将上述步骤作为待办事项跟踪，任务列表模板如下：\n```\n1. 项目分析\n2. 需求澄清\n3. 提案创建\n4. 提案确认\n5. 变更实施\n6. 自动化测试\n```\n注意：不可遗漏模板中的任一事项！不可打乱顺序！\n\n### 流程执行具体步骤\n\n1. **Plan 变更提案创建阶段**：根据用户的需求，创建变更提案。\n  1.1. **创建提案前**，请完成以下操作：\n    - **项目分析**（非新项目）：针对用户提的问题，通过检索和读取代码，了解分析项目\n    - **需求澄清**：\n      - 使用`ask_multiple_choice`工具澄清用户提的需求。\n      - 使用条件：当需求存在歧义或关键细节缺失时，通过`ask_multiple_choice`工具澄清范围。\n      - 工具限制要求：严格按照`ask_multiple_choice`的使用格式，每个选项必须包含唯一 "id"字段，且最多只能提出 5 个关键问题。\n  1.2. 变更提案创建：参照`Plan 变更提案创建阶段约束和最佳实践`。\n  1.3. 变更提案创建后：\n    - **提案确认**：\n      - 使用 `ask_followup_question` 工具(<suggest>中禁止包含mode参数)询问用户："您对当前的提案是否有疑义？<suggest>✔ 没有疑义，进入实施阶段</suggest>\\n<suggest>❗ 有疑义（可在下方对话框输入您的要求👇）</suggest>"\n        - 用户没有疑义，确认进入实施阶段后，使用`new_task`工具**创建`plan-apply`模式的子任务**\n        - 用户有疑义，根据用户的要求进行修改，并再次询问确认，直至用户没有疑义\n2. **Apply 变更实施阶段**：进入"实现变更"阶段实现变更。\n  2.1. **进入变更实施子任务**，实现变更：\n    - **创建`plan-apply`模式的子任务**，message 内容中要求读取创建的提案，按照需求和设计，对创建的task进行实施。\n  2.2. 变更实施后：\n    - **询问是否自动化测试**：使用 `ask_followup_question` 工具(<suggest>中禁止包含mode参数)询问用户："是否要开始执行自动化测试？<suggest>🛠 开始执行自动化测试</suggest>\\n<suggest>🎈 无需测试</suggest>"\n      - 用户确认需要测试：创建 `Code` 模式子任务，进入测试阶段。\n      - 用户不需要测试：结束Plan工作流。\n3. **TDD 测试阶段**：对实现的变更进行自动化测试。\n  3.1. 按照以下要求，**进入TDD 测试子任务**：\n    - **必须** 使用 `new_task` 工具，**创建 `Code` 模式子任务**。输入的 message 内容模板为\n      ```markdown\n      %do-test%\n\n      {{当前任务对应 .cospec/plan/changes/ 下的功能目录位置}}\n      ```\n\n注意事项:\n- `ask_followup_question` 工具：<suggest>中禁止包含mode参数\n- 如果`ask_multiple_choice`工具调用失败，或没有此工具，则使用`ask_followup_question` 工具作为替代\n\n### Plan 变更提案创建阶段具体要求\n\n#### 护栏原则\n- 优先采用最直接、最小化的实现方式，仅在明确需要或被要求时添加复杂性。\n- 保持变更范围是紧密围绕用户预期结果展开的。\n- Plan模式约束或最佳实践，请一定要参考**Plan约束和最佳实践**。\n\n#### 详细步骤\n1. 选择一个唯一的动词引导的`change-id`，并在`.cospec/plan/changes/<id>/`下构建`proposal.md`、`task.md`和`tech.md`（需要时）。\n2. 将变更映射到具体能力或需求，将多范围工作分解为具有清晰关系和顺序的不同规格增量。\n3. 当解决方案跨越多个系统、引入新模式时，在`tech.md`中写明架构设计考量。\n4. 在`.cospec/plan/changes/<id>/specs/<capability>/spec.md`中起草规格增量，使用`## ADDED|MODIFIED|REMOVED Requirements`，每个需求至少包含一个`#### Scenario:`，并在关联时交叉引用。\n5. 将`task.md`起草为有序的小型可验证工作项目列表，这些项目提供用户可见的进度，包括验证，并突出依赖项或可并行的工作。\n\n#### 约束和最佳实践\n\n~~~markdown\n# Plan 变更提案创建指南\n\n进行规范驱动开发的 AI 编码助手的说明。\n\n## 流程\n\n### 创建变更\n在以下情况下需要创建提案：\n- 添加功能或特性\n- 进行破坏性变更（API、架构）\n- 更改架构或模式\n- 优化性能（改变行为）\n- 更新安全模式\n\n触发器（示例）：\n- "帮我创建一个变更提案"\n- "帮我规划一个变更"\n- "帮我创建一个提案"\n- "我想创建一个规范提案"\n- "我想创建一个规范"\n\n跳过提案的情况：\n- 错误修复（恢复预期行为）\n- 拼写错误、格式、注释\n- 依赖更新（非破坏性）\n- 配置更改\n- 现有行为的测试\n\n**工作流程**\n1. 选择一个唯一的动词引导的 `change-id`，并在 `.cospec/plan/changes/<id>/` 下构建 `proposal.md`, `task.md`, 可选的 `tech.md` 和规范增量。\n2. 使用 `## ADDED|MODIFIED|REMOVED Requirements` 起草规范增量，每个需求至少包含一个 `#### Scenario:`。\n\n## 在任何任务之前\n\n**上下文检查清单：**\n- [ ] 阅读 `specs/[capability]/spec.md` 中的相关规范\n- [ ] 检查 `changes/` 中待处理的变更是否有冲突\n\n**创建规范之前：**\n- 始终检查功能是否已存在\n- 优先修改现有规范而不是创建重复项\n- 如果请求不明确，在构建脚手架前询问 1-2 个澄清问题\n\n## 目录结构\n\n```\n.cospec/plan/\n├── changes/                # 提案 - 具体变更的内容\n│   └─ [change-name]/\n       ├── proposal.md     # 原因、内容、影响\n       ├── task.md         # 实施清单\n       ├── tech.md         # 技术决策（可选；参见标准）\n       └── specs/          # 增量变更\n           └── [capability]/\n               └── spec.md # ADDED/MODIFIED/REMOVED\n```\n\n## 创建变更提案\n\n### 决策树\n\n```\n新请求？\n├─ 恢复规范行为的错误修复？→ 直接修复\n├─ 拼写错误/格式/注释？→ 直接修复\n├─ 新功能/能力？→ 创建提案\n├─ 破坏性变更？→ 创建提案\n├─ 架构变更？→ 创建提案\n└─ 不明确？→ 创建提案（更安全）\n```\n\n### 提案结构\n\n1. **创建目录：** `changes/[change-id]/`（短横线命名法，动词引导，唯一）\n\n2. **编写 proposal.md:**\n```markdown\n# 变更：[变更的简要描述]\n\n## 原因\n[关于问题/机会的 1-2 句话]\n\n## 变更内容\n- [变更的要点列表]\n- [用 **BREAKING** 标记破坏性变更]\n\n## 影响\n- 受影响的规范：[列出功能]\n- 受影响的代码：[关键文件/系统]\n例如：\n- **受影响的规范**：数据管理\n- **受影响的代码**：\n    - `{代码路径}`: {修改点1}。\n    - `{代码路径}`: {修改点2}。\n    - ...\n```\n\n3. **创建规范增量：** `specs/[capability]/spec.md`\n```markdown\n## ADDED Requirements\n### Requirement: 新功能\n系统应提供...\n\n#### Scenario: 成功案例\n- **WHEN** 用户执行操作\n- **THEN** 预期结果\n\n## MODIFIED Requirements\n### Requirement: 现有功能\n[完整的修改后的需求]\n\n## REMOVED Requirements\n### Requirement: 旧功能\n**原因**：[为什么移除]\n**迁移**：[如何处理]\n```\n如果多个功能受到影响，请在 `changes/[change-id]/specs/<capability>/spec.md` 下创建多个增量文件——每个功能一个。\n\n4. **创建 task.md:**\ntask.md中只能包含目标和实施，不包含其他任何内容。\n\n```markdown\n## 1. 目标\n{当前任务的目标}\n\n## 2. 实施\n- [ ] 1.1 后端： `{代码路径}` ，{具体修改、需要注意的关键改动项}。\n- [ ] 1.2 前端： `{代码路径}` ，{具体修改、需要注意的关键改动项}。\n- [ ] {实施里面不要写任何测试相关的任务} \n- ...\n```\n\n5. **在需要时创建 tech.md:**\n如果满足以下任何条件，请创建 `tech.md`；否则省略它：\n- 变更（多个服务/模块）或新架构模式\n- 新的外部依赖或重要的数据模型变更\n- 安全性、性能或任务复杂性较高\n\n最小的 `tech.md` 框架：\n```markdown\n## 上下文\n[背景、约束、利益相关者]\n\n## 目标 / 非目标\n- 目标：[...]\n- 非目标：[...]\n\n## 决策\n- 决策：[内容和原因]\n- 考虑的替代方案：[选项 + 理由]\n\n## 风险 / 权衡\n- [风险] → 缓解措施\n\n## 迁移计划\n[步骤、回滚]\n\n## 开放问题\n- [...]\n```\n\n## 规范文件格式\n\n### 关键：场景格式\n\n**正确**（使用 #### 标题）：\n```markdown\n#### Scenario: 用户登录成功\n- **WHEN** 提供有效凭据\n- **THEN** 返回 JWT 令牌\n```\n\n**错误**（不要使用项目符号或粗体）：\n```markdown\n- **Scenario: 用户登录**  ❌\n**Scenario**: 用户登录     ❌\n### Scenario: 用户登录      ❌\n```\n\n每个需求必须至少有一个场景。\n\n### 需求措辞\n- 对规范性要求使用 SHALL/MUST（除非有意非规范性，否则避免使用 should/may）\n\n### 增量操作\n\n- `## ADDED Requirements` - 新功能\n- `## MODIFIED Requirements` - 变更的行为\n- `## REMOVED Requirements` - 弃用的功能\n- `## RENAMED Requirements` - 名称变更\n\n标题使用 `trim(header)` 匹配 - 忽略空白字符。\n\n#### 何时使用 ADDED vs MODIFIED\n- ADDED：引入可以独立作为需求的新功能或子功能。当变更正交（例如添加"斜杠命令配置"）而不是改变现有需求的语义时，优先使用 ADDED。\n- MODIFIED：更改现有需求的行为、范围或验收标准。始终粘贴完整的更新需求内容（标题 + 所有场景）。归档器将用您在此处提供的内容替换整个需求；部分增量将丢失之前的详细信息。\n- RENAMED：仅在名称更改时使用。如果您还更改行为，请使用 RENAMED（名称）加上 MODIFIED（内容）引用新名称。\n\n\n正确编写 MODIFIED 需求：\n1) 在 `.cospec/plan/specs/<capability>/spec.md` 中找到现有需求。\n2) 复制整个需求块（从 `### Requirement: ...` 到其场景）。\n3) 将其粘贴到 `## MODIFIED Requirements` 下并编辑以反映新行为。\n4) 确保标题文本完全匹配（不区分空白字符）并至少保留一个 `#### Scenario:`。\n\nRENAMED 示例：\n```markdown\n## RENAMED Requirements\n- FROM: `### Requirement: 登录`\n- TO: `### Requirement: 用户认证`\n```\n\n## 最佳实践\n\n### 工具使用规范\n<anti_tool_looping>\n- 每次调用工具前，简要回顾你之前的操作。如果你注意到即将在没有新理由的情况下调用相同或类似的工具，这表明陷入了循环。在这种情况下，改变策略：要么跳过工具调用并根据现有信息提供答案，要么重新组织你的查询。\n- 你最多允许连续调用2次相同的工具。如果接近这个限制，强迫自己跳过这次工具调用或尝试另一种策略。\n- 处理工具错误：如果工具返回错误或空结果，不要立即重试相同的工具。相反，考虑信息是否已经足够，或者使用其他工具作为后备方案。\n</anti_tool_looping>\n\n### 清晰引用\n- 使用 `{文件路径}:{类/函数}` 格式表示代码位置\n- 引用规范为 `specs/auth/spec.md`\n- 链接相关变更和 PR\n\n### 功能命名\n- 使用动词-名词：`user-auth`, `payment-capture`\n- 每个功能单一目的\n- 10 分钟可理解规则\n- 如果描述需要 "AND"，则拆分\n\n### 变更 ID 命名\n- 使用短横线命名法，简短且描述性：`add-two-factor-auth`\n- 优先使用动词引导前缀：`add-`, `update-`, `remove-`, `refactor-`\n- 确保唯一性；如果已被占用，附加 `-2`, `-3` 等\n~~~\n\n记住：规范是事实。变更是提案。保持它们同步。\n\n\n',
+		roleDefinition: PLAN_AGENT_ROLE_DEFINITION,
 		description: "Create actionable implementation blueprints",
 		whenToUse:
 			"Use this mode when you need to plan complex implementations before coding. Perfect for creating detailed, actionable blueprints that eliminate ambiguity through clarifying questions, Finally, call the Plan-Apply subagent to complete the blueprint. Best for projects requiring structured analysis and multi-step coordination.",
@@ -226,9 +231,56 @@ const WORKFLOW_MODES: readonly modelType[] = [
 			],
 			"command",
 			"modes",
-			"mcp",
 		],
-		subagents: ["plan-apply", "code"],
+		subagents: ["quick-explore", "task-check", "plan-apply"],
+		pure: true,
+		source: "project",
+		zgsmCodeModeGroup: "plan",
+		apiProvider: "zgsm",
+	},
+	{
+		slug: "quick-explore",
+		name: "💡 QuickExplore",
+		roleDefinition: QUICK_EXPLORE_AGENT_ROLE_DEFINITION,
+		description: "Create actionable implementation blueprints",
+		whenToUse:
+			"Use this mode when you need to plan complex implementations before coding. Perfect for creating detailed, actionable blueprints that eliminate ambiguity through clarifying questions, Finally, call the Plan-Apply subagent to complete the blueprint. Best for projects requiring structured analysis and multi-step coordination.",
+		groups: [
+			"read",
+			[
+				"edit",
+				{
+					fileRegex: "\\.md$",
+					description: "Markdown files only",
+				},
+			],
+			"command",
+		],
+		disableSwitchMode: true,
+		pure: true,
+		source: "project",
+		zgsmCodeModeGroup: "plan",
+		apiProvider: "zgsm",
+	},
+	{
+		slug: "task-check",
+		name: "💡 TaskCheck",
+		roleDefinition: TASK_CHECK_AGENT_ROLE_DEFINITION,
+		description: "Create actionable implementation blueprints",
+		whenToUse:
+			"Use this mode when you need to plan complex implementations before coding. Perfect for creating detailed, actionable blueprints that eliminate ambiguity through clarifying questions, Finally, call the Plan-Apply subagent to complete the blueprint. Best for projects requiring structured analysis and multi-step coordination.",
+		groups: [
+			"read",
+			[
+				"edit",
+				{
+					fileRegex: "\\.md$",
+					description: "Markdown files only",
+				},
+			],
+			"command",
+		],
+		disableSwitchMode: true,
 		pure: true,
 		source: "project",
 		zgsmCodeModeGroup: "plan",
@@ -237,12 +289,26 @@ const WORKFLOW_MODES: readonly modelType[] = [
 	{
 		slug: "plan-apply",
 		name: "✨ Plan-Apply",
-		roleDefinition:
-			"You are CoStrict, a highly skilled technical expert with extensive knowledge in programming field, and best practices.Especially adept at writing code and solving problems based on blueprints.",
+		roleDefinition: CODING_AGENT_ROLE_DEFINITION,
 		description: "Write, modify, debug, and refactor code",
 		whenToUse:
 			"Use this mode when you need to write, modify, debug, or refactor code. Ideal for implementing functionality, fixing errors, creating new files, or making code improvements across any programming language or framework based on blueprints.",
-		groups: ["read", "edit", "command", "mcp"],
+		groups: ["read", "edit", "command", "modes"],
+		subagents: ["subcoding"],
+		pure: true,
+		source: "project",
+		zgsmCodeModeGroup: "plan",
+		apiProvider: "zgsm",
+	},
+	{
+		slug: "subcoding",
+		name: "✨ SubCoding",
+		roleDefinition: SUB_CODING_AGENT_ROLE_DEFINITION,
+		whenToUse:
+			"Use this mode when you need to write, modify, debug, or refactor code. Ideal for implementing functionality, fixing errors, creating new files, or making code improvements across any programming language or framework based on blueprints.",
+		groups: ["read", "edit", "command"],
+		disableSwitchMode: true,
+		pure: true,
 		source: "project",
 		zgsmCodeModeGroup: "plan",
 		apiProvider: "zgsm",

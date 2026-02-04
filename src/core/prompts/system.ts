@@ -126,6 +126,9 @@ async function generatePrompt(data: {
 	const toolsCatalog = ""
 
 	const usePurePrompts = modeConfig.pure === true
+
+	const disableSwitchMode = modeConfig.disableSwitchMode === true
+
 	// Check if lite prompts experiment is enabled
 	const useLitePrompts = experimentsUtil.isEnabled(experiments ?? {}, EXPERIMENT_IDS.USE_LITE_PROMPTS)
 
@@ -139,7 +142,7 @@ ${usePurePrompts ? "" : useLitePrompts ? getLiteToolUseGuidelinesSection() : get
 
 ${usePurePrompts ? "" : useLitePrompts ? getLiteCapabilitiesSection(cwd, shouldIncludeMcp ? mcpHub : undefined) : getCapabilitiesSection(cwd, shouldIncludeMcp ? mcpHub : undefined)}
 
-${modesSection}
+${disableSwitchMode ? "" : modesSection}
 ${usePurePrompts ? "" : skillsSection ? `\n${skillsSection}` : ""}
 ${usePurePrompts ? "" : useLitePrompts ? getLiteRulesSection(cwd, settings, experiments) : getRulesSection(cwd, settings, experiments)}
 
