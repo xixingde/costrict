@@ -11,6 +11,7 @@ import type { ToolUse } from "../../shared/tools"
 
 import { readFileSync } from "fs"
 import { treeSitterService } from "./service/tree-sitter"
+import { loadRequiredLanguageParsers } from "../../services/tree-sitter/languageParser"
 import { loadScmQuery, detectLanguageFromFilename } from "./util/scm-loader"
 import { Query } from "web-tree-sitter"
 
@@ -199,129 +200,45 @@ export class FileOutlineTool extends BaseTool<"file_outline"> {
 				return
 			}
 
-			// {
-			// 	const result =  {
-			// 		title: '解析成功',
-			// 		metadata: {
-			// 		file_path,
-			// 		language,
-			// 		definition_count: 0,
-			// 		error: 'parse_failed',
-			// 		},
-			// 		output: `Error: Failed to parse ${file_path}`,
-			// 	};
-			// 	pushToolResult(JSON.stringify(result, null, 2))
-			// 	return
-			// }
-
 			// 读取文件内容
 			// const sourceCode = readFileSync(absolutePath, 'utf-8');
 
 			// 加载语言对象（用于创建查询）
-			const lang = await treeSitterService.loadLanguage(language)
+			// const lang = await treeSitterService.loadLanguage(language)
 
-			// // 创建解析器
-			// const parser = await treeSitterService.createParser(language);
+			const parsers = await loadRequiredLanguageParsers([absolutePath])
 
-			// // 解析代码
-			// const tree = parser.parse(sourceCode);
+			// 获取文件扩展名
+			const ext = path.extname(absolutePath).toLowerCase().slice(1)
 
-			// // 加载SCM查询
-			// const queryText = loadScmQuery(language);
-
-			// // 创建查询对象 - 使用 Query 构造函数
-			// const query = new Query(lang, queryText);
-
-			// {
-			// 	const result =  {
-			// 		title: '解析成功',
-			// 		metadata: {
-			// 		file_path,
-			// 		language,
-			// 		definition_count: 0,
-			// 		error: 'parse_failed',
-			// 		},
-			// 		output: `Error: Failed to parse ${file_path}`,
-			// 	};
-			// 	pushToolResult(JSON.stringify(result, null, 2))
-			// 	return
-			// }
-
-			// 执行查询
-			// if (!tree) {
-			// 	const result =  {
-			// 		title: '解析失败',
-			// 		metadata: {
-			// 		file_path,
-			// 		language,
-			// 		definition_count: 0,
-			// 		error: 'parse_failed',
-			// 		},
-			// 		output: `Error: Failed to parse ${file_path}`,
-			// 	};
-			// 	pushToolResult(JSON.stringify(result, null, 2))
-			// 	return
-			// }
-
-			// const captures = query.captures(tree.rootNode);
-
-			// // 提取定义
-			// const definitions: Definition[] = [];
-			// const docstringPattern = DOCSTRING_PATTERNS[language];
-
-			// for (const capture of captures) {
-			// 	const node = capture.node;
-			// 	const captureName = capture.name;
-
-			// 	// 只处理定义类型的捕获
-			// 	if (captureName === 'name.definition.class' || captureName === 'name.definition.function') {
-			// 		const line = node.startPosition.row + 1;
-			// 		const name = node.text;
-
-			// 		// 获取完整签名（父节点）
-			// 		const defNode = node.parent;
-			// 		const signature = defNode ? sourceCode.substring(defNode.startIndex, defNode.endIndex).split('\n')[0] : name;
-
-			// 		// 确定类型
-			// 		const kind = captureName === 'name.definition.class' ? 'Class' : 'Function';
-
-			// 		// 提取文档字符串
-			// 		let docstring: string | undefined;
-			// 		if (include_docstrings && docstringPattern && defNode) {
-			// 			docstring = extractDocstring(defNode, sourceCode, docstringPattern);
-			// 		}
-
-			// 		definitions.push({
-			// 			line,
-			// 			name,
-			// 			kind,
-			// 			signature,
-			// 			docstring,
-			// 		});
-			// 	}
-			// }
-
-			// // 按行号排序
-			// definitions.sort((a, b) => a.line - b.line);
-			// // 格式化输出
-			// const output = formatDefinitions(definitions, file_path);
-
-			// const result =  {
-			// 	title: `File Outline: ${file_path}`,
-			// 	metadata: {
-			// 		file_path,
-			// 		language,
-			// 		definition_count: definitions.length,
-			// 		error: '',
-			// 	},
-			// 	output,
-			// };
-			// pushToolResult(JSON.stringify(result, null, 2))
-			// return
-
-			{
+			// 获取对应的 parser 和 query
+			const parserData = parsers[ext]
+			if (!parserData) {
 				const result = {
-					title: "解析成功",
+					title: "解析失败",
+					metadata: {
+						file_path,
+						language: language || "unknown",
+						definition_count: 0,
+						error: "parser_not_found",
+					},
+					output: `Error: No parser found for extension .${ext}`,
+				}
+				pushToolResult(JSON.stringify(result, null, 2))
+				return
+			}
+
+			const { parser, query } = parserData
+
+			// 读取文件内容
+			const sourceCode = readFileSync(absolutePath, "utf-8")
+
+			// 解析代码
+			const tree = parser.parse(sourceCode)
+
+			if (!tree) {
+				const result = {
+					title: "解析失败",
 					metadata: {
 						file_path,
 						language,
@@ -333,6 +250,87 @@ export class FileOutlineTool extends BaseTool<"file_outline"> {
 				pushToolResult(JSON.stringify(result, null, 2))
 				return
 			}
+
+			// 执行查询
+			const captures = query.captures(tree.rootNode)
+
+			// 提取定义
+			const definitions: Definition[] = []
+			const docstringPattern = DOCSTRING_PATTERNS[language]
+
+			// 使用 Set 去重，避免重复定义
+			const processedIds = new Set<string>()
+
+			for (const capture of captures) {
+				const node = capture.node
+				const captureName = capture.name
+
+				// 只处理定义类型的捕获
+				if (
+					captureName === "name.definition.class" ||
+					captureName === "name.definition.function" ||
+					captureName === "name.definition.method"
+				) {
+					const line = node.startPosition.row + 1
+					const name = node.text
+
+					// 使用节点位置作为唯一标识符去重
+					const nodeId = `${line}-${name}-${captureName}`
+					if (processedIds.has(nodeId)) {
+						continue
+					}
+					processedIds.add(nodeId)
+
+					// 获取完整签名（父节点）
+					const defNode = node.parent
+					const signature = defNode
+						? sourceCode.substring(defNode.startIndex, defNode.endIndex).split("\n")[0]
+						: name
+
+					// 确定类型
+					let kind: string
+					if (captureName === "name.definition.class") {
+						kind = "Class"
+					} else if (captureName === "name.definition.method") {
+						kind = "Method"
+					} else {
+						kind = "Function"
+					}
+
+					// 提取文档字符串
+					let docstring: string | undefined
+					if (include_docstrings && docstringPattern && defNode) {
+						docstring = extractDocstring(defNode, sourceCode, docstringPattern)
+					}
+
+					definitions.push({
+						line,
+						name,
+						kind,
+						signature,
+						docstring,
+					})
+				}
+			}
+
+			// 按行号排序
+			definitions.sort((a, b) => a.line - b.line)
+
+			// 格式化输出
+			const output = formatDefinitions(definitions, file_path)
+
+			const result = {
+				title: `File Outline: ${file_path}`,
+				metadata: {
+					file_path,
+					language,
+					definition_count: definitions.length,
+					error: "",
+				},
+				output,
+			}
+			pushToolResult(JSON.stringify(result, null, 2))
+			return
 		} catch (error) {
 			const result = {
 				title: "文件分析失败",
