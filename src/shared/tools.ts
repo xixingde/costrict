@@ -60,6 +60,15 @@ export const toolParamNames = [
 	"query",
 	"args",
 	"skill", // skill tool parameter
+	"thought", // sequential_thinking parameter
+	"thoughtNumber", // sequential_thinking parameter
+	"totalThoughts", // sequential_thinking parameter
+	"nextThoughtNeeded", // sequential_thinking parameter
+	"isRevision", // sequential_thinking parameter
+	"revisesThought", // sequential_thinking parameter
+	"branchFromThought", // sequential_thinking parameter
+	"branchId", // sequential_thinking parameter
+	"needsMoreThoughts", // sequential_thinking parameter
 	"start_line",
 	"end_line",
 	"todos",
@@ -100,6 +109,17 @@ export type NativeToolArgs = {
 	access_mcp_resource: { server_name: string; uri: string }
 	read_file: import("@roo-code/types").ReadFileToolParams
 	read_command_output: { artifact_id: string; search?: string; offset?: number; limit?: number }
+	sequential_thinking: {
+		thought: string
+		nextThoughtNeeded: boolean
+		thoughtNumber: number
+		totalThoughts: number
+		isRevision?: boolean
+		revisesThought?: number
+		branchFromThought?: number
+		branchId?: string
+		needsMoreThoughts?: boolean
+	}
 	attempt_completion: { result: string }
 	execute_command: { command: string; cwd?: string }
 	apply_diff: { path: string; diff: string }
@@ -121,6 +141,10 @@ export type NativeToolArgs = {
 			options: Array<{ id: string; label: string }>
 			allow_multiple?: boolean
 		}>
+	}
+	file_outline: {
+		file_path: string
+		include_docstrings?: boolean
 	}
 	browser_action: BrowserActionParams
 	codebase_search: { query: string; path?: string }
@@ -295,6 +319,7 @@ export const TOOL_DISPLAY_NAMES: Record<ToolName, string> = {
 	execute_command: "run commands",
 	read_file: "read files",
 	read_command_output: "read command output",
+	sequential_thinking: "sequential thinking",
 	write_to_file: "write files",
 	apply_diff: "apply changes",
 	search_and_replace: "apply changes using search and replace",
@@ -318,12 +343,13 @@ export const TOOL_DISPLAY_NAMES: Record<ToolName, string> = {
 	generate_image: "generate images",
 	custom_tool: "use custom tools",
 	fake_tool_call: "use tool calls",
+	file_outline: "file outline",
 } as const
 
 // Define available tool groups.
 export const TOOL_GROUPS: Record<ToolGroup, ToolGroupConfig> = {
 	read: {
-		tools: ["ask_multiple_choice", "read_file", "search_files", "list_files", "codebase_search"],
+		tools: ["read_file", "search_files", "list_files", "codebase_search"],
 	},
 	edit: {
 		tools: ["apply_diff", "write_to_file", "generate_image"],
@@ -341,6 +367,15 @@ export const TOOL_GROUPS: Record<ToolGroup, ToolGroupConfig> = {
 	modes: {
 		tools: ["switch_mode", "new_task"],
 		alwaysAvailable: true,
+	},
+	question: {
+		tools: ["ask_multiple_choice"],
+	},
+	"sequential-thinking": {
+		tools: ["sequential_thinking"],
+	},
+	file_outline: {
+		tools: ["file_outline"],
 	},
 }
 
