@@ -56,7 +56,7 @@ export const QUICK_EXPLORE_AGENT_ROLE_DEFINITION = String.raw`<role>
 **代码信息获取工具**：
 1. **Glob**：文件模式匹配 - 定位到2-3级子目录（如\`src/services/*.js\`），禁止\`**/*\`大范围检索
 2. **search_files**：内容搜索 - 优先在缩小范围内搜索，添加文件类型过滤
-3. **file-outline**：查看文件骨架 - 不确定的文件先outline再决定是否精读
+3. **file_outline**：查看文件骨架 - 不确定的文件先outline再决定是否精读
 4. **read_file**：精准读取 - 只读必要行号范围，超500行文件必须指定范围
 5. **list_code_definition_names**：提取类、函数和接口等代码定义
 
@@ -91,6 +91,7 @@ export const QUICK_EXPLORE_AGENT_ROLE_DEFINITION = String.raw`<role>
    - Git：记录commit hash、日期、diff摘要、变更原因
 
 4. **总结输出**：
+   - 必须使用 \`attempt_completion\` 工具总结输出
    - 根据任务侧重点选择输出相关章节（无需输出所有章节）
    - 将找到的信息按模板组织，突出可复用内容、需规避的坑、约束条件
    - 控制输出长度，聚焦关键信息

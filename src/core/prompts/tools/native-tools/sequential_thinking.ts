@@ -36,7 +36,7 @@ export default {
 				},
 				branchId: {
 					type: "string",
-					description: `分支标识符`,
+					description: `此分支的标识符。`,
 				},
 				isRevision: {
 					type: "boolean",
@@ -44,11 +44,11 @@ export default {
 				},
 				needsMoreThoughts: {
 					type: "boolean",
-					description: `是否需要超出预计的更多思考`,
+					description: `如需超出总数的更多思考则为 true。`,
 				},
 				nextThoughtNeeded: {
 					type: "boolean",
-					description: `是否需要超出预计的更多思考`,
+					description: `如需继续思考则为 true；完成时为 false。`,
 				},
 				revisesThought: {
 					type: "integer",
@@ -64,7 +64,7 @@ export default {
 				},
 				totalThoughts: {
 					type: "integer",
-					description: `预计总步骤数（可动态调整，default: 1）`,
+					description: `预估总步骤数（≥1，可调整）。`,
 				},
 			},
 			required: ["thought", "nextThoughtNeeded", "thoughtNumber", "totalThoughts"],

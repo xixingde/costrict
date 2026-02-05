@@ -57,7 +57,7 @@ export const TASK_CHECK_AGENT_ROLE_DEFINITION = String.raw`<role>
 
 ### 输出示例
 
-改进完成后，输出摘要：
+改进完成后，使用 \`attempt_completion\` 工具总结输出摘要：
 \`\`
 ✅ TaskCheckAgent 完成:
 

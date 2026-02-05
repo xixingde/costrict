@@ -6,6 +6,7 @@
 
 import { Parser, Language, Tree } from "web-tree-sitter"
 import { fileURLToPath } from "url"
+import * as path from "path"
 
 export function lazy<T>(fn: () => T) {
 	let value: T | undefined
@@ -66,84 +67,67 @@ for (const [lang, exts] of Object.entries(LANGUAGE_EXTENSIONS)) {
  * 延迟加载Python语言
  */
 const loadPython = lazy(async () => {
-	const { default: pythonWasm } = await import("tree-sitter-python/tree-sitter-python.wasm" as string, {
-		with: { type: "wasm" },
-	})
-	return await Language.load(resolveWasm(pythonWasm))
+	const wasmPath = path.join(__dirname, "tree-sitter-python.wasm")
+	return await Language.load(wasmPath)
 })
 
 /**
  * 延迟加载Java语言
  */
 const loadJava = lazy(async () => {
-	const { default: javaWasm } = await import("tree-sitter-java/tree-sitter-java.wasm" as string, {
-		with: { type: "wasm" },
-	})
-	return await Language.load(resolveWasm(javaWasm))
+	const wasmPath = path.join(__dirname, "tree-sitter-java.wasm")
+	return await Language.load(wasmPath)
 })
 
 /**
  * 延迟加载JavaScript语言
  */
 const loadJavaScript = lazy(async () => {
-	const { default: jsWasm } = await import("tree-sitter-javascript/tree-sitter-javascript.wasm" as string, {
-		with: { type: "wasm" },
-	})
-	return await Language.load(resolveWasm(jsWasm))
+	const wasmPath = path.join(__dirname, "tree-sitter-javascript.wasm")
+	return await Language.load(wasmPath)
 })
 
 /**
  * 延迟加载TypeScript语言
  */
 const loadTypeScript = lazy(async () => {
-	const { default: tsWasm } = await import("tree-sitter-typescript/tree-sitter-typescript.wasm" as string, {
-		with: { type: "wasm" },
-	})
-	return await Language.load(resolveWasm(tsWasm))
+	const wasmPath = path.join(__dirname, "tree-sitter-typescript.wasm")
+	return await Language.load(wasmPath)
 })
 
 /**
  * 延迟加载Go语言
  */
 const loadGo = lazy(async () => {
-	const { default: goWasm } = await import("tree-sitter-go/tree-sitter-go.wasm" as string, {
-		with: { type: "wasm" },
-	})
-	return await Language.load(resolveWasm(goWasm))
+	const wasmPath = path.join(__dirname, "tree-sitter-go.wasm")
+	return await Language.load(wasmPath)
 })
 
 /**
  * 延迟加载C语言
  */
 const loadC = lazy(async () => {
-	const { default: cWasm } = await import("tree-sitter-c/tree-sitter-c.wasm" as string, {
-		with: { type: "wasm" },
-	})
-	return await Language.load(resolveWasm(cWasm))
+	const wasmPath = path.join(__dirname, "tree-sitter-c.wasm")
+	return await Language.load(wasmPath)
 })
 
 /**
  * 延迟加载C++语言
  */
 const loadCpp = lazy(async () => {
-	const { default: cppWasm } = await import("tree-sitter-cpp/tree-sitter-cpp.wasm" as string, {
-		with: { type: "wasm" },
-	})
-	return await Language.load(resolveWasm(cppWasm))
+	const wasmPath = path.join(__dirname, "tree-sitter-cpp.wasm")
+	return await Language.load(wasmPath)
 })
 
 /**
  * 延迟初始化Parser
  */
 const initParser = lazy(async () => {
-	const { default: treeWasm } = await import("web-tree-sitter/tree-sitter.wasm" as string, {
-		with: { type: "wasm" },
-	})
-	const treePath = resolveWasm(treeWasm)
+	const wasmPath = path.join(__dirname, "tree-sitter.wasm")
 
 	await Parser.init({
 		locateFile() {
-			return treePath
+			return wasmPath
 		},
 	})
 })
