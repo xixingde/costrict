@@ -247,6 +247,22 @@ getLiteSearchAndReplaceDescription.toolname = "search_and_replace"
 
 getLiteSearchReplaceDescription.toolname = "search_replace"
 
+export function getLiteSequentialThinkingDescription(): string {
+	return `## sequential_thinking
+结构化思考工具,支持分步骤思考、修订和分支。
+Params fields:
+- thought (REQUIRED): 当前思考步骤的内容
+- nextThoughtNeeded (REQUIRED): 是否需要继续思考
+- thoughtNumber (REQUIRED): 当前步骤编号（从1开始）
+- totalThoughts (REQUIRED): 预计总步骤数
+- isRevision (optional): 是否是对之前思考的修订
+- revisesThought (optional): 要修订的思考编号
+- branchFromThought (optional): 从哪个思考创建分支
+- branchId (optional): 分支标识符
+- needsMoreThoughts (optional): 是否需要超出预计的更多思考`
+}
+getLiteSequentialThinkingDescription.toolname = "sequential_thinking"
+
 export function getLiteFileOutlineDescription(): string {
 	return `## file_outline
 提取文件的大纲结构，显示函数、类、接口的定义。
@@ -264,6 +280,7 @@ const liteTools = [
 	getLiteExecuteCommandDescription,
 	getLiteReadCommandOutputDescription,
 	getLiteAskFollowupQuestionDescription,
+	getLiteSequentialThinkingDescription,
 	getLiteBrowserActionDescription,
 	getLiteSwitchModeDescription,
 	getLiteNewTaskDescription,
