@@ -4,10 +4,12 @@ import { apply_diff } from "./apply_diff"
 import applyPatch from "./apply_patch"
 import askFollowupQuestion from "./ask_followup_question"
 import askMultipleChoice from "./ask_multiple_choice"
+import sequentialThinking from "./sequential_thinking"
 import attemptCompletion from "./attempt_completion"
 import browserAction from "./browser_action"
 // import codebaseSearch from "./codebase_search"
 import executeCommand from "./execute_command"
+import fileOutline from "./file_outline"
 import generateImage from "./generate_image"
 import listFiles from "./list_files"
 import newTask from "./new_task"
@@ -35,6 +37,7 @@ import {
 	getLiteSearchFilesDescription,
 	getLiteListFilesDescription,
 	getLiteExecuteCommandDescription,
+	getLiteFileOutlineDescription,
 	getLiteAskFollowupQuestionDescription,
 	getLiteAttemptCompletionDescription,
 	getLiteBrowserActionDescription,
@@ -82,6 +85,8 @@ function getLiteDescription(tool: OpenAI.Chat.ChatCompletionFunctionTool): strin
 		// 	return getLiteCodebaseSearchDescription()
 		case "execute_command":
 			return getLiteExecuteCommandDescription()
+		case "file_outline":
+			return getLiteFileOutlineDescription()
 		case "skill":
 			return getLiteSkillDescription()
 		case "generate_image":
@@ -134,10 +139,12 @@ export function getNativeTools(options: NativeToolsOptions = {}): OpenAI.Chat.Ch
 		applyPatch,
 		askFollowupQuestion,
 		askMultipleChoice,
+		sequentialThinking,
 		attemptCompletion,
 		browserAction,
 		// codebaseSearch,
 		executeCommand,
+		fileOutline,
 		generateImage,
 		listFiles,
 		newTask,

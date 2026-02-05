@@ -247,6 +247,15 @@ getLiteSearchAndReplaceDescription.toolname = "search_and_replace"
 
 getLiteSearchReplaceDescription.toolname = "search_replace"
 
+export function getLiteFileOutlineDescription(): string {
+	return `## file_outline
+提取文件的大纲结构，显示函数、类、接口的定义。
+Params fields:
+- file_path (REQUIRED): 文件的相对路径
+- include_docstrings (optional): 是否包含文档字符串`
+}
+getLiteFileOutlineDescription.toolname = "file_outline"
+
 const liteTools = [
 	getLiteReadFileDescription,
 	getLiteWriteToFileDescription,
@@ -270,6 +279,7 @@ const liteTools = [
 	getLiteApplyDiffDescription,
 	getLiteSearchAndReplaceDescription,
 	getLiteSearchReplaceDescription,
+	getLiteFileOutlineDescription,
 	getLiteAttemptCompletionDescription,
 ]
 
