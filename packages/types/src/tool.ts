@@ -12,7 +12,7 @@ export const toolGroups = [
 	"mcp",
 	"modes",
 	"question",
-	"sequential-thinking",
+	"sequential_thinking",
 	"file_outline",
 ] as const
 

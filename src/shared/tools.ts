@@ -371,7 +371,7 @@ export const TOOL_GROUPS: Record<ToolGroup, ToolGroupConfig> = {
 	question: {
 		tools: ["ask_multiple_choice"],
 	},
-	"sequential-thinking": {
+	sequential_thinking: {
 		tools: ["sequential_thinking"],
 	},
 	file_outline: {

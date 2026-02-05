@@ -1,16 +1,25 @@
 import type OpenAI from "openai"
 
-const SEQUENTIAL_THINKING_DESCRIPTION = ` sequential thinking 工具，支持结构化的分步骤思考。允许 AI 在过程中记录思考步骤并进行修订和分支思考。`
+const SEQUENTIAL_THINKING_DESCRIPTION = `结构化思考工具，用于复杂问题的分步骤分析。
 
-const THOUGHT_PARAMETER_DESCRIPTION = `当前思考步骤的内容描述`
-const NEXT_THOUGHT_NEEDED_PARAMETER_DESCRIPTION = `是否需要继续下一个思考步骤`
-const THOUGHT_NUMBER_PARAMETER_DESCRIPTION = `当前思考步骤的编号（从 1 开始）`
-const TOTAL_THOUGHTS_PARAMETER_DESCRIPTION = `预期的总思考步骤数量`
-const IS_REVISION_PARAMETER_DESCRIPTION = `是否这是对之前思考的修订`
-const REVISES_THOUGHT_PARAMETER_DESCRIPTION = `被修订的思考步骤编号`
-const BRANCH_FROM_THOUGHT_PARAMETER_DESCRIPTION = `从哪个思考步骤开始新的分支思考`
-const BRANCH_ID_PARAMETER_DESCRIPTION = `分支的唯一标识符`
-const NEEDS_MORE_THOUGHTS_PARAMETER_DESCRIPTION = `是否需要更多的思考步骤`
+使用场景：
+- 需要多步骤分析的复杂问题
+- 需要修订的规划/设计
+- 问题范围初始不明确
+- 需要在步骤间保持上下文
+
+功能特性：
+- 动态调整总步骤数
+- 随时修订之前的思考
+- 创建替代方案分支
+- 根据复杂度设置5-25个步骤
+
+Example:
+{\"branchFromThought\":1,\"branchId\":\"ui-optimization-analysis\",\"isRevision\":false,\"needsMoreThoughts\":true,
+\"nextThoughtNeeded\":true,\"revisesThought\":0,
+\"thought\":\"首先分析当前项目的 UI 结构。从文件树可以看到：\\n- index.html: 主页面结构\\n- css/ui-improvements.css: UI 样式文件\\n- js/ui.js: UI 核心逻辑\\n- js/ui-enhancements.js: UI 增强功能\\n- js/interaction-enhancements.js: 交互增强\\n\\n这是一个超级马里奥游戏项目，需要从多个维度思考 UI 优化：\\n1. 视觉设计层次感\\n2. 用户体验流畅度\\n3. 响应式布局\\n4. 性能优化\\n5. 可访问性\\n\\n接下来需要读取关键文件以了解当前实现状态。\",
+\"thoughtNumber\":1,\"totalThoughts\":8}
+`
 
 export default {
 	type: "function",
@@ -21,41 +30,41 @@ export default {
 		parameters: {
 			type: "object",
 			properties: {
-				thought: {
-					type: "string",
-					description: THOUGHT_PARAMETER_DESCRIPTION,
-				},
-				nextThoughtNeeded: {
-					type: "boolean",
-					description: NEXT_THOUGHT_NEEDED_PARAMETER_DESCRIPTION,
-				},
-				thoughtNumber: {
-					type: "number",
-					description: THOUGHT_NUMBER_PARAMETER_DESCRIPTION,
-				},
-				totalThoughts: {
-					type: "number",
-					description: TOTAL_THOUGHTS_PARAMETER_DESCRIPTION,
-				},
-				isRevision: {
-					type: "boolean",
-					description: IS_REVISION_PARAMETER_DESCRIPTION,
-				},
-				revisesThought: {
-					type: "number",
-					description: REVISES_THOUGHT_PARAMETER_DESCRIPTION,
-				},
 				branchFromThought: {
-					type: "number",
-					description: BRANCH_FROM_THOUGHT_PARAMETER_DESCRIPTION,
+					type: "integer",
+					description: `从哪个思考创建分支(default: 1)`,
 				},
 				branchId: {
 					type: "string",
-					description: BRANCH_ID_PARAMETER_DESCRIPTION,
+					description: `分支标识符`,
+				},
+				isRevision: {
+					type: "boolean",
+					description: `是否是对之前思考的修订`,
 				},
 				needsMoreThoughts: {
 					type: "boolean",
-					description: NEEDS_MORE_THOUGHTS_PARAMETER_DESCRIPTION,
+					description: `是否需要超出预计的更多思考`,
+				},
+				nextThoughtNeeded: {
+					type: "boolean",
+					description: `是否需要超出预计的更多思考`,
+				},
+				revisesThought: {
+					type: "integer",
+					description: `要修订的思考编号(default: 1)`,
+				},
+				thought: {
+					type: "string",
+					description: `当前思考步骤的内容`,
+				},
+				thoughtNumber: {
+					type: "integer",
+					description: `当前步骤编号（从1开始，default: 1）`,
+				},
+				totalThoughts: {
+					type: "integer",
+					description: `预计总步骤数（可动态调整，default: 1）`,
 				},
 			},
 			required: ["thought", "nextThoughtNeeded", "thoughtNumber", "totalThoughts"],
