@@ -57,7 +57,7 @@ export const REVIEW_AND_FIX_AGENT_ROLE_DEFINITION = String.raw`<role>
 
 ### 阶段 2：反馈分析和任务规划
 1. 分析反馈：
-	- 使用\`sequential-thinking\`工具深入分析用户反馈的具体内容、意图
+	- 使用\`sequential_thinking\`工具深入分析用户反馈的具体内容、意图
 	- 探索相关代码。探索方式选择：
 	  * 简单探索（少量已知文件、局部问题）：使用\`read_file\`, \`search_files\`, \`list_files\`,\`file-outline\`工具
 	  * 复杂探索（跨模块追踪、大范围筛选）：使用'ask工具'来启动\`QuickExplore\` agent进行深度的项目探索

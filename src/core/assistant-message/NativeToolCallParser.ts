@@ -707,6 +707,31 @@ export class NativeToolCallParser {
 				}
 				break
 
+			case "file_outline":
+				if (partialArgs.file_path !== undefined) {
+					nativeArgs = {
+						file_path: partialArgs.file_path,
+						include_docstrings: this.coerceOptionalBoolean(partialArgs.include_docstrings),
+					}
+				}
+				break
+
+			case "sequential_thinking":
+				if (partialArgs.thought !== undefined || partialArgs.nextThoughtNeeded !== undefined) {
+					nativeArgs = {
+						thought: partialArgs.thought,
+						nextThoughtNeeded: partialArgs.nextThoughtNeeded,
+						thoughtNumber: partialArgs.thoughtNumber,
+						totalThoughts: partialArgs.totalThoughts,
+						isRevision: this.coerceOptionalBoolean(partialArgs.isRevision),
+						needsMoreThoughts: this.coerceOptionalBoolean(partialArgs.needsMoreThoughts),
+						branchFromThought: this.coerceOptionalNumber(partialArgs.branchFromThought),
+						revisesThought: this.coerceOptionalNumber(partialArgs.revisesThought),
+						branchId: partialArgs.branchId,
+					}
+				}
+				break
+
 			default:
 				break
 		}

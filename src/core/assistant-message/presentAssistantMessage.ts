@@ -37,6 +37,8 @@ import { runSlashCommandTool } from "../tools/RunSlashCommandTool"
 import { skillTool } from "../tools/SkillTool"
 import { generateImageTool } from "../tools/GenerateImageTool"
 import { applyDiffTool as applyDiffToolClass } from "../tools/ApplyDiffTool"
+import { sequentialThinkingTool } from "../tools/SequentialThinking"
+import { fileOutlineTool } from "../tools/FileOutline"
 import { isValidToolName, validateToolUse } from "../tools/validateToolUse"
 // import { codebaseSearchTool } from "../tools/CodebaseSearchTool"
 
@@ -400,6 +402,10 @@ export async function presentAssistantMessage(cline: Task) {
 						return `[${block.name} to '${block.params.mode_slug}'${block.params.reason ? ` because: ${block.params.reason}` : ""}]`
 					case "codebase_search":
 						return `[${block.name} for '${block.params.query}']`
+					case "sequential_thinking":
+						return `[${block.name} thought ${block.params.thoughtNumber}/${block.params.totalThoughts}]`
+					case "file_outline":
+						return `[${block.name} for '${block.params.file_path}']`
 					case "read_command_output":
 						return `[${block.name} for '${block.params.artifact_id}']`
 					case "update_todo_list":
@@ -927,6 +933,20 @@ export async function presentAssistantMessage(cline: Task) {
 						pushToolResult,
 					})
 					break
+				case "sequential_thinking":
+					await sequentialThinkingTool.handle(cline, block as ToolUse<"sequential_thinking">, {
+						askApproval,
+						handleError,
+						pushToolResult,
+					})
+					break
+				case "file_outline":
+					await fileOutlineTool.handle(cline, block as ToolUse<"file_outline">, {
+						askApproval,
+						handleError,
+						pushToolResult,
+					})
+					break
 				default: {
 					// Handle unknown/invalid tool names OR custom tools
 					// This is critical for native tool calling where every tool_use MUST have a tool_result
@@ -1107,10 +1127,12 @@ function containsXmlToolMarkup(text: string): boolean {
 		"search_and_replace",
 		"search_files",
 		"search_replace",
+		"sequential_thinking",
 		"switch_mode",
 		"update_todo_list",
 		"use_mcp_tool",
 		"write_to_file",
+		"file_outline",
 	] as const
 
 	return toolNames.some((name) => lower.includes(`<${name}`) || lower.includes(`</${name}`))

@@ -38,6 +38,7 @@ import {
 	getLiteListFilesDescription,
 	getLiteExecuteCommandDescription,
 	getLiteFileOutlineDescription,
+	getLiteSequentialThinkingDescription,
 	getLiteAskFollowupQuestionDescription,
 	getLiteAttemptCompletionDescription,
 	getLiteBrowserActionDescription,
@@ -87,6 +88,8 @@ function getLiteDescription(tool: OpenAI.Chat.ChatCompletionFunctionTool): strin
 			return getLiteExecuteCommandDescription()
 		case "file_outline":
 			return getLiteFileOutlineDescription()
+		case "sequential_thinking":
+			return getLiteSequentialThinkingDescription()
 		case "skill":
 			return getLiteSkillDescription()
 		case "generate_image":
