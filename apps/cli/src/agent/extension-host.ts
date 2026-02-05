@@ -82,6 +82,10 @@ export interface ExtensionHostOptions {
 	debug: boolean
 	exitOnComplete: boolean
 	/**
+	 * When true, exit the process on API request errors instead of retrying.
+	 */
+	exitOnError?: boolean
+	/**
 	 * When true, completely disables all direct stdout/stderr output.
 	 * Use this when running in TUI mode where Ink controls the terminal.
 	 */
@@ -201,6 +205,7 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 			promptManager: this.promptManager,
 			sendMessage: (msg) => this.sendToExtension(msg),
 			nonInteractive: options.nonInteractive,
+			exitOnError: options.exitOnError,
 			disabled: options.disableOutput, // TUI mode handles asks directly.
 		})
 
@@ -429,12 +434,16 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 	public markWebviewReady(): void {
 		this.isReady = true
 
-		// Send initial webview messages to trigger proper extension initialization.
-		// This is critical for the extension to start sending state updates properly.
-		this.sendToExtension({ type: "webviewDidLaunch" })
-
+		// Apply CLI settings to the runtime config and context proxy BEFORE
+		// sending webviewDidLaunch. This prevents a race condition where the
+		// webviewDidLaunch handler's first-time init sync reads default state
+		// (apiProvider: "anthropic") instead of the CLI-provided settings.
 		setRuntimeConfigValues("zgsm", this.initialSettings as Record<string, unknown>)
 		this.sendToExtension({ type: "updateSettings", updatedSettings: this.initialSettings })
+
+		// Now trigger extension initialization. The context proxy should already
+		// have CLI-provided values when the webviewDidLaunch handler runs.
+		this.sendToExtension({ type: "webviewDidLaunch" })
 	}
 
 	public isInInitialSetup(): boolean {
@@ -474,6 +483,25 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 			const cleanup = () => {
 				this.client.off("taskCompleted", completeHandler)
 				this.client.off("error", errorHandler)
+
+				if (messageHandler) {
+					this.client.off("message", messageHandler)
+				}
+			}
+
+			// When exitOnError is enabled, listen for api_req_retry_delayed messages
+			// (sent by Task.ts during auto-approval retry backoff) and exit immediately.
+			let messageHandler: ((msg: ClineMessage) => void) | null = null
+
+			if (this.options.exitOnError) {
+				messageHandler = (msg: ClineMessage) => {
+					if (msg.type === "say" && msg.say === "api_req_retry_delayed") {
+						cleanup()
+						reject(new Error(msg.text?.split("\n")[0] || "API request failed"))
+					}
+				}
+
+				this.client.on("message", messageHandler)
 			}
 
 			this.client.once("taskCompleted", completeHandler)

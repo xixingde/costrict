@@ -71,7 +71,7 @@ By default, the CLI prompts for approval before executing actions:
 ```bash
 export OPENROUTER_API_KEY=sk-or-v1-...
 
-cos "What is this project?"  -w ~/Documents/my-project
+cos "What is this project?" -w ~/Documents/my-project
 ```
 
 You can also run without a prompt and enter it interactively in TUI mode:
