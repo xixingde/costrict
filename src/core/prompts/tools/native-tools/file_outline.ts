@@ -1,10 +1,20 @@
 import type OpenAI from "openai"
 
-const FILE_OUTLINE_DESCRIPTION = `提取文件的大纲结构,显示函数、类、接口的定义。用于快速了解代码文件的组织结构和主要组件。`
+const FILE_OUTLINE_DESCRIPTION = `提取代码文件的结构信息，包括类、函数、方法定义和文档字符串。
 
-const FILE_PATH_PARAMETER_DESCRIPTION = `文件的相对路径`
+支持的语言：
+- Python (.py)
+- JavaScript (.js, .jsx)
+- TypeScript (.ts, .tsx)
+- Go (.go)
+- Java (.java)
+- C (.c, .h)
+- C++ (.cpp, .hpp)
 
-const INCLUDE_DOCSTRINGS_PARAMETER_DESCRIPTION = `是否包含文档字符串注释`
+输出包含：
+- 定义的行号
+- 函数/类签名
+- 文档字符串（如果存在）`
 
 export default {
 	type: "function",
@@ -17,11 +27,11 @@ export default {
 			properties: {
 				file_path: {
 					type: "string",
-					description: FILE_PATH_PARAMETER_DESCRIPTION,
+					description: "要分析的文件路径",
 				},
 				include_docstrings: {
 					type: "boolean",
-					description: INCLUDE_DOCSTRINGS_PARAMETER_DESCRIPTION,
+					description: "是否包含文档字符串",
 				},
 			},
 			required: ["file_path"],

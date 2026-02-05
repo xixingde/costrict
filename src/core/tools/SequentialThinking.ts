@@ -129,14 +129,14 @@ function validateParams(params: SequentialThinkingParams, history: ThoughtData[]
 	}
 
 	// 验证分支
-	if (branchFromThought) {
-		if (!branchId) {
-			return "branchId is required when branchFromThought is specified"
-		}
-		if (branchFromThought < 1 || branchFromThought > history.length) {
-			return `branchFromThought must be between 1 and ${history.length}`
-		}
-	}
+	// if (branchFromThought) {
+	// 	if (!branchId) {
+	// 		return "branchId is required when branchFromThought is specified"
+	// 	}
+	// 	if (branchFromThought < 1 || branchFromThought > history.length) {
+	// 		return `branchFromThought must be between 1 and ${history.length}`
+	// 	}
+	// }
 
 	return null
 }
