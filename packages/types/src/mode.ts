@@ -290,7 +290,7 @@ const WORKFLOW_MODES: readonly modelType[] = [
 	},
 	{
 		slug: "plan-apply",
-		name: "✨ Plan-Apply",
+		name: "✨ PlanApply",
 		roleDefinition: CODING_AGENT_ROLE_DEFINITION,
 		description: "Development task management and coordination",
 		whenToUse:
@@ -343,7 +343,7 @@ export const DEFAULT_MODES: readonly modelType[] = [
 		whenToUse:
 			"Use this mode when you need to write, modify, or refactor code. Ideal for implementing features, fixing bugs, creating new files, or making code improvements across any programming language or framework.",
 		description: "Write, modify, and refactor code",
-		groups: ["read", "edit", "browser", "command", "mcp", "file_outline", "sequential_thinking"],
+		groups: ["read", "edit", "browser", "command", "mcp"],
 		zgsmCodeModeGroup: "strict,vibe,plan",
 	},
 	{
