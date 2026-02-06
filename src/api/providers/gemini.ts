@@ -42,7 +42,7 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 		// (Vertex authentication happens separately)
 		this.provider = createGoogleGenerativeAI({
 			apiKey: this.options.geminiApiKey ?? "not-provided",
-			baseURL: this.options.googleGeminiBaseUrl,
+			baseURL: this.options.googleGeminiBaseUrl || undefined,
 			headers: DEFAULT_HEADERS,
 		})
 	}
@@ -397,5 +397,9 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 		}
 
 		return totalCost
+	}
+
+	override isAiSdkProvider(): boolean {
+		return true
 	}
 }
