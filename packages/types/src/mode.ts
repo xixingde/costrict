@@ -261,7 +261,7 @@ const WORKFLOW_MODES: readonly modelType[] = [
 		disableSwitchMode: true,
 		pure: true,
 		source: "project",
-		zgsmCodeModeGroup: "plan",
+		zgsmCodeModeGroup: "hide",
 		apiProvider: "zgsm",
 	},
 	{
@@ -285,7 +285,7 @@ const WORKFLOW_MODES: readonly modelType[] = [
 		disableSwitchMode: true,
 		pure: true,
 		source: "project",
-		zgsmCodeModeGroup: "plan",
+		zgsmCodeModeGroup: "hide",
 		apiProvider: "zgsm",
 	},
 	{
@@ -313,7 +313,7 @@ const WORKFLOW_MODES: readonly modelType[] = [
 		disableSwitchMode: true,
 		pure: true,
 		source: "project",
-		zgsmCodeModeGroup: "plan",
+		zgsmCodeModeGroup: "hide",
 		apiProvider: "zgsm",
 	},
 	{
