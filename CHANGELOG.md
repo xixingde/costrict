@@ -1,5 +1,22 @@
 # CoStrict Change Log
 
+## [2.3.8]
+
+- UI experience improvements
+- Fix prevent parent task state loss during orchestrator delegation
+- Sync roocode [last commit](https://github.com/RooCodeInc/Roo-Code/commit/6826e20da29db4ec2e1f41196ad01b0f7755be72)
+
+## [2.3.7]
+
+- UI experience improvements
+- Sync roocode [last commit](https://github.com/RooCodeInc/Roo-Code/commit/f179ba1b9ed99384310d2785e9d7f161cc6179d5)
+- Fix known issues
+
+## [2.3.6]
+
+- Add button to open annual summary with icon
+- Translate Chinese prompts to English
+
 ## [2.3.5]
 
 - Fix empty-string baseURL in provider
