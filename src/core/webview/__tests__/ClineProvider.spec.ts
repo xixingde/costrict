@@ -2684,15 +2684,10 @@ describe("ClineProvider - Router Models", () => {
 		await messageHandler({ type: "requestRouterModels" })
 
 		// Verify getModels was called for each provider with correct options
+		// Provider order: zgsm (first), openrouter, requesty, vercel-ai-gateway, litellm (conditional)
 		expect(getModels).toHaveBeenCalledWith({ provider: "openrouter" })
 		expect(getModels).toHaveBeenCalledWith({ provider: "requesty", apiKey: "requesty-key" })
 		expect(getModels).toHaveBeenCalledWith({ provider: "vercel-ai-gateway" })
-		expect(getModels).toHaveBeenCalledWith(
-			expect.objectContaining({
-				provider: "roo",
-				baseUrl: expect.any(String),
-			}),
-		)
 		expect(getModels).toHaveBeenCalledWith({
 			provider: "litellm",
 			apiKey: "litellm-key",
@@ -2710,9 +2705,9 @@ describe("ClineProvider - Router Models", () => {
 		expect(mockPostMessage).toHaveBeenCalledWith({
 			type: "routerModels",
 			routerModels: {
+				zgsm: mockModels,
 				openrouter: mockModels,
 				requesty: mockModels,
-				roo: mockModels,
 				litellm: mockModels,
 				ollama: {},
 				lmstudio: {},
@@ -2741,12 +2736,12 @@ describe("ClineProvider - Router Models", () => {
 		const { getModels } = await import("../../../api/providers/fetchers/modelCache")
 
 		// Mock some providers to succeed and others to fail
+		// Provider order in source: zgsm, openrouter, requesty, vercel-ai-gateway, litellm (conditional)
 		vi.mocked(getModels)
 			.mockResolvedValueOnce(mockModels) // zgsm success (first call)
 			.mockResolvedValueOnce(mockModels) // openrouter success
 			.mockRejectedValueOnce(new Error("Requesty API error")) // requesty fail
 			.mockResolvedValueOnce(mockModels) // vercel-ai-gateway success
-			.mockResolvedValueOnce(mockModels) // roo success
 			.mockRejectedValueOnce(new Error("LiteLLM connection failed")) // litellm fail
 
 		await messageHandler({ type: "requestRouterModels" })
@@ -2762,9 +2757,9 @@ describe("ClineProvider - Router Models", () => {
 		expect(mockPostMessage).toHaveBeenCalledWith({
 			type: "routerModels",
 			routerModels: {
+				zgsm: mockModels,
 				openrouter: mockModels,
 				requesty: {},
-				roo: mockModels,
 				ollama: {},
 				lmstudio: {},
 				litellm: {},
@@ -2864,9 +2859,9 @@ describe("ClineProvider - Router Models", () => {
 		expect(mockPostMessage).toHaveBeenCalledWith({
 			type: "routerModels",
 			routerModels: {
+				zgsm: mockModels,
 				openrouter: mockModels,
 				requesty: mockModels,
-				roo: mockModels,
 				litellm: {},
 				ollama: {},
 				lmstudio: {},

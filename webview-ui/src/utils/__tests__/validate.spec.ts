@@ -43,6 +43,7 @@ describe("Model Validation Functions", () => {
 		ollama: {},
 		lmstudio: {},
 		"vercel-ai-gateway": {},
+		zgsm: {},
 		// roo: {},
 	}
 

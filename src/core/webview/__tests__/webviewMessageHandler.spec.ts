@@ -320,12 +320,12 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 		expect(mockGetModels).toHaveBeenCalledWith({ provider: "openrouter" })
 		expect(mockGetModels).toHaveBeenCalledWith({ provider: "requesty", apiKey: "requesty-key" })
 		expect(mockGetModels).toHaveBeenCalledWith({ provider: "vercel-ai-gateway" })
-		expect(mockGetModels).toHaveBeenCalledWith(
-			expect.objectContaining({
-				provider: "roo",
-				baseUrl: expect.any(String),
-			}),
-		)
+		// expect(mockGetModels).toHaveBeenCalledWith(
+		// 	expect.objectContaining({
+		// 		provider: "roo",
+		// 		baseUrl: expect.any(String),
+		// 	}),
+		// )
 		expect(mockGetModels).toHaveBeenCalledWith({
 			provider: "litellm",
 			apiKey: "litellm-key",
@@ -343,10 +343,10 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "routerModels",
 			routerModels: {
+				zgsm: mockModels,
 				openrouter: mockModels,
 				requesty: mockModels,
 				litellm: mockModels,
-				roo: mockModels,
 				ollama: {},
 				lmstudio: {},
 				"vercel-ai-gateway": mockModels,
@@ -442,9 +442,9 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "routerModels",
 			routerModels: {
+				zgsm: mockModels,
 				openrouter: mockModels,
 				requesty: mockModels,
-				roo: mockModels,
 				litellm: {},
 				ollama: {},
 				lmstudio: {},
@@ -465,12 +465,12 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 		}
 
 		// Mock some providers to succeed and others to fail
+		// Provider order in source: zgsm, openrouter, requesty, vercel-ai-gateway, litellm (conditional)
 		mockGetModels
 			.mockResolvedValueOnce(mockModels) // zgsm success (first call)
 			.mockResolvedValueOnce(mockModels) // openrouter
 			.mockRejectedValueOnce(new Error("Requesty API error")) // requesty
 			.mockResolvedValueOnce(mockModels) // vercel-ai-gateway
-			.mockResolvedValueOnce(mockModels) // roo
 			.mockRejectedValueOnce(new Error("LiteLLM connection failed")) // litellm
 
 		await webviewMessageHandler(mockClineProvider, {
@@ -503,9 +503,9 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "routerModels",
 			routerModels: {
+				zgsm: mockModels,
 				openrouter: mockModels,
 				requesty: {},
-				roo: mockModels,
 				litellm: {},
 				ollama: {},
 				lmstudio: {},
@@ -517,12 +517,12 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 
 	it("handles Error objects and string errors correctly", async () => {
 		// Mock providers to fail with different error types
+		// Provider order in source: zgsm, openrouter, requesty, vercel-ai-gateway, litellm (conditional)
 		mockGetModels
 			.mockResolvedValueOnce({}) // zgsm success (first call)
 			.mockRejectedValueOnce(new Error("Structured error message")) // openrouter
 			.mockRejectedValueOnce(new Error("Requesty API error")) // requesty
 			.mockRejectedValueOnce(new Error("Vercel AI Gateway error")) // vercel-ai-gateway
-			.mockRejectedValueOnce(new Error("Roo API error")) // roo
 			.mockRejectedValueOnce(new Error("LiteLLM connection failed")) // litellm
 
 		await webviewMessageHandler(mockClineProvider, {
@@ -550,13 +550,6 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 			error: "Vercel AI Gateway error",
 			values: { provider: "vercel-ai-gateway" },
 		})
-
-		// expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
-		// 	type: "singleRouterModelFetchResponse",
-		// 	success: false,
-		// 	error: "Roo API error",
-		// 	values: { provider: "roo" },
-		// })
 
 		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "singleRouterModelFetchResponse",

@@ -307,6 +307,7 @@ describe("mergeExtensionState", () => {
 			featureRoomoteControlEnabled: false,
 			isBrowserSessionActive: false,
 			checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
+			hasClosedCodeReviewWelcomeTips: false,
 		}
 
 		const makeMessage = (ts: number, text: string): ClineMessage =>

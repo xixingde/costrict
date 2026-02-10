@@ -93,11 +93,11 @@ describe("VercelAiGatewayHandler", () => {
 
 		expect(mockCreateGateway).toHaveBeenCalledWith({
 			apiKey: mockOptions.vercelAiGatewayApiKey,
-			headers: expect.objectContaining({
-				"HTTP-Referer": "https://github.com/RooVetGit/Roo-Cline",
-				"X-Title": "Roo Code",
-				"User-Agent": expect.stringContaining("RooCode/"),
-			}),
+			headers: {
+				"HTTP-Referer": "https://github.com/zgsm-ai/zgsm",
+				"X-Title": "Costrict",
+				"X-Costrict-Version": expect.any(String),
+			},
 		})
 	})
 
@@ -444,11 +444,15 @@ describe("VercelAiGatewayHandler", () => {
 			expect(result).toBe("Test completion response")
 			expect(mockGenerateText).toHaveBeenCalledWith(
 				expect.objectContaining({
+					model: expect.objectContaining({
+						modelId: "anthropic/claude-sonnet-4",
+						provider: "gateway",
+					}),
 					prompt,
 					temperature: VERCEL_AI_GATEWAY_DEFAULT_TEMPERATURE,
 					maxOutputTokens: 64000,
+					abortSignal: undefined,
 				}),
-				{ signal: undefined },
 			)
 		})
 
@@ -467,9 +471,14 @@ describe("VercelAiGatewayHandler", () => {
 
 			expect(mockGenerateText).toHaveBeenCalledWith(
 				expect.objectContaining({
+					model: expect.objectContaining({
+						modelId: "anthropic/claude-sonnet-4",
+						provider: "gateway",
+					}),
+					prompt: "Test prompt",
 					temperature: customTemp,
+					abortSignal: undefined,
 				}),
-				{ signal: undefined },
 			)
 		})
 
@@ -510,9 +519,14 @@ describe("VercelAiGatewayHandler", () => {
 
 			expect(mockGenerateText).toHaveBeenCalledWith(
 				expect.objectContaining({
+					model: expect.objectContaining({
+						modelId: "anthropic/claude-sonnet-4",
+						provider: "gateway",
+					}),
+					prompt: "Test",
 					temperature: 0.9,
+					abortSignal: undefined,
 				}),
-				{ signal: undefined },
 			)
 		})
 	})

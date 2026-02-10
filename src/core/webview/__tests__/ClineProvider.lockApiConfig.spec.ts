@@ -25,6 +25,11 @@ vi.mock("vscode", () => ({
 		showWarningMessage: vi.fn(),
 		showErrorMessage: vi.fn(),
 		onDidChangeActiveTextEditor: vi.fn(() => ({ dispose: vi.fn() })),
+		createOutputChannel: vi.fn().mockReturnValue({
+			appendLine: vi.fn(),
+			show: vi.fn(),
+			dispose: vi.fn(),
+		}),
 	},
 	workspace: {
 		getConfiguration: vi.fn().mockReturnValue({
@@ -38,6 +43,13 @@ vi.mock("vscode", () => ({
 		onDidChangeTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
 		onDidOpenTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
 		onDidCloseTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
+	},
+	extensions: {
+		getExtension: vi.fn().mockReturnValue({
+			extensionUri: {
+				fsPath: "/fake/path",
+			},
+		}),
 	},
 	env: {
 		uriScheme: "vscode",
