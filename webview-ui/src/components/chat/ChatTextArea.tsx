@@ -119,6 +119,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			reviewTask,
 			automaticallyFocus,
 			ttsEnabled,
+			// lockApiConfigAcrossModes,
 		} = useExtensionState()
 		const selectedProviderModels = useMemo(() => {
 			if (!apiConfiguration?.apiProvider) return []
@@ -1029,6 +1030,11 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		// 	vscode.postMessage({ type: "loadApiConfigurationById", text: value })
 		// }, [])
 
+		// const handleToggleLockApiConfig = useCallback(() => {
+		// 	const newValue = !lockApiConfigAcrossModes
+		// 	vscode.postMessage({ type: "lockApiConfigAcrossModes", bool: newValue })
+		// }, [lockApiConfigAcrossModes])
+
 		return (
 			<div
 				className={cn(
@@ -1484,6 +1490,8 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							listApiConfigMeta={listApiConfigMeta || []}
 							pinnedApiConfigs={pinnedApiConfigs}
 							togglePinnedApiConfig={togglePinnedApiConfig}
+							lockApiConfigAcrossModes={!!lockApiConfigAcrossModes}
+							onToggleLockApiConfig={handleToggleLockApiConfig}
 						/> */}
 						{apiConfiguration && (
 							<ProviderRenderer
