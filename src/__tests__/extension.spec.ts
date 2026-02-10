@@ -229,17 +229,8 @@ vi.mock("../core/webview/ClineProvider", async () => {
 		resolveWebviewView: vi.fn(),
 		postMessageToWebview: vi.fn(),
 		postStateToWebview: vi.fn(),
-		getState: vi.fn().mockResolvedValue({
-			apiConfiguration: {
-				zgsmAccessToken: undefined,
-				zgsmRefreshToken: undefined,
-				zgsmState: undefined,
-			},
-		}),
-		getValue: vi.fn().mockReturnValue(undefined),
-		setValue: vi.fn().mockResolvedValue(undefined),
-		setZgsmAuthCommands: vi.fn(),
-		log: vi.fn(),
+		postStateToWebviewWithoutClineMessages: vi.fn(),
+		getState: vi.fn().mockResolvedValue({}),
 		remoteControlEnabled: vi.fn().mockImplementation(async (enabled: boolean) => {
 			if (!enabled) {
 				await BridgeOrchestrator.disconnect()
