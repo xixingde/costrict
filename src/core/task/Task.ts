@@ -43,6 +43,7 @@ import {
 	TodoItem,
 	getApiProtocol,
 	getModelId,
+	isRetiredProvider,
 	isIdleAsk,
 	isInteractiveAsk,
 	isResumableAsk,
@@ -549,6 +550,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	didAlreadyUseTool = false
 	didToolFailInCurrentTurn = false
 	didCompleteReadingStream = false
+	private _started = false
 	// No streaming parser is required.
 	assistantMessageParser?: undefined
 	private providerProfileChangeListener?: (config: { name: string; provider?: string }) => void
@@ -778,6 +780,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		onCreated?.(this)
 
 		if (startTask) {
+			this._started = true
 			if (task || images) {
 				this.api?.setChatType?.("user")
 				this.startTask(task, images)
@@ -1097,7 +1100,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			// Other providers (notably Gemini 3) use different signature semantics (e.g. `thoughtSignature`)
 			// and require round-tripping the signature in their own format.
 			const modelId = getModelId(this.apiConfiguration)
-			const apiProtocol = getApiProtocol(this.apiConfiguration.apiProvider, modelId)
+			const apiProvider = this.apiConfiguration.apiProvider
+			const apiProtocol = getApiProtocol(
+				apiProvider && !isRetiredProvider(apiProvider) ? apiProvider : undefined,
+				modelId,
+			)
 			const isAnthropicProtocol = apiProtocol === "anthropic"
 
 			// Start from the original assistant message
@@ -2205,6 +2212,30 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 	}
 
+	/**
+	 * Manually start a **new** task when it was created with `startTask: false`.
+	 *
+	 * This fires `startTask` as a background async operation for the
+	 * `task/images` code-path only.  It does **not** handle the
+	 * `historyItem` resume path (use the constructor with `startTask: true`
+	 * for that).  The primary use-case is in the delegation flow where the
+	 * parent's metadata must be persisted to globalState **before** the
+	 * child task begins writing its own history (avoiding a read-modify-write
+	 * race on globalState).
+	 */
+	public start(): void {
+		if (this._started) {
+			return
+		}
+		this._started = true
+
+		const { task, images } = this.metadata
+
+		if (task || images) {
+			this.startTask(task ?? undefined, images ?? undefined)
+		}
+	}
+
 	private async startTask(task?: string, images?: string[]): Promise<void> {
 		try {
 			// if (this.enableBridge) {
@@ -2858,7 +2889,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 			// Determine API protocol based on provider and model
 			const modelId = getModelId(this.apiConfiguration)
-			const apiProtocol = getApiProtocol(this.apiConfiguration.apiProvider, modelId)
+			const apiProvider = this.apiConfiguration.apiProvider
+			const apiProtocol = getApiProtocol(
+				apiProvider && !isRetiredProvider(apiProvider) ? apiProvider : undefined,
+				modelId,
+			)
 
 			// Respect user-configured provider rate limiting BEFORE we emit api_req_started.
 			// This prevents the UI from showing an "API Request..." spinner while we are
@@ -2986,7 +3021,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 					// Calculate total tokens and cost using provider-aware function
 					const modelId = getModelId(this.apiConfiguration)
-					const apiProtocol = getApiProtocol(this.apiConfiguration.apiProvider, modelId)
+					const apiProvider = this.apiConfiguration.apiProvider
+					const apiProtocol = getApiProtocol(
+						apiProvider && !isRetiredProvider(apiProvider) ? apiProvider : undefined,
+						modelId,
+					)
 
 					const costResult =
 						apiProtocol === "anthropic"
@@ -3385,7 +3424,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 								// Capture telemetry with provider-aware cost calculation
 								const modelId = getModelId(this.apiConfiguration)
-								const apiProtocol = getApiProtocol(this.apiConfiguration.apiProvider, modelId)
+								const apiProvider = this.apiConfiguration.apiProvider
+								const apiProtocol = getApiProtocol(
+									apiProvider && !isRetiredProvider(apiProvider) ? apiProvider : undefined,
+									modelId,
+								)
 
 								// Use the appropriate cost function based on the API protocol
 								const costResult =
@@ -3505,14 +3548,34 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					if (!this.abandoned) {
 						// Determine cancellation reason
 						const cancelReason: ClineApiReqCancelReason = this.abort ? "user_cancelled" : "streaming_failed"
+						// streamingFailedMessage = this.abort
+						// 	? undefined
+						// 	: await this.convertErrorMessage(error, () => {
+						// 			shouldStop = true
+						// 		})
+						// if (streamingFailedMessage) {
+						// 	streamingFailedMessage = `${t("common:interruption.streamTerminatedByProvider")}: ${streamingFailedMessage}`
+						// }
+
+						const rawErrorMessage = error.message ?? JSON.stringify(serializeError(error), null, 2)
+
+						// Check auto-retry state BEFORE abortStream so we can suppress the error
+						// message on the api_req_started row when backoffAndAnnounce will display it instead.
+						const stateForBackoff = await this.providerRef.deref()?.getState()
+						const willAutoRetry = !this.abort && stateForBackoff?.autoApprovalEnabled
+
 						streamingFailedMessage = this.abort
 							? undefined
-							: await this.convertErrorMessage(error, () => {
-									shouldStop = true
-								})
+							: willAutoRetry
+								? undefined // backoffAndAnnounce will display the error with retry countdown
+								: await this.convertErrorMessage(error, () => {
+										shouldStop = true
+									})
+
 						if (streamingFailedMessage) {
-							streamingFailedMessage = `${t("common:interruption.streamTerminatedByProvider")}: ${streamingFailedMessage}`
+							streamingFailedMessage = `${t("common:interruption.streamTerminatedByProvider")}: ${rawErrorMessage}`
 						}
+
 						// Clean up partial state
 						await abortStream(cancelReason, streamingFailedMessage)
 
@@ -3524,11 +3587,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 							// Stream failed - log the error and retry with the same content
 							// The existing rate limiting will prevent rapid retries
 							console.error(
-								`[Task#${this.taskId}.${this.instanceId}] Stream failed, will retry: ${streamingFailedMessage}`,
+								`[Task#${this.taskId}.${this.instanceId}] Stream failed, will retry: ${rawErrorMessage}`,
 							)
 
 							// Apply exponential backoff similar to first-chunk errors when auto-resubmit is enabled
-							const stateForBackoff = await this.providerRef.deref()?.getState()
 							if (stateForBackoff?.autoApprovalEnabled) {
 								await this.backoffAndAnnounce(
 									currentItem.retryAttempt ?? 0,

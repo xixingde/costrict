@@ -15,7 +15,7 @@ import type { ApiHandlerOptions } from "../../shared/api"
 import {
 	convertToAiSdkMessages,
 	convertToolsForAiSdk,
-	processAiSdkStreamPart,
+	consumeAiSdkStream,
 	mapToolChoice,
 	handleAiSdkError,
 } from "../transform/ai-sdk"
@@ -152,19 +152,11 @@ export abstract class OpenAICompatibleHandler extends BaseProvider implements Si
 		const result = streamText(requestOptions)
 
 		try {
-			// Process the full stream to get all events
-			for await (const part of result.fullStream) {
-				// Use the processAiSdkStreamPart utility to convert stream parts
-				for (const chunk of processAiSdkStreamPart(part)) {
-					yield chunk
-				}
-			}
-
-			// Yield usage metrics at the end
-			const usage = await result.usage
-			if (usage) {
-				yield this.processUsageMetrics(usage)
-			}
+			const processUsage = this.processUsageMetrics.bind(this)
+			yield* consumeAiSdkStream(result, async function* () {
+				const usage = await result.usage
+				yield processUsage(usage)
+			})
 		} catch (error) {
 			// Handle AI SDK errors (AI_RetryError, AI_APICallError, etc.)
 			throw handleAiSdkError(error, this.config.providerName)
@@ -174,7 +166,7 @@ export abstract class OpenAICompatibleHandler extends BaseProvider implements Si
 	/**
 	 * Complete a prompt using the AI SDK generateText.
 	 */
-	async completePrompt(prompt: string): Promise<string> {
+	async completePrompt(prompt: string, systemPrompt?: string, metadata?: any) {
 		const languageModel = this.getLanguageModel()
 
 		const { text } = await generateText({
@@ -182,6 +174,7 @@ export abstract class OpenAICompatibleHandler extends BaseProvider implements Si
 			prompt,
 			maxOutputTokens: this.getMaxOutputTokens(),
 			temperature: this.config.temperature ?? 0,
+			abortSignal: metadata?.signal,
 		})
 
 		return text

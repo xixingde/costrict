@@ -4,7 +4,7 @@ import DynamicTextArea from "react-textarea-autosize"
 import { ReviewTaskStatus } from "@roo/codeReview"
 import { VolumeX, Image, WandSparkles, SendHorizontal, ListEnd, Square } from "lucide-react"
 
-import type { ExtensionMessage, RouterModels } from "@roo-code/types"
+import type { ExtensionMessage, ProviderName, RouterModels } from "@roo-code/types"
 
 import { mentionRegex, mentionRegexGlobal, commandRegexGlobal, unescapeSpaces } from "@roo/context-mentions"
 import { WebviewMessage } from "@roo/WebviewMessage"
@@ -124,10 +124,14 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const selectedProviderModels = useMemo(() => {
 			if (!apiConfiguration?.apiProvider) return []
 
-			const models = MODELS_BY_PROVIDER[apiConfiguration.apiProvider]
+			const models = MODELS_BY_PROVIDER[apiConfiguration.apiProvider as ProviderName]
 			if (!models) return []
 
-			const filteredModels = filterModels(models, apiConfiguration.apiProvider, organizationAllowList)
+			const filteredModels = filterModels(
+				models,
+				apiConfiguration.apiProvider as ProviderName,
+				organizationAllowList,
+			)
 
 			const modelOptions = filteredModels
 				? Object.keys(filteredModels).map((modelId) => ({
