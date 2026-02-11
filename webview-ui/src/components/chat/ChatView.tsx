@@ -60,7 +60,6 @@ import WarningRow from "./WarningRow"
 import { ChatTextArea } from "./ChatTextArea"
 import { markdownExpandingRef } from "./Markdown"
 import TaskHeader from "./TaskHeader"
-import SystemPromptWarning from "./SystemPromptWarning"
 import ProfileViolationWarning from "./ProfileViolationWarning"
 import { CheckpointWarning } from "./CheckpointWarning"
 import { QueuedMessages } from "./QueuedMessages"
@@ -163,7 +162,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		alwaysAllowModeSwitch,
 		customModes,
 		// telemetrySetting,
-		hasSystemPromptOverride,
+		// hasSystemPromptOverride,
+		// telemetrySetting,
 		soundEnabled,
 		soundVolume,
 		// cloudIsAuthenticated,
@@ -255,8 +255,9 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const scrollContainerRef = useRef<HTMLDivElement>(null)
 	const stickyFollowRef = useRef<boolean>(false)
 	const [showScrollToBottom, setShowScrollToBottom] = useState(false)
-	const [isAtBottom, setIsAtBottom] = useState(false)
+	// const [isAtBottom, setIsAtBottom] = useState(false)
 	const userExpandingRef = useRef<boolean>(false)
+	const isAtBottomRef = useRef(false)
 	const lastTtsRef = useRef<string>("")
 	const [wasStreaming, setWasStreaming] = useState<boolean>(false)
 	const [checkpointWarning, setCheckpointWarning] = useState<
@@ -631,7 +632,25 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		setIsCondensing(false) // Reset condensing state when switching tasks
 		// Note: sendingDisabled is not reset here as it's managed by message effects
 
-		// Reset user response flag for new task
+		// // Reset user response flag for new task
+		// userRespondedRef.current = false
+
+		// Ensure new task starts anchored to the bottom. Virtuoso's
+		// initialTopMostItemIndex fires at mount but the message data may
+		// arrive asynchronously, so we also engage sticky follow and
+		// explicitly scroll after a frame to handle the race.
+		let rafId: number | undefined
+		if (task?.ts) {
+			stickyFollowRef.current = true
+			rafId = requestAnimationFrame(() => {
+				virtuosoRef.current?.scrollTo({ top: Number.MAX_SAFE_INTEGER, behavior: "auto" })
+			})
+		}
+		return () => {
+			if (rafId !== undefined) {
+				cancelAnimationFrame(rafId)
+			}
+		}
 	}, [task?.ts])
 
 	const taskTs = task?.ts
@@ -1582,29 +1601,23 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		[handleSetExpandedRow],
 	)
 
-	const handleRowHeightChange = useMemo(
-		() =>
-			debounce(
-				(isTaller: boolean) => {
-					// Don't auto-scroll if the user is actively expanding/collapsing content
-					// This prevents scroll conflicts when user manually expands the last message
-					// or expands Markdown content
-					if (userExpandingRef.current || markdownExpandingRef.current) {
-						return
-					}
-
-					if (isAtBottom) {
-						if (isTaller) {
-							scrollToBottomSmooth()
-						} else {
-							setTimeout(() => scrollToBottomAuto(), 0)
-						}
-					}
-				},
-				100, // 50ms debounce to batch rapid height changes
-				{ immediate: false },
-			),
-		[scrollToBottomSmooth, scrollToBottomAuto, isAtBottom],
+	const handleRowHeightChange = useCallback(
+		(isTaller: boolean) => {
+			// Don't auto-scroll if the user is actively expanding/collapsing content
+			// This prevents scroll conflicts when user manually expands the last message
+			// or expands Markdown content
+			if (userExpandingRef.current || markdownExpandingRef.current) {
+				return
+			}
+			if (isAtBottomRef.current) {
+				if (isTaller) {
+					scrollToBottomSmooth()
+				} else {
+					setTimeout(() => scrollToBottomAuto(), 0)
+				}
+			}
+		},
+		[scrollToBottomSmooth, scrollToBottomAuto],
 	)
 
 	// Disable sticky follow when user scrolls up inside the chat container
@@ -1615,23 +1628,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		}
 	}, [])
 	useEvent("wheel", handleWheel, window, { passive: true })
-
-	// Also disable sticky follow when the chat container is scrolled away from bottom
-	useEffect(() => {
-		const el = scrollContainerRef.current
-		if (!el) return
-		const onScroll = () => {
-			// Consider near-bottom within a small threshold consistent with Virtuoso settings
-			const nearBottom = Math.abs(el.scrollHeight - el.scrollTop - el.clientHeight) < 10
-			if (!nearBottom) {
-				stickyFollowRef.current = false
-			}
-			// Keep UI button state in sync with scroll position
-			setShowScrollToBottom(!nearBottom)
-		}
-		el.addEventListener("scroll", onScroll, { passive: true })
-		return () => el.removeEventListener("scroll", onScroll)
-	}, [])
 
 	// Effect to clear checkpoint warning when messages appear or task changes
 	useEffect(() => {
@@ -1979,12 +1975,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 						scrollToMessage={scrollToMessage}
 					/>
 
-					{hasSystemPromptOverride && (
-						<div className="px-3">
-							<SystemPromptWarning />
-						</div>
-					)}
-
 					{checkpointWarning && (
 						<div className="px-3">
 							<CheckpointWarning warning={checkpointWarning} />
@@ -2101,9 +2091,12 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 								return isAtBottom || stickyFollowRef.current
 							}}
 							atBottomStateChange={(isAtBottom: boolean) => {
-								setIsAtBottom(isAtBottom)
-								// Only show the scroll-to-bottom button if not at bottom
+								isAtBottomRef.current = isAtBottom
 								setShowScrollToBottom(!isAtBottom)
+								// Clear sticky follow when user scrolls away from bottom
+								if (!isAtBottom) {
+									stickyFollowRef.current = false
+								}
 							}}
 							atBottomThreshold={10}
 							initialTopMostItemIndex={groupedMessages.length - 1}
@@ -2200,7 +2193,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				onSelectImages={selectImages}
 				shouldDisableImages={shouldDisableImages}
 				onHeightChange={() => {
-					if (isAtBottom) {
+					if (isAtBottomRef.current) {
 						scrollToBottomAuto()
 					}
 				}}

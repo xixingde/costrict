@@ -44,7 +44,9 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 				return
 			}
 
-			const ignoredFileAttemptedToAccess = task.rooIgnoreController?.validateCommand(command)
+			const canonicalCommand = unescapeHtmlEntities(command)
+
+			const ignoredFileAttemptedToAccess = task.rooIgnoreController?.validateCommand(canonicalCommand)
 
 			if (ignoredFileAttemptedToAccess) {
 				await task.say("rooignore_error", ignoredFileAttemptedToAccess)
@@ -54,8 +56,7 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 
 			task.consecutiveMistakeCount = 0
 
-			const unescapedCommand = unescapeHtmlEntities(command)
-			const didApprove = await askApproval("command", unescapedCommand)
+			const didApprove = await askApproval("command", canonicalCommand)
 
 			if (!didApprove) {
 				return
@@ -79,7 +80,7 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 
 			// Check if command matches any prefix in the allowlist
 			const isCommandAllowlisted = commandTimeoutAllowlist.some((prefix) =>
-				unescapedCommand.startsWith(prefix.trim()),
+				canonicalCommand.startsWith(prefix.trim()),
 			)
 
 			// Convert seconds to milliseconds for internal use, but skip timeout if command is allowlisted
@@ -87,7 +88,7 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 
 			const options: ExecuteCommandOptions = {
 				executionId,
-				command: unescapedCommand,
+				command: canonicalCommand,
 				customCwd,
 				terminalShellIntegrationDisabled,
 				commandExecutionTimeout,

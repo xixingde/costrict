@@ -662,11 +662,18 @@ export class NativeToolCallParser {
 				}
 				break
 
+			case "edit":
 			case "search_and_replace":
-				if (partialArgs.path !== undefined || partialArgs.operations !== undefined) {
+				if (
+					partialArgs.file_path !== undefined ||
+					partialArgs.old_string !== undefined ||
+					partialArgs.new_string !== undefined
+				) {
 					nativeArgs = {
-						path: partialArgs.path,
-						operations: partialArgs.operations,
+						file_path: partialArgs.file_path,
+						old_string: partialArgs.old_string,
+						new_string: partialArgs.new_string,
+						replace_all: this.coerceOptionalBoolean(partialArgs.replace_all),
 					}
 				}
 				break
@@ -901,15 +908,18 @@ export class NativeToolCallParser {
 					}
 					break
 
+				case "edit":
 				case "search_and_replace":
 					if (
-						normalizedArgs.path !== undefined &&
-						normalizedArgs.operations !== undefined &&
-						Array.isArray(normalizedArgs.operations)
+						normalizedArgs.file_path !== undefined &&
+						normalizedArgs.old_string !== undefined &&
+						normalizedArgs.new_string !== undefined
 					) {
 						nativeArgs = {
-							path: normalizedArgs.path,
-							operations: normalizedArgs.operations,
+							file_path: normalizedArgs.file_path,
+							old_string: normalizedArgs.old_string,
+							new_string: normalizedArgs.new_string,
+							replace_all: this.coerceOptionalBoolean(normalizedArgs.replace_all),
 						} as NativeArgsFor<TName>
 					}
 					break
