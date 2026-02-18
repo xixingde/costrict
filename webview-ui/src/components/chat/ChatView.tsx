@@ -1730,6 +1730,12 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		},
 		[searchQuery],
 	)
+	// Cancel backend auto-approval timeout when FollowUpSuggest's countdown effect cleans up.
+	// This is called when auto-approve is toggled off, a suggestion is clicked, or the component unmounts.
+	const handleFollowUpUnmount = useCallback(() => {
+		vscode.postMessage({ type: "cancelAutoApproval" })
+	}, [])
+
 	const itemContent = useCallback(
 		(index: number, messageOrGroup: ClineMessage) => {
 			const hasCheckpoint = modifiedMessages.some((message) => message.say === "checkpoint_saved")
@@ -1776,6 +1782,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					onSuggestionClick={handleSuggestionClickInRow} // This was already stabilized
 					onMultipleChoiceSubmit={handleMultipleChoiceSubmit}
 					onBatchFileResponse={handleBatchFileResponse}
+					onFollowUpUnmount={handleFollowUpUnmount}
 					isFollowUpAutoApprovalPaused={isFollowUpAutoApprovalPaused}
 					isFollowUpAnswered={messageOrGroup.isAnswered === true || messageOrGroup.ts <= currentFollowUpTs}
 					// Costrict: ask_multiple_choice answered
@@ -1805,23 +1812,24 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			)
 		},
 		[
+			modifiedMessages,
 			expandedRows,
 			toggleRowExpansion,
-			modifiedMessages,
 			groupedMessages.length,
 			handleRowHeightChange,
 			isStreaming,
 			handleSuggestionClickInRow,
-			handleBatchFileResponse,
 			handleMultipleChoiceSubmit,
-			primaryButtonText,
+			handleBatchFileResponse,
+			handleFollowUpUnmount,
+			isFollowUpAutoApprovalPaused,
 			currentFollowUpTs,
 			shouldHighlight,
 			searchResults,
 			showSearch,
 			searchQuery,
-			isFollowUpAutoApprovalPaused,
 			enableButtons,
+			primaryButtonText,
 		],
 	)
 
