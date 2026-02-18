@@ -8,7 +8,6 @@ import { ApiStream } from "./transform/stream"
 import {
 	AnthropicHandler,
 	AwsBedrockHandler,
-	AzureHandler,
 	OpenRouterHandler,
 	VertexHandler,
 	AnthropicVertexHandler,
@@ -122,15 +121,6 @@ export interface ApiHandler {
 	 * @returns A promise resolving to the token count
 	 */
 	countTokens(content: Array<Anthropic.Messages.ContentBlockParam>): Promise<number>
-
-	/**
-	 * Indicates whether this provider uses the Vercel AI SDK for streaming.
-	 * AI SDK providers handle reasoning blocks differently and need to preserve
-	 * them in conversation history for proper round-tripping.
-	 *
-	 * @returns true if the provider uses AI SDK, false otherwise
-	 */
-	isAiSdkProvider?(): boolean
 }
 
 export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
@@ -149,8 +139,6 @@ export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
 			return new AnthropicHandler(options)
 		case "claude-code":
 			return new ClaudeCodeHandler(options)
-		case "azure":
-			return new AzureHandler(options)
 		case "openrouter":
 			return new OpenRouterHandler(options)
 		case "bedrock":

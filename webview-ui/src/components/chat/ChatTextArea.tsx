@@ -61,9 +61,6 @@ interface ChatTextAreaProps {
 	// Edit mode props
 	isEditMode?: boolean
 	onCancel?: () => void
-	// Browser session status
-	isBrowserSessionActive?: boolean
-	showBrowserDockToggle?: boolean
 	// Stop/Queue functionality
 	isStreaming?: boolean
 	onStop?: () => void
@@ -89,8 +86,6 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			hoverPreviewMap,
 			isEditMode = false,
 			onCancel,
-			isBrowserSessionActive = false,
-			showBrowserDockToggle = false,
 			isStreaming = false,
 			onStop,
 			onEnqueueMessage,
@@ -1345,11 +1340,11 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 										<Image className="w-4 h-4" />
 									</button>
 								</StandardTooltip>
-								<div
+								{/* <div
 									className="hidden"
 									data-browser-session-active={isBrowserSessionActive}
 									data-show-browser-dock-toggle={showBrowserDockToggle}
-								/>
+								/> */}
 								{/* Queue button - shown when streaming and user has typed content */}
 								{!isEditMode && isStreaming && hasInputContent && onEnqueueMessage && (
 									<StandardTooltip content={t("chat:enqueueMessage")}>

@@ -364,8 +364,9 @@
 		},
 		"release": {
 			"heading": "新增功能：",
-			"claudeOpus": "Claude Opus 4.6: 现已在所有供应商——Roo Code Router、Anthropic、AWS Bedrock、Google Vertex 和 OpenRouter——提供，将 Anthropic 最强大的模型带到您的首选平台。",
-			"gptCodex": "GPT-5.3-Codex: OpenAI 最新的编码模型现已在 OpenAI - ChatGPT 供应商中支持，提供尖端的代码生成和理解。"
+			"sonnet46": "Claude Sonnet 4.6：全面支持 Anthropic 最新的 Claude Sonnet 4.6 模型，覆盖所有提供商 — Anthropic、Bedrock、Vertex、OpenRouter 和 Vercel AI Gateway。",
+			"stabilityFixes": "稳定性改进：强化委派生命周期以防止竞态条件，修复导航和任务恢复时的聊天历史保留问题，并解决滚动锚定问题以获得更流畅的体验。",
+			"lockedApiConfig": "锁定 API 配置：新的锁定开关让你可以在工作区的所有模式中固定 API 配置，这样切换模式不再重置你的提供商设置。"
 		},
 		"cloudAgents": {
 			"heading": "云端新功能：",
@@ -379,44 +380,6 @@
 		"totalWithSubtasks": "总成本（包括子任务）: ${{cost}}",
 		"total": "总成本: ${{cost}}",
 		"includesSubtasks": "包括子任务成本"
-	},
-	"browser": {
-		"session": "浏览器会话",
-		"active": "活动中",
-		"rooWantsToUse": "Roo想使用浏览器",
-		"consoleLogs": "控制台日志",
-		"noNewLogs": "(没有新日志)",
-		"screenshot": "浏览器截图",
-		"cursor": "光标",
-		"navigation": {
-			"step": "步骤 {{current}} / {{total}}",
-			"previous": "上一步",
-			"next": "下一步"
-		},
-		"sessionStarted": "浏览器会话已启动",
-		"actions": {
-			"title": "浏览器操作: ",
-			"launched": "浏览器已启动",
-			"launch": "访问 {{url}}",
-			"clicked": "点击位置: {{coordinate}}",
-			"click": "点击 ({{coordinate}})",
-			"typed": "输入: {{text}}",
-			"type": "输入 \"{{text}}\"",
-			"pressed": "已按 {{key}}",
-			"press": "按 {{key}}",
-			"scrolledDown": "已向下滚动",
-			"scrollDown": "向下滚动",
-			"scrolledUp": "已向上滚动",
-			"scrollUp": "向上滚动",
-			"hovered": "悬停位置: {{coordinate}}",
-			"hover": "悬停 ({{coordinate}})",
-			"resized": "大小已更改: {{size}}",
-			"resize": "调整大小为 {{size}}",
-			"screenshotSaved": "截图已保存",
-			"screenshot": "将截图保存到 {{path}}",
-			"closed": "浏览器已关闭",
-			"close": "关闭浏览器"
-		}
 	},
 	"codeblock": {
 		"tooltips": {

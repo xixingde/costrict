@@ -53,7 +53,6 @@ async function generatePrompt(data: {
 	mode: Mode
 	mcpHub?: McpHub
 	diffStrategy?: DiffStrategy
-	browserViewportSize?: string
 	promptComponent?: PromptComponent
 	customModeConfigs?: ModeConfig[]
 	globalCustomInstructions?: string
@@ -61,8 +60,6 @@ async function generatePrompt(data: {
 	enableMcpServerCreation?: boolean
 	language?: string
 	rooIgnoreInstructions?: string
-	// partialReadsEnabled?: boolean
-	// parallelToolCallsEnabled?: boolean
 	settings?: SystemPromptSettings
 	todoList?: TodoItem[]
 	modelId?: string
@@ -73,27 +70,20 @@ async function generatePrompt(data: {
 	let {
 		context,
 		cwd,
-		supportsComputerUse,
 		mode,
 		mcpHub,
-		diffStrategy,
-		browserViewportSize,
 		promptComponent,
 		customModeConfigs,
 		globalCustomInstructions,
 		experiments,
-		enableMcpServerCreation,
 		language,
 		rooIgnoreInstructions,
-		// partialReadsEnabled,
-		// parallelToolCallsEnabled,
 		skillsManager,
 		settings,
-		todoList,
-		modelId,
 		zgsmCodeMode,
 		shell,
 	} = data
+
 	if (!context) {
 		throw new Error("Extension context is required for generating system prompt")
 	}
@@ -159,7 +149,6 @@ export const SYSTEM_PROMPT = async (
 	supportsComputerUse: boolean,
 	mcpHub?: McpHub,
 	diffStrategy?: DiffStrategy,
-	browserViewportSize?: string,
 	mode: Mode = defaultModeSlug,
 	customModePrompts?: CustomModePrompts,
 	customModes?: ModeConfig[],
@@ -192,7 +181,6 @@ export const SYSTEM_PROMPT = async (
 		mode: currentMode.slug,
 		mcpHub,
 		diffStrategy,
-		browserViewportSize,
 		promptComponent,
 		customModeConfigs: customModes,
 		globalCustomInstructions,

@@ -5,7 +5,6 @@ import applyPatch from "./apply_patch"
 import askFollowupQuestion from "./ask_followup_question"
 import askMultipleChoice from "./ask_multiple_choice"
 import attemptCompletion from "./attempt_completion"
-import browserAction from "./browser_action"
 // import codebaseSearch from "./codebase_search"
 import editTool from "./edit"
 import executeCommand from "./execute_command"
@@ -135,7 +134,6 @@ export function getNativeTools(options: NativeToolsOptions = {}): OpenAI.Chat.Ch
 		askFollowupQuestion,
 		askMultipleChoice,
 		attemptCompletion,
-		browserAction,
 		// codebaseSearch,
 		executeCommand,
 		generateImage,

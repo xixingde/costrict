@@ -216,7 +216,6 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		const baseSettings: RooCodeSettings = {
 			mode: this.options.mode,
 			commandExecutionTimeout: 30,
-			browserToolEnabled: false,
 			enableCheckpoints: false,
 			...getProviderSettings(
 				this.options.provider,
@@ -233,7 +232,6 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 					alwaysAllowWrite: true,
 					alwaysAllowWriteOutsideWorkspace: true,
 					alwaysAllowWriteProtected: true,
-					alwaysAllowBrowser: true,
 					alwaysAllowMcp: true,
 					alwaysAllowModeSwitch: true,
 					alwaysAllowSubtasks: true,

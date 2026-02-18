@@ -47,7 +47,6 @@ import { CheckpointSaved } from "./checkpoints/CheckpointSaved"
 import { FollowUpSuggest } from "./FollowUpSuggest"
 import { MultipleChoiceForm } from "./MultipleChoiceForm"
 import { BatchFilePermission } from "./BatchFilePermission"
-import { BatchListFilesPermission } from "./BatchListFilesPermission"
 import { BatchDiffApproval } from "./BatchDiffApproval"
 import { ProgressIndicator } from "./ProgressIndicator"
 import { Markdown } from "./Markdown"
@@ -600,19 +599,6 @@ export const ChatRowContent = ({
 				style={{ color: "var(--vscode-foreground)", marginBottom: "-1.5px" }}></span>
 		)
 
-		// Handle batch diffs for any file-edit tool type
-		if (message.type === "ask" && tool.batchDiffs && Array.isArray(tool.batchDiffs)) {
-			return (
-				<>
-					<div style={headerStyle}>
-						<FileDiff className="w-4 shrink-0" aria-label="Batch diff icon" />
-						<span style={{ fontWeight: "bold" }}>{t("chat:fileOperations.wantsToApplyBatchChanges")}</span>
-					</div>
-					<BatchDiffApproval files={tool.batchDiffs} ts={message.ts} />
-				</>
-			)
-		}
-
 		switch (tool.tool as string) {
 			case "editedExistingFile":
 			case "appliedDiff":
@@ -893,57 +879,45 @@ export const ChatRowContent = ({
 				)
 			}
 			case "listFilesTopLevel":
-			case "listFilesRecursive": {
-				const isRecursive = tool.tool === "listFilesRecursive"
-
-				// Check if this is a batch directory listing request
-				const isBatchDirRequest = message.type === "ask" && tool.batchDirs && Array.isArray(tool.batchDirs)
-
-				// When batching, check if all dirs share the same recursive value
-				const allTopLevel = tool.batchDirs?.every((d: { recursive: boolean }) => !d.recursive)
-				const DirIcon = isBatchDirRequest && !allTopLevel ? FolderTree : isRecursive ? FolderTree : ListTree
-				const dirIconLabel =
-					isBatchDirRequest && !allTopLevel
-						? "Folder tree icon"
-						: isRecursive
-							? "Folder tree icon"
-							: "List files icon"
-
-				if (isBatchDirRequest) {
-					return (
-						<>
-							<div style={headerStyle}>
-								<DirIcon className="w-4 shrink-0" aria-label={dirIconLabel} />
-								<span style={{ fontWeight: "bold" }}>
-									{t("chat:directoryOperations.wantsToViewMultipleDirectories")}
-								</span>
-							</div>
-							<BatchListFilesPermission dirs={tool.batchDirs || []} ts={message?.ts} />
-						</>
-					)
-				}
-
-				const labelKey = isRecursive
-					? message.type === "ask"
-						? tool.isOutsideWorkspace
-							? "chat:directoryOperations.wantsToViewRecursiveOutsideWorkspace"
-							: "chat:directoryOperations.wantsToViewRecursive"
-						: tool.isOutsideWorkspace
-							? "chat:directoryOperations.didViewRecursiveOutsideWorkspace"
-							: "chat:directoryOperations.didViewRecursive"
-					: message.type === "ask"
-						? tool.isOutsideWorkspace
-							? "chat:directoryOperations.wantsToViewTopLevelOutsideWorkspace"
-							: "chat:directoryOperations.wantsToViewTopLevel"
-						: tool.isOutsideWorkspace
-							? "chat:directoryOperations.didViewTopLevelOutsideWorkspace"
-							: "chat:directoryOperations.didViewTopLevel"
-
 				return (
 					<>
 						<div style={headerStyle}>
-							<DirIcon className="w-4 shrink-0" aria-label={dirIconLabel} />
-							<span style={{ fontWeight: "bold" }}>{t(labelKey)}</span>
+							<ListTree className="w-4 shrink-0" aria-label="List files icon" />
+							<span style={{ fontWeight: "bold" }}>
+								{message.type === "ask"
+									? tool.isOutsideWorkspace
+										? t("chat:directoryOperations.wantsToViewTopLevelOutsideWorkspace")
+										: t("chat:directoryOperations.wantsToViewTopLevel")
+									: tool.isOutsideWorkspace
+										? t("chat:directoryOperations.didViewTopLevelOutsideWorkspace")
+										: t("chat:directoryOperations.didViewTopLevel")}
+							</span>
+						</div>
+						<div className="pl-6">
+							<CodeAccordian
+								path={tool.path}
+								code={tool.content}
+								language="shell-session"
+								isExpanded={isExpanded}
+								onToggleExpand={handleToggleExpand}
+							/>
+						</div>
+					</>
+				)
+			case "listFilesRecursive":
+				return (
+					<>
+						<div style={headerStyle}>
+							<FolderTree className="w-4 shrink-0" aria-label="Folder tree icon" />
+							<span style={{ fontWeight: "bold" }}>
+								{message.type === "ask"
+									? tool.isOutsideWorkspace
+										? t("chat:directoryOperations.wantsToViewRecursiveOutsideWorkspace")
+										: t("chat:directoryOperations.wantsToViewRecursive")
+									: tool.isOutsideWorkspace
+										? t("chat:directoryOperations.didViewRecursiveOutsideWorkspace")
+										: t("chat:directoryOperations.didViewRecursive")}
+							</span>
 						</div>
 						<div className="pl-6">
 							<CodeAccordian
@@ -956,7 +930,6 @@ export const ChatRowContent = ({
 						</div>
 					</>
 				)
-			}
 			case "searchFiles":
 				return (
 					<>
@@ -2004,10 +1977,6 @@ export const ChatRowContent = ({
 							<ImageBlock imageUri={imageInfo.imageUri} imagePath={imageInfo.imagePath} />
 						</div>
 					)
-				case "browser_action":
-				case "browser_action_result":
-					// Handled by BrowserSessionRow; prevent raw JSON (action/result) from rendering here
-					return null
 				case "too_many_tools_warning": {
 					const warningData = safeJsonParse<{
 						toolCount: number

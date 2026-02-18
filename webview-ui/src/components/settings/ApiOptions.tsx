@@ -72,7 +72,6 @@ import { ProviderChangeWarningDialog } from "./ProviderChangeWarningDialog"
 
 import {
 	Anthropic,
-	Azure,
 	Baseten,
 	Bedrock,
 	ClaudeCode,
@@ -632,14 +631,6 @@ const ApiOptions = ({
 
 					{selectedProvider === "anthropic" && (
 						<Anthropic
-							apiConfiguration={apiConfiguration}
-							setApiConfigurationField={setApiConfigurationField}
-							simplifySettings={fromWelcomeView}
-						/>
-					)}
-
-					{selectedProvider === "azure" && (
-						<Azure
 							apiConfiguration={apiConfiguration}
 							setApiConfigurationField={setApiConfigurationField}
 							simplifySettings={fromWelcomeView}

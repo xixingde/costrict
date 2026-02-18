@@ -553,19 +553,6 @@ export class NativeToolCallParser {
 				}
 				break
 
-			case "browser_action":
-				if (partialArgs.action !== undefined) {
-					nativeArgs = {
-						action: partialArgs.action,
-						url: partialArgs.url,
-						coordinate: partialArgs.coordinate,
-						size: partialArgs.size,
-						text: partialArgs.text,
-						path: partialArgs.path,
-					}
-				}
-				break
-
 			case "codebase_search":
 				if (partialArgs.query !== undefined) {
 					nativeArgs = {
@@ -942,19 +929,6 @@ export class NativeToolCallParser {
 						nativeArgs = {
 							title: normalizedArgs.title,
 							questions: normalizedArgs.questions,
-						} as NativeArgsFor<TName>
-					}
-					break
-
-				case "browser_action":
-					if (normalizedArgs.action !== undefined) {
-						nativeArgs = {
-							action: fixBrowserLaunchAction(normalizedArgs),
-							url: normalizedArgs.url,
-							coordinate: normalizedArgs.coordinate,
-							size: normalizedArgs.size,
-							text: normalizedArgs.text,
-							path: normalizedArgs.path,
 						} as NativeArgsFor<TName>
 					}
 					break
