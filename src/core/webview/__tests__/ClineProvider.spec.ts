@@ -335,9 +335,6 @@ vi.mock("@roo-code/cloud", () => ({
 			}
 		},
 	},
-	BridgeOrchestrator: {
-		isEnabled: vi.fn().mockReturnValue(false),
-	},
 	getRooCodeApiUrl: vi.fn().mockReturnValue("https://app.roocode.com"),
 	getCostrictApiUrl: vi.fn().mockReturnValue("https://zgsm.sangfor.com"),
 }))
@@ -590,9 +587,7 @@ describe("ClineProvider", () => {
 			diagnosticsEnabled: true,
 			openRouterImageApiKey: undefined,
 			openRouterImageGenerationSelectedModel: undefined,
-			remoteControlEnabled: false,
 			taskSyncEnabled: false,
-			featureRoomoteControlEnabled: false,
 			errorCode: {},
 			hasClosedCodeReviewWelcomeTips: false,
 			checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,

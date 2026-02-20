@@ -214,7 +214,12 @@
 			"modelDimensionMinValue": "模型維度必須大於 0",
 			"openRouterApiKeyRequired": "OpenRouter API 金鑰必填"
 		},
-		"optional": "選用"
+		"optional": "選用",
+		"stopIndexingButton": "停止索引",
+		"stoppingButton": "正在停止...",
+		"workspaceToggleLabel": "為此工作區啟用索引",
+		"workspaceDisabledMessage": "索引已設定，但尚未為此工作區啟用。",
+		"autoEnableDefaultLabel": "自動為新工作區啟用索引"
 	},
 	"autoApprove": {
 		"toggleShortcut": "您可於 <SettingsLink>IDE 偏好設定</SettingsLink> 中自訂此功能的快捷鍵。",

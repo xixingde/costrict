@@ -275,7 +275,7 @@ export class CloudSettingsService extends EventEmitter<SettingsServiceEvents> im
 		// User settings default to true if unspecified
 		const userSettings = this.userSettings
 		if (userSettings) {
-			return userSettings.settings.taskSyncEnabled ?? true
+			return userSettings.settings.taskSyncEnabled ?? false
 		}
 
 		return false

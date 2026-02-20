@@ -41,7 +41,8 @@ getLiteListFilesDescription.toolname = "list_files"
 export function getLiteExecuteCommandDescription(): string {
 	return `## execute_command
 Execute CLI command.
-Params fields: command (REQUIRED), cwd (REQUIRED)`
+Params fields: command (REQUIRED), cwd (REQUIRED), timeout (optional: Timeout (s). Exceed → runs in background; returns current output. For long-running / non-exiting commands (e.g.,dev servers, watchers))
+`
 }
 getLiteExecuteCommandDescription.toolname = "execute_command"
 

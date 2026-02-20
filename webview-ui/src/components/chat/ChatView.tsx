@@ -1,6 +1,5 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
 import { useDeepCompareEffect, useEvent } from "react-use"
-import debounce from "debounce"
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 import removeMd from "remove-markdown"
 // import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
@@ -54,7 +53,7 @@ import { useChatSearch } from "./hooks/useChatSearch"
 import ChatRow from "./ChatRow"
 import WarningRow from "./WarningRow"
 import { ChatTextArea } from "./ChatTextArea"
-import { markdownExpandingRef } from "./Markdown"
+// import { markdownExpandingRef } from "./Markdown"
 import TaskHeader from "./TaskHeader"
 import ProfileViolationWarning from "./ProfileViolationWarning"
 import { CheckpointWarning } from "./CheckpointWarning"
@@ -66,6 +65,8 @@ import ChatSearch from "./ChatSearch"
 // import CloudAgents from "../cloud/CloudAgents"
 import { WorktreeSelector } from "./WorktreeSelector"
 import { useZgsmUserInfo } from "@/hooks/useZgsmUserInfo"
+import FileChangesPanel from "./FileChangesPanel"
+import { useScrollLifecycle } from "@src/hooks/useScrollLifecycle"
 
 export interface ChatViewProps {
 	isHidden: boolean
@@ -136,8 +137,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	{ isHidden /* showAnnouncement, hideAnnouncement */ },
 	ref,
 ) => {
-	const isMountedRef = useRef(true)
-
 	const [audioBaseUri] = useState(() => {
 		return (window as unknown as { AUDIO_BASE_URI?: string }).AUDIO_BASE_URI || ""
 	})
@@ -249,10 +248,10 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const prevExpandedRowsRef = useRef<Record<number, boolean>>()
 	const scrollContainerRef = useRef<HTMLDivElement>(null)
 	const stickyFollowRef = useRef<boolean>(false)
-	const [showScrollToBottom, setShowScrollToBottom] = useState(false)
-	// const [isAtBottom, setIsAtBottom] = useState(false)
+	// const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+	// // const [isAtBottom, setIsAtBottom] = useState(false)
 	const userExpandingRef = useRef<boolean>(false)
-	const isAtBottomRef = useRef(false)
+	// const isAtBottomRef = useRef(false)
 	const lastTtsRef = useRef<string>("")
 	const [wasStreaming, setWasStreaming] = useState<boolean>(false)
 	const [checkpointWarning, setCheckpointWarning] = useState<
@@ -268,7 +267,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			ttl: 1000 * 60 * 5,
 		}),
 	)
-	const [currentFollowUpTs, setCurrentFollowUpTs] = useState<number>(-1)
+	const [currentFollowUpTs, setCurrentFollowUpTs] = useState<number | null>(-1)
 	const [aggregatedCostsMap, setAggregatedCostsMap] = useState<
 		Map<
 			string,
@@ -327,13 +326,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			vscode.postMessage({ type: "cancelAutoApproval" })
 		}
 	}, [isFollowUpAutoApprovalPaused])
-
-	useEffect(() => {
-		isMountedRef.current = true
-		return () => {
-			isMountedRef.current = false
-		}
-	}, [])
 
 	const isProfileDisabled = useMemo(
 		() => !!apiConfiguration && !ProfileValidator.isProfileAllowed(apiConfiguration, organizationAllowList),
@@ -610,33 +602,43 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		}
 	}, [messages.length])
 
+	// Reset UI states when task changes. Scroll lifecycle is handled by
+	// useScrollLifecycle which has its own effect keyed on taskTs.
 	useEffect(() => {
-		// Reset UI states only when task changes
 		setExpandedRows({})
-		everVisibleMessagesTsRef.current.clear() // Clear for new task
-		setCurrentFollowUpTs(-1) // Clear follow-up answered state for new task
-		setIsCondensing(false) // Reset condensing state when switching tasks
-		// Note: sendingDisabled is not reset here as it's managed by message effects
+		// everVisibleMessagesTsRef.current.clear() // Clear for new task
+		// setCurrentFollowUpTs(-1) // Clear follow-up answered state for new task
+		// setIsCondensing(false) // Reset condensing state when switching tasks
+		// // Note: sendingDisabled is not reset here as it's managed by message effects
 
-		// // Reset user response flag for new task
+		// // // Reset user response flag for new task
+		// // userRespondedRef.current = false
+
+		// // Ensure new task starts anchored to the bottom. Virtuoso's
+		// // initialTopMostItemIndex fires at mount but the message data may
+		// // arrive asynchronously, so we also engage sticky follow and
+		// // explicitly scroll after a frame to handle the race.
+		// let rafId: number | undefined
+		// if (task?.ts) {
+		// 	stickyFollowRef.current = true
+		// 	rafId = requestAnimationFrame(() => {
+		// 		virtuosoRef.current?.scrollTo({ top: Number.MAX_SAFE_INTEGER, behavior: "auto" })
+		// 	})
+		// }
+		// return () => {
+		// 	if (rafId !== undefined) {
+		// 		cancelAnimationFrame(rafId)
+		// 	}
+		// }
+		everVisibleMessagesTsRef.current.clear()
+		setCurrentFollowUpTs(null)
+		setIsCondensing(false)
+
+		// if (autoApproveTimeoutRef.current) {
+		// 	clearTimeout(autoApproveTimeoutRef.current)
+		// 	autoApproveTimeoutRef.current = null
+		// }
 		// userRespondedRef.current = false
-
-		// Ensure new task starts anchored to the bottom. Virtuoso's
-		// initialTopMostItemIndex fires at mount but the message data may
-		// arrive asynchronously, so we also engage sticky follow and
-		// explicitly scroll after a frame to handle the race.
-		let rafId: number | undefined
-		if (task?.ts) {
-			stickyFollowRef.current = true
-			rafId = requestAnimationFrame(() => {
-				virtuosoRef.current?.scrollTo({ top: Number.MAX_SAFE_INTEGER, behavior: "auto" })
-			})
-		}
-		return () => {
-			if (rafId !== undefined) {
-				cancelAnimationFrame(rafId)
-			}
-		}
 	}, [task?.ts])
 
 	const taskTs = task?.ts
@@ -663,28 +665,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			cache.clear()
 		}
 	}, [])
-
-	useEffect(() => {
-		const prev = prevExpandedRowsRef.current
-		let wasAnyRowExpandedByUser = false
-		if (prev) {
-			// Check if any row transitioned from false/undefined to true
-			for (const [tsKey, isExpanded] of Object.entries(expandedRows)) {
-				const ts = Number(tsKey)
-				if (isExpanded && !(prev[ts] ?? false)) {
-					wasAnyRowExpandedByUser = true
-					break
-				}
-			}
-		}
-
-		// Expanding a row indicates the user is browsing; disable sticky follow
-		if (wasAnyRowExpandedByUser) {
-			stickyFollowRef.current = false
-		}
-
-		prevExpandedRowsRef.current = expandedRows // Store current state for next comparison
-	}, [expandedRows])
 
 	const isStreaming = useMemo(() => {
 		// Checking clineAsk isn't enough since messages effect may be called
@@ -1475,28 +1455,48 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		return result
 	}, [apiConfiguration?.apiProvider, isCondensing, visibleMessages])
 
-	// scrolling
+	// Scroll lifecycle is managed by a dedicated hook to keep ChatView focused
+	// on message handling and UI orchestration.
+	const {
+		showScrollToBottom,
+		handleRowHeightChange,
+		handleScrollToBottomClick,
+		enterUserBrowsingHistory,
+		followOutputCallback,
+		atBottomStateChangeCallback,
+		scrollToBottomAuto,
+		isAtBottomRef,
+		scrollPhaseRef,
+	} = useScrollLifecycle({
+		virtuosoRef,
+		scrollContainerRef,
+		taskTs: task?.ts,
+		isStreaming,
+		isHidden,
+		hasTask: !!task,
+	})
 
-	const scrollToBottomSmooth = useMemo(
-		() =>
-			debounce(() => virtuosoRef.current?.scrollTo({ top: Number.MAX_SAFE_INTEGER, behavior: "smooth" }), 10, {
-				immediate: true,
-			}),
-		[],
-	)
-
+	// Expanding a row indicates the user is browsing; disable sticky follow.
+	// Placed after the hook call so enterUserBrowsingHistory is defined.
 	useEffect(() => {
-		return () => {
-			scrollToBottomSmooth.clear()
+		const prev = prevExpandedRowsRef.current
+		let wasAnyRowExpandedByUser = false
+		if (prev) {
+			for (const [tsKey, isExpanded] of Object.entries(expandedRows)) {
+				const ts = Number(tsKey)
+				if (isExpanded && !(prev[ts] ?? false)) {
+					wasAnyRowExpandedByUser = true
+					break
+				}
+			}
 		}
-	}, [scrollToBottomSmooth])
 
-	const scrollToBottomAuto = useCallback(() => {
-		virtuosoRef.current?.scrollTo({
-			top: Number.MAX_SAFE_INTEGER,
-			behavior: "auto", // Instant causes crash.
-		})
-	}, [])
+		if (wasAnyRowExpandedByUser) {
+			enterUserBrowsingHistory("row-expansion")
+		}
+
+		prevExpandedRowsRef.current = expandedRows
+	}, [enterUserBrowsingHistory, expandedRows])
 
 	const handleSetExpandedRow = useCallback(
 		(ts: number, expand?: boolean) => {
@@ -1545,33 +1545,33 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		[handleSetExpandedRow],
 	)
 
-	const handleRowHeightChange = useCallback(
-		(isTaller: boolean) => {
-			// Don't auto-scroll if the user is actively expanding/collapsing content
-			// This prevents scroll conflicts when user manually expands the last message
-			// or expands Markdown content
-			if (userExpandingRef.current || markdownExpandingRef.current) {
-				return
-			}
-			if (isAtBottomRef.current) {
-				if (isTaller) {
-					scrollToBottomSmooth()
-				} else {
-					setTimeout(() => scrollToBottomAuto(), 0)
-				}
-			}
-		},
-		[scrollToBottomSmooth, scrollToBottomAuto],
-	)
+	// const handleRowHeightChange = useCallback(
+	// 	(isTaller: boolean) => {
+	// 		// Don't auto-scroll if the user is actively expanding/collapsing content
+	// 		// This prevents scroll conflicts when user manually expands the last message
+	// 		// or expands Markdown content
+	// 		if (userExpandingRef.current || markdownExpandingRef.current) {
+	// 			return
+	// 		}
+	// 		if (isAtBottomRef.current) {
+	// 			if (isTaller) {
+	// 				scrollToBottomSmooth()
+	// 			} else {
+	// 				setTimeout(() => scrollToBottomAuto(), 0)
+	// 			}
+	// 		}
+	// 	},
+	// 	[scrollToBottomSmooth, scrollToBottomAuto],
+	// )
 
-	// Disable sticky follow when user scrolls up inside the chat container
-	const handleWheel = useCallback((event: Event) => {
-		const wheelEvent = event as WheelEvent
-		if (wheelEvent.deltaY < 0 && scrollContainerRef.current?.contains(wheelEvent.target as Node)) {
-			stickyFollowRef.current = false
-		}
-	}, [])
-	useEvent("wheel", handleWheel, window, { passive: true })
+	// // Disable sticky follow when user scrolls up inside the chat container
+	// const handleWheel = useCallback((event: Event) => {
+	// 	const wheelEvent = event as WheelEvent
+	// 	if (wheelEvent.deltaY < 0 && scrollContainerRef.current?.contains(wheelEvent.target as Node)) {
+	// 		stickyFollowRef.current = false
+	// 	}
+	// }, [])
+	// useEvent("wheel", handleWheel, window, { passive: true })
 
 	// Effect to clear checkpoint warning when messages appear or task changes
 	useEffect(() => {
@@ -1700,10 +1700,12 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					onBatchFileResponse={handleBatchFileResponse}
 					onFollowUpUnmount={handleFollowUpUnmount}
 					isFollowUpAutoApprovalPaused={isFollowUpAutoApprovalPaused}
-					isFollowUpAnswered={messageOrGroup.isAnswered === true || messageOrGroup.ts <= currentFollowUpTs}
+					isFollowUpAnswered={
+						messageOrGroup.isAnswered === true || messageOrGroup.ts <= Number(currentFollowUpTs)
+					}
 					// Costrict: ask_multiple_choice answered
 					isMultipleChoiceAnswered={
-						messageOrGroup.isAnswered === true || messageOrGroup.ts <= currentFollowUpTs
+						messageOrGroup.isAnswered === true || messageOrGroup.ts <= Number(currentFollowUpTs)
 					}
 					editable={
 						messageOrGroup.type === "ask" &&
@@ -1767,19 +1769,15 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		switchToMode(allModes[previousModeIndex].slug)
 	}, [mode, customModes, switchToMode])
 
-	// Add keyboard event handler
+	// Mode switching keyboard handler. Scroll-intent keyboard detection
+	// (PageUp, Home, ArrowUp) is handled by useScrollLifecycle.
 	const handleKeyDown = useCallback(
 		(event: KeyboardEvent) => {
-			// Check for Command/Ctrl + Period (with or without Shift)
-			// Using event.key to respect keyboard layouts (e.g., Dvorak)
 			if ((event.metaKey || event.ctrlKey) && event.key === ".") {
-				event.preventDefault() // Prevent default browser behavior
-
+				event.preventDefault()
 				if (event.shiftKey) {
-					// Shift + Period = Previous mode
 					switchToPreviousMode()
 				} else {
-					// Just Period = Next mode
 					switchToNextMode()
 				}
 			}
@@ -2006,26 +2004,28 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							increaseViewportBy={{ top: 3_000, bottom: 1000 }}
 							data={groupedMessages}
 							itemContent={itemContent}
-							followOutput={(isAtBottom: boolean) => {
-								// Disable auto-scrolling when user is manually expanding/collapsing content
-								// This prevents scroll jumping when expanding the last message or Markdown content
-								if (userExpandingRef.current || markdownExpandingRef.current) {
-									return false
-								}
-								return isAtBottom || stickyFollowRef.current
-							}}
-							atBottomStateChange={(isAtBottom: boolean) => {
-								isAtBottomRef.current = isAtBottom
-								setShowScrollToBottom(!isAtBottom)
-								// Clear sticky follow when user scrolls away from bottom
-								if (!isAtBottom) {
-									stickyFollowRef.current = false
-								}
-							}}
+							// followOutput={(isAtBottom: boolean) => {
+							// 	// Disable auto-scrolling when user is manually expanding/collapsing content
+							// 	// This prevents scroll jumping when expanding the last message or Markdown content
+							// 	if (userExpandingRef.current || markdownExpandingRef.current) {
+							// 		return false
+							// 	}
+							// 	return isAtBottom || stickyFollowRef.current
+							// }}
+							// atBottomStateChange={(isAtBottom: boolean) => {
+							// 	isAtBottomRef.current = isAtBottom
+							// 	setShowScrollToBottom(!isAtBottom)
+							// 	// Clear sticky follow when user scrolls away from bottom
+							// 	if (!isAtBottom) {
+							// 		stickyFollowRef.current = false
+							// 	}
+							// }}
+							followOutput={followOutputCallback}
+							atBottomStateChange={atBottomStateChangeCallback}
 							atBottomThreshold={10}
-							initialTopMostItemIndex={groupedMessages.length - 1}
 						/>
 					</div>
+					<FileChangesPanel clineMessages={messages} />
 					{areButtonsVisible && (
 						<div
 							className={`flex h-9 items-center mb-1 px-[15px] ${
@@ -2036,14 +2036,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 									<Button
 										variant="secondary"
 										className="flex-[2]"
-										onClick={() => {
-											// Engage sticky follow until user scrolls up
-											stickyFollowRef.current = true
-											// Pin immediately to avoid lag during fast streaming
-											scrollToBottomAuto()
-											// Hide button immediately to prevent flash
-											setShowScrollToBottom(false)
-										}}>
+										onClick={handleScrollToBottomClick}>
 										<span className="codicon codicon-chevron-down"></span>
 									</Button>
 								</StandardTooltip>
@@ -2117,7 +2110,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				onSelectImages={selectImages}
 				shouldDisableImages={shouldDisableImages}
 				onHeightChange={() => {
-					if (isAtBottomRef.current) {
+					if (isAtBottomRef.current && scrollPhaseRef.current !== "USER_BROWSING_HISTORY") {
 						scrollToBottomAuto()
 					}
 				}}
