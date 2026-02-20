@@ -1,6 +1,6 @@
-# Roo Code Translation Guidance
+# CoStrict Translation Guidance
 
-This file contains brand voice, tone, and word choice guidelines for Roo Code translations.
+This file contains brand voice, tone, and word choice guidelines for CoStrict translations.
 
 ## Brand Voice
 

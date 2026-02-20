@@ -636,7 +636,7 @@ describe("CloudSettingsService", () => {
 			expect(cloudSettingsService.isTaskSyncEnabled()).toBe(false)
 		})
 
-		it("should return true when user taskSyncEnabled is undefined (default)", () => {
+		it("should return false when user taskSyncEnabled is undefined (default)", () => {
 			// Set up mock settings with org recordTaskMessages undefined
 			const mockSettings = {
 				version: 1,
@@ -659,7 +659,7 @@ describe("CloudSettingsService", () => {
 			;(cloudSettingsService as unknown as { userSettings: typeof mockUserSettings }).userSettings =
 				mockUserSettings
 
-			expect(cloudSettingsService.isTaskSyncEnabled()).toBe(true)
+			expect(cloudSettingsService.isTaskSyncEnabled()).toBe(false)
 		})
 
 		it("should return false when no settings are available", () => {

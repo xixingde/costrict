@@ -2330,7 +2330,9 @@ describe("getTelemetryProperties", () => {
 
 			const properties = await provider.getTelemetryProperties()
 
-			expect(properties).toHaveProperty("cloudIsAuthenticated", true)
+			// Note: getCloudProperties() is currently commented out in getTelemetryProperties()
+			// so cloudIsAuthenticated will not be present
+			expect(properties).not.toHaveProperty("cloudIsAuthenticated")
 		})
 
 		test("includes cloud authentication property when user is not authenticated", async () => {
@@ -2348,7 +2350,9 @@ describe("getTelemetryProperties", () => {
 
 			const properties = await provider.getTelemetryProperties()
 
-			expect(properties).toHaveProperty("cloudIsAuthenticated", false)
+			// Note: getCloudProperties() is currently commented out in getTelemetryProperties()
+			// so cloudIsAuthenticated will not be present
+			expect(properties).not.toHaveProperty("cloudIsAuthenticated")
 		})
 
 		test("handles CloudService errors gracefully", async () => {
@@ -2368,8 +2372,9 @@ describe("getTelemetryProperties", () => {
 			expect(properties).toHaveProperty("platform")
 			expect(properties).toHaveProperty("appVersion", "1.0.0")
 
-			// Cloud property should be undefined when CloudService is not available
-			expect(properties).toHaveProperty("cloudIsAuthenticated", undefined)
+			// Note: getCloudProperties() is currently commented out in getTelemetryProperties()
+			// so cloudIsAuthenticated will not be present
+			expect(properties).not.toHaveProperty("cloudIsAuthenticated")
 		})
 
 		test("handles CloudService method errors gracefully", async () => {
@@ -2394,8 +2399,9 @@ describe("getTelemetryProperties", () => {
 			expect(properties).toHaveProperty("platform")
 			expect(properties).toHaveProperty("appVersion", "1.0.0")
 
-			// Property that errored should be undefined
-			expect(properties).toHaveProperty("cloudIsAuthenticated", undefined)
+			// Note: getCloudProperties() is currently commented out in getTelemetryProperties()
+			// so cloudIsAuthenticated will not be present
+			expect(properties).not.toHaveProperty("cloudIsAuthenticated")
 		})
 	})
 })
@@ -2510,6 +2516,7 @@ describe("ClineProvider - Router Models", () => {
 		// Provider order: zgsm (first), openrouter, requesty, vercel-ai-gateway, litellm (conditional)
 		expect(getModels).toHaveBeenCalledWith({ provider: "openrouter" })
 		expect(getModels).toHaveBeenCalledWith({ provider: "requesty", apiKey: "requesty-key" })
+		expect(getModels).toHaveBeenCalledWith({ provider: "unbound" })
 		expect(getModels).toHaveBeenCalledWith({ provider: "vercel-ai-gateway" })
 		expect(getModels).toHaveBeenCalledWith({
 			provider: "litellm",
@@ -2531,6 +2538,8 @@ describe("ClineProvider - Router Models", () => {
 				zgsm: mockModels,
 				openrouter: mockModels,
 				requesty: mockModels,
+				unbound: mockModels,
+				// roo: mockModels,
 				litellm: mockModels,
 				ollama: {},
 				lmstudio: {},
@@ -2564,6 +2573,7 @@ describe("ClineProvider - Router Models", () => {
 			.mockResolvedValueOnce(mockModels) // zgsm success (first call)
 			.mockResolvedValueOnce(mockModels) // openrouter success
 			.mockRejectedValueOnce(new Error("Requesty API error")) // requesty fail
+			.mockResolvedValueOnce(mockModels) // unbound success
 			.mockResolvedValueOnce(mockModels) // vercel-ai-gateway success
 			.mockRejectedValueOnce(new Error("LiteLLM connection failed")) // litellm fail
 
@@ -2583,6 +2593,8 @@ describe("ClineProvider - Router Models", () => {
 				zgsm: mockModels,
 				openrouter: mockModels,
 				requesty: {},
+				unbound: mockModels,
+				// roo: mockModels,
 				ollama: {},
 				lmstudio: {},
 				litellm: {},
@@ -2685,6 +2697,8 @@ describe("ClineProvider - Router Models", () => {
 				zgsm: mockModels,
 				openrouter: mockModels,
 				requesty: mockModels,
+				unbound: mockModels,
+				// roo: mockModels,
 				litellm: {},
 				ollama: {},
 				lmstudio: {},

@@ -82,6 +82,8 @@ export class ProfileValidator {
 			case "requesty":
 				return profile.requestyModelId
 			case "human-relay":
+			case "unbound":
+				return profile.unboundModelId
 			case "fake-ai":
 			default:
 				return undefined

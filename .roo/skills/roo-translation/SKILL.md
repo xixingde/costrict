@@ -1,15 +1,15 @@
 ---
 name: roo-translation
-description: Provides comprehensive guidelines for translating and localizing Roo Code extension strings. Use when tasks involve i18n, translation, localization, adding new languages, or updating existing translation files. This skill covers both core extension (src/i18n/locales/) and WebView UI (webview-ui/src/i18n/locales/) localization.
+description: Provides comprehensive guidelines for translating and localizing CoStrict extension strings. Use when tasks involve i18n, translation, localization, adding new languages, or updating existing translation files. This skill covers both core extension (src/i18n/locales/) and WebView UI (webview-ui/src/i18n/locales/) localization.
 ---
 
-# Roo Code Translation Skill
+# CoStrict Translation Skill
 
 ## When to Use This Skill
 
 Use this skill when the task involves:
 
-- Adding new translatable strings to the Roo Code extension
+- Adding new translatable strings to the CoStrict extension
 - Translating existing strings to new languages
 - Updating or fixing translations in existing language files
 - Understanding i18n patterns used in the codebase

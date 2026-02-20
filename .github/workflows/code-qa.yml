@@ -8,12 +8,16 @@ on:
           - dev
     pull_request:
         types: [opened, reopened, ready_for_review, synchronize]
-        branches:
-          - main
-          - dev
+        branches: [main]
+    pull_request_review:
+        types: [submitted]
+        branches: [main]
 
 jobs:
     check-translations:
+        if: |
+            github.event_name != 'pull_request_review' ||
+            github.event.review.state == 'approved'
         runs-on: ubuntu-latest
         steps:
             - name: Checkout code
@@ -23,18 +27,39 @@ jobs:
             - name: Verify all translations are complete
               run: node scripts/find-missing-translations.js
 
-    # knip:
-    #     runs-on: ubuntu-latest
-    #     steps:
-    #         - name: Checkout code
-    #           uses: actions/checkout@v4
-    #         - name: Setup Node.js and pnpm
-    #           uses: ./.github/actions/setup-node-pnpm
-    #         - name: Run knip checks
-    #           run: pnpm knip
+    knip:
+        if: |
+            github.event_name != 'pull_request_review' ||
+            github.event.review.state == 'approved'
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+            - name: Setup Node.js and pnpm
+              uses: ./.github/actions/setup-node-pnpm
+            - name: Run knip checks
+              run: pnpm knip
 
     compile:
-        name: platform-compile (${{ matrix.name }})
+        if: |
+            github.event_name != 'pull_request_review' ||
+            github.event.review.state == 'approved'
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+            - name: Setup Node.js and pnpm
+              uses: ./.github/actions/setup-node-pnpm
+            - name: Lint
+              run: pnpm lint
+            - name: Check types
+              run: pnpm check-types
+
+    unit-test:
+        name: platform-unit-test (${{ matrix.name }})
+        if: |
+            github.event_name != 'pull_request_review' ||
+            github.event.review.state == 'approved'
         runs-on: ${{ matrix.os }}
         strategy:
             matrix:

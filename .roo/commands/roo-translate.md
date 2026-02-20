@@ -1,10 +1,10 @@
 ---
-description: "Translate and localize strings in the Roo Code extension"
+description: "Translate and localize strings in the CoStrict extension"
 argument-hint: "[language-code or 'all'] [string-key or file-path]"
 mode: translate
 ---
 
-Perform translation and localization tasks for the Roo Code extension. This command activates the translation workflow with comprehensive i18n guidelines.
+Perform translation and localization tasks for the CoStrict extension. This command activates the translation workflow with comprehensive i18n guidelines.
 
 ## Quick Start
 

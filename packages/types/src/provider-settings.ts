@@ -35,20 +35,14 @@ export const DEFAULT_CONSECUTIVE_MISTAKE_LIMIT = 3
  * Dynamic provider requires external API calls in order to get the model list.
  */
 
-// export const dynamicProviders = [
-// 	"zgsm",
-// 	"openrouter",
-// 	"vercel-ai-gateway",
-// 	"huggingface",
-// 	"litellm",
-// 	"deepinfra",
-// 	"io-intelligence",
-// 	"requesty",
-// 	"unbound",
-// 	// "roo",
-// 	"chutes",
-// ] as const
-export const dynamicProviders = ["zgsm", "openrouter", "vercel-ai-gateway", "litellm", "requesty"] as const
+export const dynamicProviders = [
+	"zgsm",
+	"openrouter",
+	"vercel-ai-gateway",
+	"litellm",
+	"requesty",
+	/*"roo",*/ "unbound",
+] as const
 
 export type DynamicProvider = (typeof dynamicProviders)[number]
 
@@ -157,7 +151,6 @@ export const retiredProviderNames = [
 	"groq",
 	"huggingface",
 	"io-intelligence",
-	"unbound",
 ] as const
 
 export const retiredProviderNamesSchema = z.enum(retiredProviderNames)
@@ -359,6 +352,10 @@ const requestySchema = baseProviderSettingsSchema.extend({
 })
 
 const humanRelaySchema = baseProviderSettingsSchema
+const unboundSchema = baseProviderSettingsSchema.extend({
+	unboundApiKey: z.string().optional(),
+	unboundModelId: z.string().optional(),
+})
 
 const fakeAiSchema = baseProviderSettingsSchema.extend({
 	fakeAi: z.unknown().optional(),
@@ -435,6 +432,7 @@ export const providerSettingsSchemaDiscriminated = z.discriminatedUnion("apiProv
 	minimaxSchema.merge(z.object({ apiProvider: z.literal("minimax") })),
 	requestySchema.merge(z.object({ apiProvider: z.literal("requesty") })),
 	humanRelaySchema.merge(z.object({ apiProvider: z.literal("human-relay") })),
+	unboundSchema.merge(z.object({ apiProvider: z.literal("unbound") })),
 	fakeAiSchema.merge(z.object({ apiProvider: z.literal("fake-ai") })),
 	xaiSchema.merge(z.object({ apiProvider: z.literal("xai") })),
 	basetenSchema.merge(z.object({ apiProvider: z.literal("baseten") })),
@@ -472,6 +470,7 @@ export const providerSettingsSchema = z.object({
 	...minimaxSchema.shape,
 	...requestySchema.shape,
 	...humanRelaySchema.shape,
+	...unboundSchema.shape,
 	...fakeAiSchema.shape,
 	...xaiSchema.shape,
 	...basetenSchema.shape,
@@ -519,6 +518,7 @@ export const modelIdKeys = [
 	"lmStudioModelId",
 	"lmStudioDraftModelId",
 	"requestyModelId",
+	"unboundModelId",
 	"litellmModelId",
 	"vercelAiGatewayModelId",
 ] as const satisfies readonly (keyof ProviderSettings)[]
@@ -558,6 +558,7 @@ export const modelIdKeysByProvider: Record<TypicalProvider, ModelIdKey> = {
 	deepseek: "apiModelId",
 	"qwen-code": "apiModelId",
 	requesty: "requestyModelId",
+	unbound: "unboundModelId",
 	xai: "apiModelId",
 	baseten: "apiModelId",
 	litellm: "litellmModelId",
@@ -697,6 +698,7 @@ export const MODELS_BY_PROVIDER: Record<
 	litellm: { id: "litellm", label: "LiteLLM", models: [] },
 	openrouter: { id: "openrouter", label: "OpenRouter", models: [] },
 	requesty: { id: "requesty", label: "Requesty", models: [] },
+	unbound: { id: "unbound", label: "Unbound", models: [] },
 	"vercel-ai-gateway": { id: "vercel-ai-gateway", label: "Vercel AI Gateway", models: [] },
 
 	// Local providers; models discovered from localhost endpoints.

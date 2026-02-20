@@ -124,7 +124,7 @@ describe("HistoryPreview", () => {
 		expect(screen.queryByTestId(/task-group-/)).not.toBeInTheDocument()
 	})
 
-	it("renders up to 4 groups when tasks are available", () => {
+	it("renders up to 2 groups when tasks are available", () => {
 		mockUseTaskSearch.mockReturnValue({
 			tasks: mockTasks,
 			searchQuery: "",
@@ -147,19 +147,19 @@ describe("HistoryPreview", () => {
 
 		render(<HistoryPreview />)
 
-		// Should render only the first 4 groups
+		// Should render only the first 2 groups
 		expect(screen.getByTestId("task-group-task-1")).toBeInTheDocument()
 		expect(screen.getByTestId("task-group-task-2")).toBeInTheDocument()
-		expect(screen.getByTestId("task-group-task-3")).toBeInTheDocument()
-		expect(screen.getByTestId("task-group-task-4")).toBeInTheDocument()
+		expect(screen.queryByTestId("task-group-task-3")).not.toBeInTheDocument()
+		expect(screen.queryByTestId("task-group-task-4")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("task-group-task-5")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("task-group-task-6")).not.toBeInTheDocument()
 	})
 
-	it("renders all groups when there are 4 or fewer", () => {
-		const threeTasks = mockTasks.slice(0, 3)
+	it("renders all groups when there are 2 or fewer", () => {
+		const twoTasks = mockTasks.slice(0, 2)
 		mockUseTaskSearch.mockReturnValue({
-			tasks: threeTasks,
+			tasks: twoTasks,
 			searchQuery: "",
 			setSearchQuery: vi.fn(),
 			sortOption: "newest",
@@ -170,7 +170,7 @@ describe("HistoryPreview", () => {
 			setShowAllWorkspaces: vi.fn(),
 		})
 
-		const mockGroups = createMockGroups(threeTasks)
+		const mockGroups = createMockGroups(twoTasks)
 		mockUseGroupedTasks.mockReturnValue({
 			groups: mockGroups,
 			flatTasks: null,
@@ -182,7 +182,7 @@ describe("HistoryPreview", () => {
 
 		expect(screen.getByTestId("task-group-task-1")).toBeInTheDocument()
 		expect(screen.getByTestId("task-group-task-2")).toBeInTheDocument()
-		expect(screen.getByTestId("task-group-task-3")).toBeInTheDocument()
+		expect(screen.queryByTestId("task-group-task-3")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("task-group-task-4")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("task-group-task-5")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("task-group-task-6")).not.toBeInTheDocument()
@@ -217,9 +217,9 @@ describe("HistoryPreview", () => {
 	})
 
 	it("passes correct props to TaskGroupItem components", () => {
-		const threeTasks = mockTasks.slice(0, 3)
+		const twoTasks = mockTasks.slice(0, 2)
 		mockUseTaskSearch.mockReturnValue({
-			tasks: threeTasks,
+			tasks: twoTasks,
 			searchQuery: "",
 			setSearchQuery: vi.fn(),
 			sortOption: "newest",
@@ -230,7 +230,7 @@ describe("HistoryPreview", () => {
 			setShowAllWorkspaces: vi.fn(),
 		})
 
-		const mockGroups = createMockGroups(threeTasks)
+		const mockGroups = createMockGroups(twoTasks)
 		mockUseGroupedTasks.mockReturnValue({
 			groups: mockGroups,
 			flatTasks: null,
@@ -240,7 +240,7 @@ describe("HistoryPreview", () => {
 
 		render(<HistoryPreview />)
 
-		// Verify TaskGroupItem was called with correct props for first 3 groups
+		// Verify TaskGroupItem was called with correct props for first 2 groups
 		expect(mockTaskGroupItem).toHaveBeenCalledWith(
 			expect.objectContaining({
 				group: mockGroups[0],
@@ -251,13 +251,6 @@ describe("HistoryPreview", () => {
 		expect(mockTaskGroupItem).toHaveBeenCalledWith(
 			expect.objectContaining({
 				group: mockGroups[1],
-				variant: "compact",
-			}),
-			expect.anything(),
-		)
-		expect(mockTaskGroupItem).toHaveBeenCalledWith(
-			expect.objectContaining({
-				group: mockGroups[2],
 				variant: "compact",
 			}),
 			expect.anything(),

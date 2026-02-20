@@ -23,6 +23,7 @@ import {
 	VsCodeLmHandler,
 	RequestyHandler,
 	HumanRelayHandler,
+	UnboundHandler,
 	FakeAIHandler,
 	XAIHandler,
 	LiteLLMHandler,
@@ -175,6 +176,8 @@ export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
 			return new RequestyHandler(options)
 		case "human-relay":
 			return new HumanRelayHandler()
+		case "unbound":
+			return new UnboundHandler(options)
 		case "fake-ai":
 			return new FakeAIHandler(options)
 		case "xai":
