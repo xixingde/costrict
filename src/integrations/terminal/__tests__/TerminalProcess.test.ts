@@ -12,7 +12,21 @@ vi.mock("vscode", () => ({
 			get: vi.fn(),
 		}),
 	},
+	extensions: {
+		all: [],
+		getExtension: vi.fn().mockReturnValue({
+			extensionUri: { fsPath: "/mock/extension/uri" },
+		}),
+	},
+	env: {
+		uriScheme: "vscode",
+	},
 	ThemeIcon: vi.fn(),
+	Uri: class {
+		static joinPath(...parts: string[]): string {
+			return parts.join("/")
+		}
+	},
 }))
 
 describe("TerminalProcess ANSI Handling", () => {

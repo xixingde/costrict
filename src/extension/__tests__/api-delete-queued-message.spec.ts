@@ -4,7 +4,35 @@ import * as vscode from "vscode"
 import { API } from "../api"
 import { ClineProvider } from "../../core/webview/ClineProvider"
 
-vi.mock("vscode")
+vi.mock("vscode", () => ({
+	window: {
+		createOutputChannel: vi.fn().mockReturnValue({
+			appendLine: vi.fn(),
+		}),
+		registerWebviewViewProvider: vi.fn(),
+		createTextEditorDecorationType: vi.fn().mockReturnValue({}),
+	},
+	workspace: {
+		getConfiguration: vi.fn().mockReturnValue({
+			get: vi.fn(),
+			update: vi.fn(),
+		}),
+	},
+	extensions: {
+		all: [],
+		getExtension: vi.fn().mockReturnValue({
+			extensionUri: { fsPath: "/mock/extension/uri" },
+		}),
+	},
+	env: {
+		uriScheme: "vscode",
+	},
+	Uri: class {
+		static joinPath(...parts: string[]): string {
+			return parts.join("/")
+		}
+	},
+}))
 vi.mock("../../core/webview/ClineProvider")
 
 describe("API - DeleteQueuedMessage Command", () => {

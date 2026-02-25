@@ -9,10 +9,28 @@ vi.mock("vscode", () => ({
 		showInformationMessage: vi.fn(),
 		showErrorMessage: vi.fn(),
 		showTextDocument: vi.fn(),
+		createTextEditorDecorationType: vi.fn().mockReturnValue({}),
+		createOutputChannel: vi.fn().mockReturnValue({
+			appendLine: vi.fn(),
+		}),
 	},
 	workspace: {
 		workspaceFolders: [{ uri: { fsPath: "/mock/workspace" } }],
 		openTextDocument: vi.fn().mockResolvedValue({}),
+	},
+	extensions: {
+		all: [],
+		getExtension: vi.fn().mockReturnValue({
+			extensionUri: { fsPath: "/mock/extension/uri" },
+		}),
+	},
+	env: {
+		uriScheme: "vscode",
+	},
+	Uri: class {
+		static joinPath(...parts: string[]): string {
+			return parts.join("/")
+		}
 	},
 }))
 

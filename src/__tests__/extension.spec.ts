@@ -75,6 +75,12 @@ vi.mock("vscode", async (importOriginal) => ({
 		base,
 		pattern,
 	})),
+	extensions: {
+		all: [],
+		getExtension: vi.fn().mockReturnValue({
+			extensionUri: { fsPath: "/mock/extension/uri" },
+		}),
+	},
 }))
 
 vi.mock("@dotenvx/dotenvx", () => ({
@@ -319,12 +325,12 @@ describe("extension.ts", () => {
 		expect(dotenvxConfigMock).toHaveBeenCalledTimes(1)
 	}, 60000)
 
-	describe("Roo model cache refresh on auth state change (ROO-202)", () => {
-		beforeEach(() => {
-			vi.resetModules()
-			mockRefreshModels.mockClear()
-		})
-	})
+	//	describe("Roo model cache refresh on auth state change (ROO-202)", () => {
+	//		beforeEach(() => {
+	//			vi.resetModules()
+	//			mockRefreshModels.mockClear()
+	//		})
+	//	})
 	// 	test("refreshModels is called with session token when auth state changes to active-session", async () => {
 	// 		const mockAuthService = {
 	// 			getSessionToken: vi.fn().mockReturnValue("test-session-token"),

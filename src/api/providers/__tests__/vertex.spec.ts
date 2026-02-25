@@ -1,7 +1,31 @@
 // npx vitest run src/api/providers/__tests__/vertex.spec.ts
 
+// Mock TelemetryService - must come before other imports
+vitest.mock("@roo-code/telemetry", () => ({
+	TelemetryService: {
+		instance: {},
+	},
+}))
+
 // Mock vscode first to avoid import errors
-vitest.mock("vscode", () => ({}))
+vitest.mock("vscode", () => ({
+	window: {
+		createOutputChannel: vitest.fn().mockReturnValue({
+			appendLine: vitest.fn(),
+		}),
+		registerWebviewViewProvider: vitest.fn(),
+		createTextEditorDecorationType: vitest.fn().mockReturnValue({}),
+	},
+	extensions: {
+		all: [],
+		getExtension: vitest.fn().mockReturnValue({
+			extensionUri: { fsPath: "/mock/extension/uri" },
+		}),
+	},
+	env: {
+		uriScheme: "vscode",
+	},
+}))
 
 import { Anthropic } from "@anthropic-ai/sdk"
 import { vi } from "vitest"
