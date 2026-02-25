@@ -109,7 +109,7 @@ interface WebviewViewProvider {
 export interface ExtensionHostInterface extends IExtensionHost<ExtensionHostEventMap> {
 	client: ExtensionClient
 	activate(): Promise<void>
-	runTask(prompt: string): Promise<void>
+	runTask(prompt: string, taskId?: string): Promise<void>
 	sendToExtension(message: WebviewMessage): void
 	dispose(): Promise<void>
 }
@@ -217,6 +217,9 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 			mode: this.options.mode,
 			commandExecutionTimeout: 30,
 			enableCheckpoints: false,
+			experiments: {
+				customTools: true,
+			},
 			...getProviderSettings(
 				this.options.provider,
 				isZgsm ? this.options.zgsmAccessToken : this.options.apiKey,
@@ -464,8 +467,8 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 	// Task Management
 	// ==========================================================================
 
-	public async runTask(prompt: string): Promise<void> {
-		this.sendToExtension({ type: "newTask", text: prompt })
+	public async runTask(prompt: string, taskId?: string): Promise<void> {
+		this.sendToExtension({ type: "newTask", text: prompt, taskId })
 
 		return new Promise((resolve, reject) => {
 			const completeHandler = () => {

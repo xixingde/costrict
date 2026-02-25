@@ -58,7 +58,7 @@ pnpm install
 # Build the main extension first.
 pnpm --filter zgsm bundle
 
-# Build the cli.
+# Build the CLI.
 pnpm --filter @roo-code/cli build
 ```
 

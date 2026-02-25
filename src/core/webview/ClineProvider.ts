@@ -2424,6 +2424,7 @@ export class ClineProvider
 		const mergedAllowedCommands = this.mergeAllowedCommands(allowedCommands)
 		const mergedDeniedCommands = this.mergeDeniedCommands(deniedCommands)
 		const cwd = this.cwd
+		const currentTask = this.getCurrentTask()
 
 		if (!debug) {
 			apiConfiguration.useZgsmCustomConfig = false
@@ -2449,12 +2450,11 @@ export class ClineProvider
 			autoCondenseContext: autoCondenseContext ?? true,
 			autoCondenseContextPercent: autoCondenseContextPercent ?? 100,
 			uriScheme: vscode.env.uriScheme,
-			currentTaskItem: this.getCurrentTask()?.taskId
-				? this.taskHistoryStore.get(this.getCurrentTask()!.taskId)
-				: undefined,
-			clineMessages: this.getCurrentTask()?.clineMessages || [],
-			currentTaskTodos: this.getCurrentTask()?.todoList || [],
-			messageQueue: this.getCurrentTask()?.messageQueueService?.messages,
+			currentTaskId: currentTask?.taskId,
+			currentTaskItem: currentTask?.taskId ? this.taskHistoryStore.get(currentTask.taskId) : undefined,
+			clineMessages: currentTask?.clineMessages || [],
+			currentTaskTodos: currentTask?.todoList || [],
+			messageQueue: currentTask?.messageQueueService?.messages,
 			taskHistory: this.taskHistoryStore.getAll().filter((item: HistoryItem) => item.ts && item.task),
 			soundEnabled: soundEnabled ?? false,
 			ttsEnabled: ttsEnabled ?? false,
@@ -3240,10 +3240,14 @@ export class ClineProvider
 			onCreated: this.taskCreationCallback,
 			initialTodos: options.initialTodos,
 			experimentSettings,
+			// Ensure this task is present in clineStack before startTask() emits
+			// its initial state update, so state.currentTaskId is available ASAP.
+			startTask: false,
 			...options,
 		})
 
 		await this.addClineToStack(task)
+		task.start()
 
 		this.log(
 			`[createTask] ${task.parentTask ? "child" : "parent"} task ${task.taskId}.${task.instanceId} instantiated`,

@@ -5,6 +5,33 @@ All notable changes to the `@roo-code/cli` package will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-02-25
+
+### Changed
+
+- **Streaming Deltas**: Tool use ask messages (command, tool, mcp) are now streamed as structured deltas instead of full snapshots in json-event-emitter for improved efficiency.
+- **Task ID Propagation**: Task ID is now generated upfront and propagated through runTask/createTask so currentTaskId is available in extension state immediately.
+- **Custom Tools**: Enabled customTools experiment in extension host.
+
+### Fixed
+
+- **Cancel Recovery**: Wait for resumable state after cancel before processing follow-up messages to prevent race conditions in stdin-stream.
+- **Custom Tool Schema**: Provide valid empty JSON Schema for custom tools without parameters to fix strict-mode API validation.
+- **Path Handling**: Skip paths outside cwd in RooProtectedController to avoid RangeError.
+- **Retry Handling**: Silently handle abort during exponential backoff retry countdown.
+- Fixed spelling/grammar and casing inconsistencies.
+
+### Added
+
+- **Telemetry Control**: Added `ROO_CODE_DISABLE_TELEMETRY=1` environment variable to disable cloud telemetry.
+
+## [0.1.1] - 2026-02-24
+
+### Added
+
+- **Roo Model Warmup**: When configured with the Roo provider, the CLI now proactively fetches and warms the model list during activation so that model information is available before the first prompt is sent. The warmup has a 10s timeout and failures are logged only in debug mode.
+- **Unbound Provider**: Added Unbound as an available provider option.
+
 ## [0.1.0] - 2026-02-19
 
 ### Added
