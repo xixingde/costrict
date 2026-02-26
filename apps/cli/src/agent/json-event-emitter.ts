@@ -16,10 +16,11 @@
 
 import type { ClineMessage } from "@roo-code/types"
 
-import type { JsonEvent, JsonEventCost, JsonFinalOutput } from "@/types/json-events.js"
+import type { JsonEvent, JsonEventCost, JsonEventQueueItem, JsonFinalOutput } from "@/types/json-events.js"
 
 import type { ExtensionClient } from "./extension-client.js"
-import type { TaskCompletedEvent } from "./events.js"
+import type { AgentStateChangeEvent, TaskCompletedEvent } from "./events.js"
+import { AgentLoopState } from "./agent-state.js"
 
 /**
  * Options for JsonEventEmitter.
@@ -29,6 +30,14 @@ export interface JsonEventEmitterOptions {
 	mode: "json" | "stream-json"
 	/** Output stream (defaults to process.stdout) */
 	stdout?: NodeJS.WriteStream
+	/** Optional request id provider for correlating stream events */
+	requestIdProvider?: () => string | undefined
+	/** Transport schema version emitted in system:init */
+	schemaVersion?: number
+	/** Transport protocol identifier emitted in system:init */
+	protocol?: string
+	/** Supported stdin protocol capabilities emitted in system:init */
+	capabilities?: string[]
 }
 
 /**
@@ -88,15 +97,35 @@ export class JsonEventEmitter {
 	private events: JsonEvent[] = []
 	private unsubscribers: (() => void)[] = []
 	private lastCost: JsonEventCost | undefined
+	private requestIdProvider: () => string | undefined
+	private schemaVersion: number
+	private protocol: string
+	private capabilities: string[]
 	private seenMessageIds = new Set<number>()
 	// Track previous content for delta computation
 	private previousContent = new Map<number, string>()
+	// Track previous tool-use content for structured (non-append-only) delta computation.
+	private previousToolUseContent = new Map<number, string>()
 	// Track the completion result content
 	private completionResultContent: string | undefined
+	// Track the latest assistant text as a fallback for result.content.
+	private lastAssistantText: string | undefined
+	// The first non-partial "say:text" per task is the echoed user prompt.
+	private expectPromptEchoAsUser = true
 
 	constructor(options: JsonEventEmitterOptions) {
 		this.mode = options.mode
 		this.stdout = options.stdout ?? process.stdout
+		this.requestIdProvider = options.requestIdProvider ?? (() => undefined)
+		this.schemaVersion = options.schemaVersion ?? 1
+		this.protocol = options.protocol ?? "roo-cli-stream"
+		this.capabilities = options.capabilities ?? [
+			"stdin:start",
+			"stdin:message",
+			"stdin:cancel",
+			"stdin:ping",
+			"stdin:shutdown",
+		]
 	}
 
 	/**
@@ -106,17 +135,70 @@ export class JsonEventEmitter {
 		// Subscribe to message events
 		const unsubMessage = client.on("message", (msg) => this.handleMessage(msg, false))
 		const unsubMessageUpdated = client.on("messageUpdated", (msg) => this.handleMessage(msg, true))
+		const unsubStateChange = client.on("stateChange", (event) => this.handleStateChange(event))
 		const unsubTaskCompleted = client.on("taskCompleted", (event) => this.handleTaskCompleted(event))
 		const unsubError = client.on("error", (error) => this.handleError(error))
 
-		this.unsubscribers.push(unsubMessage, unsubMessageUpdated, unsubTaskCompleted, unsubError)
+		this.unsubscribers.push(unsubMessage, unsubMessageUpdated, unsubStateChange, unsubTaskCompleted, unsubError)
 
 		// Emit init event
 		this.emitEvent({
 			type: "system",
 			subtype: "init",
 			content: "Task started",
+			schemaVersion: this.schemaVersion,
+			protocol: this.protocol,
+			capabilities: this.capabilities,
 		})
+	}
+
+	emitControl(event: {
+		subtype: "ack" | "done" | "error"
+		requestId?: string
+		command?: string
+		taskId?: string
+		content?: string
+		success?: boolean
+		code?: string
+	}): void {
+		this.emitEvent({
+			type: "control",
+			subtype: event.subtype,
+			requestId: event.requestId,
+			command: event.command,
+			taskId: event.taskId,
+			content: event.content,
+			success: event.success,
+			code: event.code,
+			done: event.subtype === "done" ? true : undefined,
+		})
+	}
+
+	emitQueue(event: {
+		subtype: "snapshot" | "enqueued" | "dequeued" | "drained" | "updated"
+		taskId?: string
+		content?: string
+		queueDepth: number
+		queue: JsonEventQueueItem[]
+	}): void {
+		this.emitEvent({
+			type: "queue",
+			subtype: event.subtype,
+			taskId: event.taskId,
+			content: event.content,
+			queueDepth: event.queueDepth,
+			queue: event.queue,
+		})
+	}
+
+	private handleStateChange(event: AgentStateChangeEvent): void {
+		// Only treat the next say:text as a prompt echo when a new task starts.
+		if (
+			event.previousState.state === AgentLoopState.NO_TASK &&
+			event.currentState.state !== AgentLoopState.NO_TASK
+		) {
+			this.expectPromptEchoAsUser = true
+		}
 	}
 
 	/**
@@ -145,6 +227,60 @@ export class JsonEventEmitter {
 	}
 
 	/**
+	 * Compute a compact delta for structured strings (for tool_use snapshots).
+	 *
+	 * Unlike append-only text streams, tool-use payloads are often full snapshots
+	 * where edits happen before a stable suffix (e.g., inside JSON strings). This
+	 * extracts the inserted segment when possible; otherwise it falls back to the
+	 * full snapshot so consumers can recover.
+	 */
+	private computeStructuredDelta(msgId: number, fullContent: string | undefined): string | null {
+		if (!fullContent) {
+			return null
+		}
+
+		const previous = this.previousToolUseContent.get(msgId) || ""
+
+		if (fullContent === previous) {
+			return null
+		}
+
+		this.previousToolUseContent.set(msgId, fullContent)
+
+		if (previous.length === 0) {
+			return fullContent
+		}
+
+		if (fullContent.startsWith(previous)) {
+			return fullContent.slice(previous.length)
+		}
+
+		let prefix = 0
+
+		while (prefix < previous.length && prefix < fullContent.length && previous[prefix] === fullContent[prefix]) {
+			prefix++
+		}
+
+		let suffix = 0
+
+		while (
+			suffix < previous.length - prefix &&
+			suffix < fullContent.length - prefix &&
+			previous[previous.length - 1 - suffix] === fullContent[fullContent.length - 1 - suffix]
+		) {
+			suffix++
+		}
+
+		const isPureInsertion = fullContent.length >= previous.length && prefix + suffix >= previous.length
+
+		if (isPureInsertion) {
+			return fullContent.slice(prefix, fullContent.length - suffix)
+		}
+
+		return fullContent
+	}
+
+	/**
 	 * Check if this is a streaming partial message with no new content.
 	 */
 	private isEmptyStreamingDelta(content: string | null): boolean {
@@ -158,6 +294,7 @@ export class JsonEventEmitter {
 		if (this.mode === "stream-json" && isPartial) {
 			return this.computeDelta(msgId, text)
 		}
+
 		return text ?? null
 	}
 
@@ -172,15 +309,19 @@ export class JsonEventEmitter {
 		subtype?: string,
 	): JsonEvent {
 		const event: JsonEvent = { type, id }
+
 		if (content !== null) {
 			event.content = content
 		}
+
 		if (subtype) {
 			event.subtype = subtype
 		}
+
 		if (isDone) {
 			event.done = true
 		}
+
 		return event
 	}
 
@@ -203,21 +344,22 @@ export class JsonEventEmitter {
 		if (isDone) {
 			this.seenMessageIds.add(msg.ts)
 			this.previousContent.delete(msg.ts)
-		}
-
-		const contentToSend = this.getContentToSend(msg.ts, msg.text, msg.partial ?? false)
-
-		// Skip if no new content for streaming partial messages
-		if (msg.partial && this.isEmptyStreamingDelta(contentToSend)) {
-			return
+			this.previousToolUseContent.delete(msg.ts)
 		}
 
 		if (msg.type === "say" && msg.say) {
+			const contentToSend = this.getContentToSend(msg.ts, msg.text, msg.partial ?? false)
+
+			// Skip if no new content for streaming partial messages
+			if (msg.partial && this.isEmptyStreamingDelta(contentToSend)) {
+				return
+			}
+
 			this.handleSayMessage(msg, contentToSend, isDone)
 		}
 
 		if (msg.type === "ask" && msg.ask) {
-			this.handleAskMessage(msg, contentToSend, isDone)
+			this.handleAskMessage(msg, isDone)
 		}
 	}
 
@@ -227,7 +369,17 @@ export class JsonEventEmitter {
 	private handleSayMessage(msg: ClineMessage, contentToSend: string | null, isDone: boolean): void {
 		switch (msg.say) {
 			case "text":
-				this.emitEvent(this.buildTextEvent("assistant", msg.ts, contentToSend, isDone))
+				if (this.expectPromptEchoAsUser) {
+					this.emitEvent(this.buildTextEvent("user", msg.ts, contentToSend, isDone))
+					if (isDone) {
+						this.expectPromptEchoAsUser = false
+					}
+				} else {
+					this.emitEvent(this.buildTextEvent("assistant", msg.ts, contentToSend, isDone))
+					if (msg.text) {
+						this.lastAssistantText = msg.text
+					}
+				}
 				break
 
 			case "reasoning":
@@ -248,6 +400,9 @@ export class JsonEventEmitter {
 			case "user_feedback":
 			case "user_feedback_diff":
 				this.emitEvent(this.buildTextEvent("user", msg.ts, contentToSend, isDone))
+				if (isDone) {
+					this.expectPromptEchoAsUser = false
+				}
 				break
 
 			case "api_req_started": {
@@ -257,15 +412,6 @@ export class JsonEventEmitter {
 				}
 				break
 			}
-
-			case "browser_action":
-			case "browser_action_result":
-				this.emitEvent({
-					type: "tool_result",
-					subtype: "browser",
-					tool_result: { name: "browser_action", output: msg.text },
-				})
-				break
 
 			case "mcp_server_response":
 				this.emitEvent({
@@ -314,49 +460,31 @@ export class JsonEventEmitter {
 	/**
 	 * Handle "ask" type messages.
 	 */
-	private handleAskMessage(msg: ClineMessage, contentToSend: string | null, isDone: boolean): void {
+	private handleAskMessage(msg: ClineMessage, isDone: boolean): void {
 		switch (msg.ask) {
-			case "tool": {
-				const toolInfo = parseToolInfo(msg.text)
-				this.emitEvent({
-					type: "tool_use",
-					id: msg.ts,
-					subtype: "tool",
-					tool_use: toolInfo ?? { name: "unknown_tool", input: { raw: msg.text } },
-				})
+			case "tool":
+				this.handleToolUseAsk(msg, "tool", isDone)
 				break
-			}
 
 			case "command":
-				this.emitEvent({
-					type: "tool_use",
-					id: msg.ts,
-					subtype: "command",
-					tool_use: { name: "execute_command", input: { command: msg.text } },
-				})
-				break
-
-			case "browser_action_launch":
-				this.emitEvent({
-					type: "tool_use",
-					id: msg.ts,
-					subtype: "browser",
-					tool_use: { name: "browser_action", input: { raw: msg.text } },
-				})
+				this.handleToolUseAsk(msg, "command", isDone)
 				break
 
 			case "use_mcp_server":
-				this.emitEvent({
-					type: "tool_use",
-					id: msg.ts,
-					subtype: "mcp",
-					tool_use: { name: "mcp_server", input: { raw: msg.text } },
-				})
+				this.handleToolUseAsk(msg, "mcp", isDone)
 				break
 
-			case "followup":
+			case "followup": {
+				const contentToSend = this.getContentToSend(msg.ts, msg.text, msg.partial ?? false)
+
+				// Skip if no new content for streaming partial messages
+				if (msg.partial && this.isEmptyStreamingDelta(contentToSend)) {
+					return
+				}
+
 				this.emitEvent(this.buildTextEvent("assistant", msg.ts, contentToSend, isDone, "followup"))
 				break
+			}
 
 			case "command_output":
 				// Handled in say type
@@ -370,10 +498,100 @@ export class JsonEventEmitter {
 
 			default:
 				if (msg.text) {
+					const contentToSend = this.getContentToSend(msg.ts, msg.text, msg.partial ?? false)
+
+					// Skip if no new content for streaming partial messages
+					if (msg.partial && this.isEmptyStreamingDelta(contentToSend)) {
+						return
+					}
+
 					this.emitEvent(this.buildTextEvent("assistant", msg.ts, contentToSend, isDone, msg.ask))
 				}
 				break
 		}
+	}
+
+	private handleToolUseAsk(msg: ClineMessage, subtype: "tool" | "command" | "mcp", isDone: boolean): void {
+		const isStreamingPartial = this.mode === "stream-json" && msg.partial === true
+		const toolInfo = parseToolInfo(msg.text)
+
+		if (subtype === "command") {
+			if (isStreamingPartial) {
+				const commandDelta = this.computeStructuredDelta(msg.ts, msg.text)
+				if (commandDelta === null) {
+					return
+				}
+
+				this.emitEvent({
+					type: "tool_use",
+					id: msg.ts,
+					subtype: "command",
+					content: commandDelta,
+					tool_use: { name: "execute_command", input: { command: commandDelta } },
+				})
+				return
+			}
+
+			this.emitEvent({
+				type: "tool_use",
+				id: msg.ts,
+				subtype: "command",
+				tool_use: { name: "execute_command", input: { command: msg.text } },
+				...(isDone ? { done: true } : {}),
+			})
+			return
+		}
+
+		if (subtype === "mcp") {
+			if (isStreamingPartial) {
+				const mcpDelta = this.computeStructuredDelta(msg.ts, msg.text)
+				if (mcpDelta === null) {
+					return
+				}
+
+				this.emitEvent({
+					type: "tool_use",
+					id: msg.ts,
+					subtype: "mcp",
+					content: mcpDelta,
+					tool_use: { name: "mcp_server" },
+				})
+				return
+			}
+
+			this.emitEvent({
+				type: "tool_use",
+				id: msg.ts,
+				subtype: "mcp",
+				tool_use: { name: "mcp_server", input: { raw: msg.text } },
+				...(isDone ? { done: true } : {}),
+			})
+			return
+		}
+
+		if (isStreamingPartial) {
+			const toolDelta = this.computeStructuredDelta(msg.ts, msg.text)
+			if (toolDelta === null) {
+				return
+			}
+
+			this.emitEvent({
+				type: "tool_use",
+				id: msg.ts,
+				subtype: "tool",
+				content: toolDelta,
+				tool_use: { name: toolInfo?.name ?? "unknown_tool" },
+			})
+			return
+		}
+
+		this.emitEvent({
+			type: "tool_use",
+			id: msg.ts,
+			subtype: "tool",
+			tool_use: toolInfo ?? { name: "unknown_tool", input: { raw: msg.text } },
+			...(isDone ? { done: true } : {}),
+		})
 	}
 
 	/**
@@ -381,7 +599,7 @@ export class JsonEventEmitter {
 	 */
 	private handleTaskCompleted(event: TaskCompletedEvent): void {
 		// Use tracked completion result content, falling back to event message
-		const resultContent = this.completionResultContent || event.message?.text
+		const resultContent = this.completionResultContent || event.message?.text || this.lastAssistantText
 
 		this.emitEvent({
 			type: "result",
@@ -415,10 +633,13 @@ export class JsonEventEmitter {
 	 * For json mode: accumulate for final output
 	 */
 	private emitEvent(event: JsonEvent): void {
-		this.events.push(event)
+		const requestId = event.requestId ?? this.requestIdProvider()
+		const payload = requestId ? { ...event, requestId } : event
+
+		this.events.push(payload)
 
 		if (this.mode === "stream-json") {
-			this.outputLine(event)
+			this.outputLine(payload)
 		}
 	}
 
@@ -459,6 +680,9 @@ export class JsonEventEmitter {
 		this.lastCost = undefined
 		this.seenMessageIds.clear()
 		this.previousContent.clear()
+		this.previousToolUseContent.clear()
 		this.completionResultContent = undefined
+		this.lastAssistantText = undefined
+		this.expectPromptEchoAsUser = true
 	}
 }

@@ -109,7 +109,7 @@ interface WebviewViewProvider {
 export interface ExtensionHostInterface extends IExtensionHost<ExtensionHostEventMap> {
 	client: ExtensionClient
 	activate(): Promise<void>
-	runTask(prompt: string): Promise<void>
+	runTask(prompt: string, taskId?: string): Promise<void>
 	sendToExtension(message: WebviewMessage): void
 	dispose(): Promise<void>
 }
@@ -137,6 +137,7 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 
 	// Ephemeral storage.
 	private ephemeralStorageDir: string | null = null
+	private previousCliRuntimeEnv: string | undefined
 
 	// ==========================================================================
 	// Managers - These do all the heavy lifting
@@ -174,6 +175,10 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		super()
 		this.options = options
 		const isZgsm = this?.options?.provider === "zgsm"
+		// Mark this process as CLI runtime so extension code can apply
+		// CLI-specific behavior without affecting VS Code desktop usage.
+		this.previousCliRuntimeEnv = process.env.ROO_CLI_RUNTIME
+		process.env.ROO_CLI_RUNTIME = "1"
 
 		// Enable file-based debug logging only when --debug is passed.
 		if (options.debug) {
@@ -216,8 +221,10 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		const baseSettings: RooCodeSettings = {
 			mode: this.options.mode,
 			commandExecutionTimeout: 30,
-			browserToolEnabled: false,
 			enableCheckpoints: false,
+			experiments: {
+				customTools: true,
+			},
 			...getProviderSettings(
 				this.options.provider,
 				isZgsm ? this.options.zgsmAccessToken : this.options.apiKey,
@@ -233,7 +240,6 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 					alwaysAllowWrite: true,
 					alwaysAllowWriteOutsideWorkspace: true,
 					alwaysAllowWriteProtected: true,
-					alwaysAllowBrowser: true,
 					alwaysAllowMcp: true,
 					alwaysAllowModeSwitch: true,
 					alwaysAllowSubtasks: true,
@@ -466,8 +472,8 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 	// Task Management
 	// ==========================================================================
 
-	public async runTask(prompt: string): Promise<void> {
-		this.sendToExtension({ type: "newTask", text: prompt })
+	public async runTask(prompt: string, taskId?: string): Promise<void> {
+		this.sendToExtension({ type: "newTask", text: prompt, taskId })
 
 		return new Promise((resolve, reject) => {
 			const completeHandler = () => {
@@ -574,6 +580,13 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 			} catch {
 				// NO-OP
 			}
+		}
+
+		// Restore previous CLI runtime marker for process hygiene in tests.
+		if (this.previousCliRuntimeEnv === undefined) {
+			delete process.env.ROO_CLI_RUNTIME
+		} else {
+			process.env.ROO_CLI_RUNTIME = this.previousCliRuntimeEnv
 		}
 	}
 }
