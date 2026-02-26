@@ -177,8 +177,8 @@ describe("ProviderSettingsManager", () => {
 			// Get the last call to store, which should contain the migrated config
 			const calls = mockSecrets.store.mock.calls
 			const storedConfig = JSON.parse(calls[calls.length - 1][1])
-			expect(storedConfig.apiConfigs.default.consecutiveMistakeLimit).toEqual(3)
-			expect(storedConfig.apiConfigs.test.consecutiveMistakeLimit).toEqual(3)
+			expect(storedConfig.apiConfigs.default.consecutiveMistakeLimit).toEqual(5)
+			expect(storedConfig.apiConfigs.test.consecutiveMistakeLimit).toEqual(5)
 			expect(storedConfig.apiConfigs.existing.consecutiveMistakeLimit).toEqual(5)
 			expect(storedConfig.migrations.consecutiveMistakeLimitMigrated).toEqual(true)
 		})
