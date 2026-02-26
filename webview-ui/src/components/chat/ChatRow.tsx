@@ -1535,30 +1535,27 @@ export const ChatRowContent = ({
 					return null // we should never see this message type
 				case "text": {
 					const resultText = `${message?.text ?? ""}`
-					const loadingMessage = !resultText?.trim() && isLast && isStreaming
-
-					if (loadingMessage) {
-						return (
-							<div className="group text-sm transition-opacity opacity-100" style={headerStyle}>
-								<ProgressIndicator />
-								<span style={{ color: normalColor }}>
-									<RandomLoadingMessage language={language as RandomLoadingMessageLanguage} />
-								</span>
-							</div>
-						)
-					}
+					const loadingMessage = isLast && message.partial
 					if (!resultText?.trim()) {
-						return <div className="ml-2 pl-4 pb-1">{t("chat:emptyCompletionResult")}</div>
+						return <div className="ml-2 mb-0 pl-4 pb-1">{t("chat:emptyCompletionResult")}</div>
 					}
 					return (
 						<div className="group">
+							{loadingMessage ? (
+								<div className="group text-sm transition-opacity opacity-100" style={headerStyle}>
+									<ProgressIndicator />
+									<span style={{ color: normalColor }}>
+										<RandomLoadingMessage language={language as RandomLoadingMessageLanguage} />
+									</span>
+								</div>
+							) :
 							<div style={headerStyle}>
 								<MessageCircle className="w-4 shrink-0" aria-label="Speech bubble icon" />
 								<span style={{ fontWeight: "bold" }}>{t("chat:text.rooSaid")}</span>
 								{message.ts ? format(new Date(message.ts), "yyyy-MM-dd HH:mm:ss") : ""}
 								<div style={{ flexGrow: 1 }} />
 								<OpenMarkdownPreviewButton markdown={message.text} />
-							</div>
+							</div>}
 							<div className="pl-6">
 								<Markdown
 									collapseWithoutScroll={collapseWithoutScrollEnabled}
@@ -1764,6 +1761,7 @@ export const ChatRowContent = ({
 										query: searchQuery,
 										flag: t("settings:experimental.CHAT_SEARCH.placeholder"),
 									})}
+									partial={message.partial}
 								/>
 							</div>
 						</div>
@@ -2132,6 +2130,7 @@ export const ChatRowContent = ({
 								</div>
 								<div style={{ color: "var(--vscode-charts-green)", paddingTop: 10 }}>
 									<Markdown
+										collapseWithoutScroll={collapseWithoutScrollEnabled}
 										markdown={HighlightedPlainText({
 											message: message || {},
 											query: searchQuery,

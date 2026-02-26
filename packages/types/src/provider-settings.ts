@@ -27,7 +27,7 @@ import {
  * constants
  */
 
-export const DEFAULT_CONSECUTIVE_MISTAKE_LIMIT = 3
+export const DEFAULT_CONSECUTIVE_MISTAKE_LIMIT = 5
 
 /**
  * DynamicProvider

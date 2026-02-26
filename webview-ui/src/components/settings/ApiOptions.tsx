@@ -900,7 +900,7 @@ const ApiOptions = ({
 									/>
 								)}
 								<RateLimitSecondsControl
-									value={apiConfiguration.rateLimitSeconds || 0}
+									value={apiConfiguration.rateLimitSeconds ?? 1}
 									onChange={(value) => setApiConfigurationField("rateLimitSeconds", value)}
 								/>
 								<ConsecutiveMistakeLimitControl

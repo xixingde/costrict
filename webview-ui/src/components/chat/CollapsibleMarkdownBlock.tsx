@@ -10,10 +10,11 @@ const MAX_COLLAPSED_HEIGHT = 400
 
 interface CollapsibleMarkdownBlockProps {
 	markdown?: string
+	partial?: boolean
 	collapseWithoutScroll?: boolean
 }
 
-export const CollapsibleMarkdownBlock = memo(({ markdown, collapseWithoutScroll }: CollapsibleMarkdownBlockProps) => {
+export const CollapsibleMarkdownBlock = memo(({ markdown, collapseWithoutScroll, partial }: CollapsibleMarkdownBlockProps) => {
 	const { t } = useTranslation()
 	const [isHovering, setIsHovering] = useState(false)
 	const [isExpanded, setIsExpanded] = useState(false)
@@ -36,7 +37,7 @@ export const CollapsibleMarkdownBlock = memo(({ markdown, collapseWithoutScroll 
 			onMouseEnter={() => setIsHovering(true)}
 			onMouseLeave={() => setIsHovering(false)}
 			style={{ position: "relative" }}>
-			{isHovering && showExpandButton && (
+			{isHovering && showExpandButton && !partial && (
 				<div
 					style={{
 						position: "absolute",
