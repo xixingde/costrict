@@ -613,7 +613,7 @@ describe("FileRestrictionError", () => {
 				name: "🔧 Debug",
 				roleDefinition:
 					"You are CoStrict, an expert software debugger specializing in systematic problem diagnosis and resolution.",
-				groups: ["read", "edit", "command", "mcp", "question", "sequential_thinking", "file_outline"],
+				groups: ["read", "edit", "command", "mcp"],
 			})
 			expect(debugMode?.customInstructions).toContain(
 				"Reflect on 5-7 different possible sources of the problem, distill those down to 1-2 most likely sources, and then add logs to validate your assumptions. Explicitly ask the user to confirm the diagnosis before fixing the problem.",
