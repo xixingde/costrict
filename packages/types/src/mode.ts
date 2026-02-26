@@ -271,6 +271,20 @@ const WORKFLOW_MODES: readonly modelType[] = [
 		apiProvider: "zgsm",
 	},
 	{
+		slug: "plan-apply",
+		name: "✨ PlanApply",
+		roleDefinition: CODING_AGENT_ROLE_DEFINITION,
+		description: "Development task management and coordination",
+		whenToUse:
+			"Use this mode when you need to coordinate and manage software development tasks. Acts as project manager and technical architect, responsible for understanding global task planning, distributing development tasks to SubCodingAgent, reviewing code submissions, handling technical decisions, and tracking progress. Suitable for organized and efficient development task execution based on task.md.",
+		groups: ["read", "edit", "command", "modes", "sequential_thinking"],
+		subagents: ["subcoding"],
+		pure: true,
+		source: "project",
+		zgsmCodeModeGroup: "plan",
+		apiProvider: "zgsm",
+	},
+	{
 		slug: "quick-explore",
 		name: "📚 QuickExplore",
 		roleDefinition: QUICK_EXPLORE_AGENT_ROLE_DEFINITION,
@@ -318,20 +332,6 @@ const WORKFLOW_MODES: readonly modelType[] = [
 		pure: true,
 		source: "project",
 		zgsmCodeModeGroup: "hide",
-		apiProvider: "zgsm",
-	},
-	{
-		slug: "plan-apply",
-		name: "✨ PlanApply",
-		roleDefinition: CODING_AGENT_ROLE_DEFINITION,
-		description: "Development task management and coordination",
-		whenToUse:
-			"Use this mode when you need to coordinate and manage software development tasks. Acts as project manager and technical architect, responsible for understanding global task planning, distributing development tasks to SubCodingAgent, reviewing code submissions, handling technical decisions, and tracking progress. Suitable for organized and efficient development task execution based on task.md.",
-		groups: ["read", "edit", "command", "modes", "sequential_thinking"],
-		subagents: ["subcoding"],
-		pure: true,
-		source: "project",
-		zgsmCodeModeGroup: "plan",
 		apiProvider: "zgsm",
 	},
 	{

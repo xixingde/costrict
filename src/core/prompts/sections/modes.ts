@@ -33,7 +33,8 @@ ${allModes
 		}
 
 		// Original zgsmCodeMode filtering logic
-		if (!mode.zgsmCodeModeGroup || mode.slug === "review") return true
+		if (!mode.zgsmCodeModeGroup || ["quick-explore", "task-check", "subcoding", "review"].includes(mode.slug))
+			return true
 		if (mode.zgsmCodeModeGroup) return mode.zgsmCodeModeGroup.split(",").includes(zgsmCodeMode ?? "vibe")
 		return true
 	})

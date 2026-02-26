@@ -21,10 +21,10 @@ describe("file_outline", () => {
 	describe("description", () => {
 		it("should contain outline-related keywords", () => {
 			const description = getFunctionDef(fileOutline).description
-			expect(description).toContain("大纲结构")
+			expect(description).toContain("结构信息")
 			expect(description).toContain("函数")
 			expect(description).toContain("类")
-			expect(description).toContain("接口")
+			expect(description).toContain("文档字符串")
 		})
 	})
 
