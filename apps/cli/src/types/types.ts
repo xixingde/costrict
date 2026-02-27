@@ -21,6 +21,8 @@ export type ReasoningEffortFlagOptions = ReasoningEffortExtended | "unspecified"
 
 export type FlagOptions = {
 	promptFile?: string
+	sessionId?: string
+	continue: boolean
 	workspace?: string
 	print: boolean
 	stdinPromptStream: boolean
