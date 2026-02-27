@@ -1,6 +1,13 @@
 import { createInterface } from "readline"
 import { randomUUID } from "crypto"
 
+import {
+	rooCliCommandNames,
+	type RooCliCommandName,
+	type RooCliInputCommand,
+	type RooCliStartCommand,
+} from "@roo-code/types"
+
 import { isRecord } from "@/lib/utils/guards.js"
 
 import type { ExtensionHost } from "@/agent/index.js"
@@ -10,20 +17,15 @@ import type { JsonEventEmitter } from "@/agent/json-event-emitter.js"
 // Types
 // ---------------------------------------------------------------------------
 
-export type StdinStreamCommandName = "start" | "message" | "cancel" | "ping" | "shutdown"
+export type StdinStreamCommandName = RooCliCommandName
 
-export type StdinStreamCommand =
-	| { command: "start"; requestId: string; prompt: string }
-	| { command: "message"; requestId: string; prompt: string }
-	| { command: "cancel"; requestId: string }
-	| { command: "ping"; requestId: string }
-	| { command: "shutdown"; requestId: string }
+export type StdinStreamCommand = RooCliInputCommand
 
 // ---------------------------------------------------------------------------
 // Parsing
 // ---------------------------------------------------------------------------
 
-export const VALID_STDIN_COMMANDS = new Set<StdinStreamCommandName>(["start", "message", "cancel", "ping", "shutdown"])
+export const VALID_STDIN_COMMANDS = new Set<StdinStreamCommandName>(rooCliCommandNames)
 
 export function parseStdinStreamCommand(line: string, lineNumber: number): StdinStreamCommand {
 	let parsed: unknown
@@ -62,6 +64,15 @@ export function parseStdinStreamCommand(line: string, lineNumber: number): Stdin
 		const promptRaw = parsed.prompt
 		if (typeof promptRaw !== "string" || promptRaw.trim().length === 0) {
 			throw new Error(`stdin command line ${lineNumber}: "${command}" requires non-empty string "prompt"`)
+		}
+
+		if (command === "start" && isRecord(parsed.configuration)) {
+			return {
+				command,
+				requestId,
+				prompt: promptRaw,
+				configuration: parsed.configuration as RooCliStartCommand["configuration"],
+			}
 		}
 
 		return { command, requestId, prompt: promptRaw }
@@ -186,6 +197,10 @@ function isCancellationLikeError(error: unknown): boolean {
 const RESUME_ASKS = new Set(["resume_task", "resume_completed_task"])
 const CANCEL_RECOVERY_WAIT_TIMEOUT_MS = 8_000
 const CANCEL_RECOVERY_POLL_INTERVAL_MS = 100
+const STDIN_EOF_RESUME_WAIT_TIMEOUT_MS = 2_000
+const STDIN_EOF_POLL_INTERVAL_MS = 100
+const STDIN_EOF_IDLE_ASKS = new Set(["completion_result", "resume_completed_task"])
+const STDIN_EOF_IDLE_STABLE_POLLS = 2
 
 function isResumableState(host: ExtensionHost): boolean {
 	const agentState = host.client.getAgentState()
@@ -205,6 +220,69 @@ async function waitForPostCancelRecovery(host: ExtensionHost): Promise<void> {
 		}
 
 		await new Promise((resolve) => setTimeout(resolve, CANCEL_RECOVERY_POLL_INTERVAL_MS))
+	}
+}
+
+async function waitForTaskProgressAfterStdinClosed(
+	host: ExtensionHost,
+	getQueueState: () => { hasSeenQueueState: boolean; queueDepth: number },
+): Promise<void> {
+	while (host.client.hasActiveTask()) {
+		if (!host.isWaitingForInput()) {
+			await new Promise((resolve) => setTimeout(resolve, STDIN_EOF_POLL_INTERVAL_MS))
+			continue
+		}
+
+		const deadline = Date.now() + STDIN_EOF_RESUME_WAIT_TIMEOUT_MS
+
+		while (Date.now() < deadline) {
+			if (!host.client.hasActiveTask() || !host.isWaitingForInput()) {
+				break
+			}
+
+			await new Promise((resolve) => setTimeout(resolve, STDIN_EOF_POLL_INTERVAL_MS))
+		}
+
+		if (host.client.hasActiveTask() && host.isWaitingForInput()) {
+			const currentAsk = host.client.getCurrentAsk()
+			const { hasSeenQueueState, queueDepth } = getQueueState()
+
+			// EOF is allowed when the task has reached an idle completion boundary and
+			// there is no queued user input waiting to be processed.
+			if (
+				hasSeenQueueState &&
+				queueDepth === 0 &&
+				typeof currentAsk === "string" &&
+				STDIN_EOF_IDLE_ASKS.has(currentAsk)
+			) {
+				let isStable = true
+				for (let i = 1; i < STDIN_EOF_IDLE_STABLE_POLLS; i++) {
+					await new Promise((resolve) => setTimeout(resolve, STDIN_EOF_POLL_INTERVAL_MS))
+
+					if (!host.client.hasActiveTask() || !host.isWaitingForInput()) {
+						isStable = false
+						break
+					}
+
+					const nextAsk = host.client.getCurrentAsk()
+					const nextQueueState = getQueueState()
+					if (
+						nextAsk !== currentAsk ||
+						!nextQueueState.hasSeenQueueState ||
+						nextQueueState.queueDepth !== 0
+					) {
+						isStable = false
+						break
+					}
+				}
+
+				if (isStable) {
+					return
+				}
+			}
+
+			throw new Error(`stdin ended while task was waiting for input (${currentAsk ?? "unknown"})`)
+		}
 	}
 }
 
@@ -421,7 +499,7 @@ export async function runStdinStreamMode({ host, jsonEmitter, setStreamRequestId
 					})
 
 					activeTaskPromise = host
-						.runTask(stdinCommand.prompt, latestTaskId)
+						.runTask(stdinCommand.prompt, latestTaskId, stdinCommand.configuration)
 						.catch((error) => {
 							const message = error instanceof Error ? error.message : String(error)
 
@@ -633,13 +711,15 @@ export async function runStdinStreamMode({ host, jsonEmitter, setStreamRequestId
 			host.client.cancelTask()
 		}
 
-		if (!shouldShutdown && host.client.hasActiveTask() && host.isWaitingForInput()) {
-			const currentAsk = host.client.getCurrentAsk()
-			throw new Error(`stdin ended while task was waiting for input (${currentAsk ?? "unknown"})`)
-		}
-
-		if (!shouldShutdown && activeTaskPromise) {
-			await activeTaskPromise
+		if (!shouldShutdown) {
+			if (activeTaskPromise) {
+				await activeTaskPromise
+			} else if (host.client.hasActiveTask()) {
+				await waitForTaskProgressAfterStdinClosed(host, () => ({
+					hasSeenQueueState,
+					queueDepth: lastQueueDepth,
+				}))
+			}
 		}
 	} finally {
 		offClientError()
