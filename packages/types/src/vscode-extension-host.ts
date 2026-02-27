@@ -768,6 +768,8 @@ export interface WebviewMessage {
 		codebaseIndexOpenRouterApiKey?: string
 	}
 	updatedSettings?: RooCodeSettings
+	/** Task configuration applied via `createTask()` when starting a cloud task. */
+	taskConfiguration?: RooCodeSettings
 	// Worktree properties
 	worktreePath?: string
 	worktreeBranch?: string

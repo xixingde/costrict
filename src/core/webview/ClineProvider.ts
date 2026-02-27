@@ -3212,6 +3212,16 @@ export class ClineProvider
 			if (configuration.currentApiConfigName) {
 				await this.setProviderProfile(configuration.currentApiConfigName)
 			}
+
+			// Register custom modes so the CustomModesManager knows about them.
+			// setValues writes to global state, but the manager overwrites that
+			// when it merges .roomodes + global settings on refresh.  Persisting
+			// via updateCustomMode ensures modes survive the merge cycle.
+			if (configuration.customModes?.length) {
+				for (const mode of configuration.customModes) {
+					await this.customModesManager.updateCustomMode(mode.slug, mode)
+				}
+			}
 		}
 
 		const {

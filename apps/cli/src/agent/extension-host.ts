@@ -26,7 +26,7 @@ import type {
 import { createVSCodeAPI, IExtensionHost, ExtensionHostEventMap, setRuntimeConfigValues } from "@roo-code/vscode-shim"
 import { DebugLogger, setDebugLogEnabled } from "@roo-code/core/cli"
 
-import type { SupportedProvider } from "@/types/index.js"
+import { DEFAULT_FLAGS, type SupportedProvider } from "@/types/index.js"
 import type { User } from "@/lib/sdk/index.js"
 import { getProviderSettings } from "@/lib/utils/provider.js"
 import { createEphemeralStorageDir } from "@/lib/storage/index.js"
@@ -66,6 +66,7 @@ const CLI_PACKAGE_ROOT = process.env.ROO_CLI_ROOT || findCliPackageRoot()
 export interface ExtensionHostOptions {
 	mode: string
 	reasoningEffort?: ReasoningEffortExtended | "unspecified" | "disabled"
+	consecutiveMistakeLimit?: number
 	user: User | null
 	provider: SupportedProvider
 	apiKey?: string
@@ -109,7 +110,7 @@ interface WebviewViewProvider {
 export interface ExtensionHostInterface extends IExtensionHost<ExtensionHostEventMap> {
 	client: ExtensionClient
 	activate(): Promise<void>
-	runTask(prompt: string, taskId?: string): Promise<void>
+	runTask(prompt: string, taskId?: string, configuration?: RooCodeSettings): Promise<void>
 	resumeTask(taskId: string): Promise<void>
 	sendToExtension(message: WebviewMessage): void
 	dispose(): Promise<void>
@@ -221,6 +222,7 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		// Populate initial settings.
 		const baseSettings: RooCodeSettings = {
 			mode: this.options.mode,
+			consecutiveMistakeLimit: this.options.consecutiveMistakeLimit ?? DEFAULT_FLAGS.consecutiveMistakeLimit,
 			commandExecutionTimeout: 30,
 			enableCheckpoints: false,
 			experiments: {
@@ -514,8 +516,8 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		})
 	}
 
-	public async runTask(prompt: string, taskId?: string): Promise<void> {
-		this.sendToExtension({ type: "newTask", text: prompt, taskId })
+	public async runTask(prompt: string, taskId?: string, configuration?: RooCodeSettings): Promise<void> {
+		this.sendToExtension({ type: "newTask", text: prompt, taskId, taskConfiguration: configuration })
 		return this.waitForTaskCompletion()
 	}
 
