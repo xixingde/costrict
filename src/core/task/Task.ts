@@ -629,6 +629,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this._started = true
 			if (task || images) {
 				this.api?.setChatType?.("user")
+				this.smartMistakeDetector?.clear()
 				this.runLifecycleTaskInBackground(this.startTask(task, images), "startTask")
 			} else if (historyItem) {
 				this.smartMistakeDetector?.clear()
