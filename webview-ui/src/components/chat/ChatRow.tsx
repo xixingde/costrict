@@ -78,7 +78,7 @@ import {
 	TerminalSquare,
 	MessageCircle,
 	Repeat2,
-	TimerReset,
+	RotateCcw,
 	Split,
 	ArrowRight,
 	Check,
@@ -1290,9 +1290,7 @@ export const ChatRowContent = ({
 						<>
 							{/* header Info */}
 							<div
-								className={`group text-sm transition-opacity ${
-									isApiRequestInProgress ? "opacity-100" : "opacity-40 hover:opacity-100"
-								}`}
+								className={`group text-sm transition-opacity`}
 								style={{
 									...headerStyle,
 									marginBottom:
@@ -1329,8 +1327,10 @@ export const ChatRowContent = ({
 												? t("common:confirmation.deleteMessageOrRollback")
 												: t("common:confirmation.deleteMessage")
 										}>
-										<TimerReset
-											className="size-5 mt-[3px] cursor-pointer"
+										<RotateCcw
+											className={`size-4 mt-[3px] cursor-pointer ${
+												isApiRequestInProgress ? "opacity-100" : "opacity-60 hover:opacity-100"
+											}`}
 											style={{
 												color: "rgba(0, 188, 255, 1)",
 											}}

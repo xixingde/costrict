@@ -186,7 +186,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	readonly parentTaskId?: string
 	childTaskId?: string
 	pendingNewTaskToolCallId?: string
-
+	preMode?: string
 	readonly instanceId: string
 	readonly metadata: TaskMetadata
 
@@ -1514,6 +1514,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						if (message) {
 							this.resumableAsk = message
 							this.emit(RooCodeEventName.TaskResumable, this.taskId)
+							if (["quick-explore", "task-check", "subcoding"].includes(this._taskMode!)) {
+								provider?.handleModeSwitch?.(this.preMode || defaultModeSlug)
+							}
 						}
 					}, statusMutationTimeout),
 				)
@@ -1525,6 +1528,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						if (message) {
 							this.idleAsk = message
 							this.emit(RooCodeEventName.TaskIdle, this.taskId)
+							if (["quick-explore", "task-check", "subcoding"].includes(this._taskMode!)) {
+								provider?.handleModeSwitch?.(this.preMode || defaultModeSlug)
+							}
 						}
 					}, statusMutationTimeout),
 				)
@@ -2442,6 +2448,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.emitFinalTokenUsageUpdate()
 
 		this.emit(RooCodeEventName.TaskAborted)
+		if (["quick-explore", "task-check", "subcoding"].includes(this._taskMode!)) {
+			await provider?.handleModeSwitch?.(this.preMode || defaultModeSlug)
+		}
 		this.clineMessages
 			.filter((msg) => msg.type === "ask" && msg.ask === "followup" && !msg.isAnswered)
 			.forEach((msg) => (msg.isAnswered = true))
@@ -5276,6 +5285,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 	updateMode(mode?: string) {
 		this._taskMode = mode
+		if (!["quick-explore", "task-check", "subcoding"].includes(mode || defaultModeSlug)) {
+			this.preMode = mode
+		}
 	}
 	async switchModel() {
 		try {
