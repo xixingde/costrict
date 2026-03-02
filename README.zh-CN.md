@@ -21,14 +21,14 @@ CoStrict 是一款免费开源的AI辅助编程工具，支持企业私有化部
 
 ### CoStrict Cli (<a href="https://docs.costrict.ai/cli/guide/installation" target="_blank">Cli docs</a> | <a href="https://costrict.ai/download" target="_blank">download</a>)
 
-<img width="400" src="./assets/images/readme/cli.png" alt="CoStrict Cli">
+<img width="400" src="./assets/images/readme/cli.webp" alt="CoStrict Cli">
 
 ### <img width="30" src="./assets/images/readme/idea.webp" alt="Jetbrains plugin"> Jetbrains 插件 (<a href="https://github.com/zgsm-ai/costrict-jetbrains-agent" target="_blank">仓库</a> | <a href="https://costrict.ai/download" target="_blank">下载</a>)
 
 ### 社区交流&意见反馈
 
 <img width="100" src="./assets/images/readme/wechat.png" alt="Communication Group">&nbsp;
-<img width="100" src="./assets/images/readme/communication_group.png" alt="Communication Group">
+<img width="100" src="./assets/images/readme/communication_group.webp" alt="Communication Group">
 
 ## 产品特性 Features
 
@@ -37,16 +37,16 @@ CoStrict 是一款免费开源的AI辅助编程工具，支持企业私有化部
 
 <br>
 
-<a href="https://docs.costrict.ai/tutorial-videos/video#%E4%B8%A5%E8%82%83%E7%BC%96%E7%A8%8B" target="_blank"><img src="./assets/images/readme/strict_mode_zh_buffer.png" alt="Docs Center"></a>
+<a href="https://docs.costrict.ai/tutorial-videos/video#%E4%B8%A5%E8%82%83%E7%BC%96%E7%A8%8B" target="_blank"><img src="./assets/images/readme/strict_mode_zh_buffer.webp" alt="Docs Center"></a>
 
-![Strict Mode](./assets/images/readme/strict_zh.png)
+![Strict Mode](./assets/images/readme/strict_zh.webp)
 
 - **代码补全（Code Completion）：**
   代码审查能够进行全量代码仓库的索引解析，公司级编码知识库RAG（增强检索） 在发现问题和确认问题上采用“多专家模型专项检查”+“多模型交叉确认”策略 支持用户对函数、选中代码行、代码文件和整个工程文件进行代码检查
 
-<a href="https://docs.costrict.ai/tutorial-videos/video#%E4%BB%A3%E7%A0%81%E5%AE%A1%E6%9F%A5" target="_blank"><img src="./assets/images/readme/codereview_buffer.png" alt="Docs Center"></a>
+<a href="https://docs.costrict.ai/tutorial-videos/video#%E4%BB%A3%E7%A0%81%E5%AE%A1%E6%9F%A5" target="_blank"><img src="./assets/images/readme/codereview_buffer.webp" alt="Docs Center"></a>
 
-![morefeature](./assets/images/readme/codereview.png)
+![morefeature](./assets/images/readme/codereview.webp)
 
 <br>
 
@@ -57,12 +57,13 @@ CoStrict 是一款免费开源的AI辅助编程工具，支持企业私有化部
     - **第三方API和模型自定义：** 官方提供了各种免费的高级模型；也支持使用第三方API提供商如Anthropic、OpenAl等；您还可以配置任何与OpenAl兼容的API；或者通过I M Studio/Ollama使用本地模型
     - **模式自定义：** 我们提供了多种默认模式以适应不同场景，例如：代码能力突出的Code模式、擅长复杂任务拆解的Orchestrator模式。您也可以根据需求自定义模式
     - **大仓库上下文：** CoStrict 会自动将大文件全仓库数据纳入上下文，对于代码补全场景也会根据光标位置动态感知上下文。 你也可以通过@键添加文件/文件夹、终端、问题等等给输入更精准的上下文信息
+    - **[OpenSpec](https://github.com/Fission-AI/OpenSpec) 集成：** 无缝集成 OpenSpec，让 AI 智能体能够处理变更提案。使用 `/openspec-init` 初始化即可设置标准化的功能规划、实施和评审工作流。OpenSpec 提供技能、命令和统一流程，帮助团队管理变更，确保代码开发的一致性和高质量。
     - **支持图片：** 多模态模型支持上传图片，您可以点击对话框下方的图片icon上传图片，也可以按住shift键将图片拖拽到输入框内
     - **快捷菜单：** 选中代码，点击右键出现功能菜单，支持：解释代码、修复代码、改进代码、添加注释、代码审查、添加日志、增加容错、简化代码、优化性能等功能，能满足你所有的代码场景
     - **多语言支持：** 支持主流编程语言：Python, Go, Java, JavaScript, TypeScript, C/C++ 等所有编程语言
     - **隐私 & 安全：** 为确保数据安全和更好的服务更低的成本，我们提供了专业完整的私有化部署方案，通过物理隔离和端到端加密，确保代码的安全。
 
-![morefeature](./assets/images/readme/more-feature.png)
+![morefeature](./assets/images/readme/more-feature.webp)
 
 ## 更多帮助 For more assistance
 

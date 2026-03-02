@@ -90,7 +90,7 @@ export class SmartMistakeDetector {
 	private readonly timeWindowMs: number
 
 	/** Default time window: 5 minutes */
-	private static readonly DEFAULT_TIME_WINDOW_MS = 3 * 60 * 1000
+	private static readonly DEFAULT_TIME_WINDOW_MS = 2 * 60 * 1000
 
 	/** Auto switch model enabled flag */
 	private readonly autoSwitchModelEnabled: boolean = false
@@ -102,7 +102,7 @@ export class SmartMistakeDetector {
 	private lastSwitchTime?: number
 
 	/** Model switch cooldown period (milliseconds) - default 10 minutes */
-	private readonly switchCooldownMs: number = 5 * 60 * 1000
+	private readonly switchCooldownMs: number = 10 * 60 * 1000
 
 	/** Minimum high-severity errors required in short period - increased from 3 to 5 */
 	private readonly highSeverityThreshold: number = 5
@@ -112,11 +112,11 @@ export class SmartMistakeDetector {
 	 *
 	 * @param timeWindowMs - Time window (milliseconds), default 5 minutes
 	 * @param autoSwitchModelEnabled - Enable auto switch model feature, default false
-	 * @param autoSwitchModelThreshold - Threshold for auto switch model, default 6
+	 * @param autoSwitchModelThreshold - Threshold for auto switch model, default 3
 	 */
 	constructor(timeWindowMs?: number, autoSwitchModelEnabled?: boolean, autoSwitchModelThreshold?: number) {
 		this.timeWindowMs = timeWindowMs ?? SmartMistakeDetector.DEFAULT_TIME_WINDOW_MS
-		this.autoSwitchModelEnabled = autoSwitchModelEnabled ?? true
+		this.autoSwitchModelEnabled = autoSwitchModelEnabled ?? false
 		this.autoSwitchModelThreshold = autoSwitchModelThreshold ?? 3
 	}
 
@@ -420,12 +420,6 @@ export class SmartMistakeDetector {
 	recordSuccess(): void {
 		// If there are error records, consider reducing the severity of recent errors
 		// or subtracting a certain value from the weighted score
-		if (this.mistakes.length > 0) {
-			// Simple implementation: remove the earliest low-severity error
-			const lowSeverityIndex = this.mistakes.findIndex((m) => m.severity === "low")
-			if (lowSeverityIndex !== -1) {
-				this.mistakes.splice(lowSeverityIndex, 1)
-			}
-		}
+		this.mistakes = this.mistakes.filter((m) => m.severity !== "high")
 	}
 }

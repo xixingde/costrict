@@ -6,8 +6,8 @@ import askFollowupQuestion from "./ask_followup_question"
 import askMultipleChoice from "./ask_multiple_choice"
 import sequentialThinking from "./sequential_thinking"
 import attemptCompletion from "./attempt_completion"
-import browserAction from "./browser_action"
 // import codebaseSearch from "./codebase_search"
+import editTool from "./edit"
 import executeCommand from "./execute_command"
 import fileOutline from "./file_outline"
 import generateImage from "./generate_image"
@@ -17,7 +17,6 @@ import readCommandOutput from "./read_command_output"
 import { createReadFileTool, type ReadFileToolOptions } from "./read_file"
 import runSlashCommand from "./run_slash_command"
 import skill from "./skill"
-import searchAndReplace from "./search_and_replace"
 import searchReplace from "./search_replace"
 import edit_file from "./edit_file"
 import searchFiles from "./search_files"
@@ -144,7 +143,6 @@ export function getNativeTools(options: NativeToolsOptions = {}): OpenAI.Chat.Ch
 		askMultipleChoice,
 		sequentialThinking,
 		attemptCompletion,
-		browserAction,
 		// codebaseSearch,
 		executeCommand,
 		fileOutline,
@@ -155,9 +153,9 @@ export function getNativeTools(options: NativeToolsOptions = {}): OpenAI.Chat.Ch
 		createReadFileTool(readFileOptions),
 		runSlashCommand,
 		skill,
-		searchAndReplace,
 		searchReplace,
 		edit_file,
+		editTool,
 		searchFiles,
 		switchMode,
 		updateTodoList,

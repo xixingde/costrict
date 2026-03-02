@@ -156,7 +156,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 				`[createMessage] getting new tokens failed \n\nuse old tokens: ${this.client?.apiKey} \n\n${error.message}`,
 			)
 		}
-
+		let requestOptions
 		try {
 			// 5. Handle streaming and non-streaming requests
 			if (this.options.openAiStreamingEnabled ?? true) {
@@ -168,7 +168,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 					modelInfo,
 					isNative,
 				)
-				const requestOptions = this.buildStreamingRequestOptions(
+				requestOptions = this.buildStreamingRequestOptions(
 					convertedMessages,
 					deepseekReasoner,
 					isGrokXAI,
@@ -187,7 +187,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 				let responseIdTimestamp: number | undefined
 				try {
 					requestIdTimestamp = Date.now()
-					this.logger.info(`[RequestID ${modelId}]:`, requestId)
+					this.logger.info(`[RequestID ${requestOptions.model}]:`, requestId)
 
 					if (metadata?.onRequestHeadersReady && typeof metadata.onRequestHeadersReady === "function") {
 						metadata.onRequestHeadersReady(_headers)
@@ -202,7 +202,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 							}),
 						)
 						.withResponse()
-					this.logger.info(`[ResponseID ${modelId}]:`, response.headers.get("x-request-id"))
+					this.logger.info(`[ResponseID ${requestOptions.model}]:`, response.headers.get("x-request-id"))
 					responseIdTimestamp = Date.now()
 					if (isAuto) {
 						selectedLLM = response.headers.get("x-select-llm") || ""
@@ -226,7 +226,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 				}
 
 				// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-				isDev && this.logger.info(`[ResponseID ${modelId} sse render start]:`, requestId)
+				isDev && this.logger.info(`[ResponseID ${requestOptions.model} sse render start]:`, requestId)
 
 				// 6. Optimize stream processing - use batch processing and buffer
 				yield* this.handleOptimizedStream(
@@ -314,7 +314,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 			isDev && this.logger.error(`[createMessage] ${err}`)
 			throw err
 		} finally {
-			this.logger.info(`[ResponseID ${modelId} sse createMessage end]:`, requestId)
+			this.logger.info(`[ResponseID ${requestOptions?.model ?? modelId} sse createMessage end]:`, requestId)
 		}
 	}
 
@@ -591,9 +591,7 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 			| { type: "tool_call_end"; id: string }
 		> = []
 		let time = Date.now()
-		let toolCallTime = Date.now()
 		let isPrinted = false
-		let shouldAbort = false
 		let hasReasoning = false
 
 		// Yield selected LLM info if available (for Auto model mode)
@@ -684,10 +682,11 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 					const now = Date.now()
 					// Process in batch when threshold is reached or buffer is too large
 					const shouldFlush =
-						time + this.apiResponseRenderModeInfo.interval <= now ||
+						now - time >= this.apiResponseRenderModeInfo.interval ||
 						contentBuffer.length >= this.apiResponseRenderModeInfo.limit || // Prevent buffer from growing too large
 						this.abortController?.signal.aborted // Flush immediately on abort signal
 
+					time = now
 					if (shouldFlush) {
 						const chunks = flushBuffer()
 						for (const processedChunk of chunks) {
@@ -700,7 +699,6 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 								)
 							yield processedChunk
 						}
-						time = now
 					}
 				}
 
@@ -737,18 +735,13 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 					bufferToolCalls(delta, finishReason)
 
 					// Flush tool call buffer periodically based on time interval
-					const now = Date.now()
-					const shouldFlushToolCalls =
-						toolCallTime + this.apiResponseRenderModeInfo.interval <= now ||
-						toolCallBuffer.length >= this.apiResponseRenderModeInfo.limit || // Prevent buffer from growing too large
-						this.abortController?.signal.aborted // Flush immediately on abort signal
+					const shouldFlushToolCalls = contentBuffer.length === 0 || this.abortController?.signal.aborted // Flush immediately on abort signal
 
 					if (shouldFlushToolCalls && toolCallBuffer.length > 0) {
 						const events = flushToolCallBuffer()
 						for (const event of events) {
 							yield event
 						}
-						toolCallTime = now
 					}
 				}
 
@@ -903,9 +896,9 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 	}
 
 	override getModel() {
-		const id = this.options.zgsmModelId ?? zgsmDefaultModelId
+		const id = this?.options?.zgsmModelId ?? zgsmDefaultModelId
 		const defaultInfo = this.modelInfo
-		const info =
+		let info =
 			this.options.useZgsmCustomConfig && isDebug()
 				? {
 						...defaultInfo,
@@ -913,13 +906,15 @@ export class ZgsmAiHandler extends BaseProvider implements SingleCompletionHandl
 					}
 				: defaultInfo
 		const params = getModelParams({ format: "zgsm", modelId: id, model: info, settings: this.options })
-		if (!info.id) {
+
+		if (info.id !== id) {
 			info.id = id
 		}
+		const _mid = id.toLowerCase()
 		if (
-			(id.toLowerCase().includes("kimi") ||
-				id.toLowerCase().includes("minimax") ||
-				id.toLowerCase().includes("glm")) &&
+			(_mid.toLowerCase().includes("kimi") ||
+				_mid.toLowerCase().includes("minimax") ||
+				_mid.toLowerCase().includes("glm")) &&
 			info.preserveReasoning == null
 		) {
 			info.preserveReasoning = true
