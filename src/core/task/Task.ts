@@ -144,7 +144,6 @@ import { validateAndFixToolResultIds } from "./validateToolResultIds"
 import { getModelsFromCache } from "../../api/providers/fetchers/modelCache"
 import { mergeConsecutiveApiMessages } from "./mergeConsecutiveApiMessages"
 import { resolveToolAlias } from "../prompts/tools/filter-tools-for-mode"
-import { appendEnvironmentDetails, removeEnvironmentDetailsBlocks } from "./appendEnvironmentDetails"
 
 const MAX_EXPONENTIAL_BACKOFF_SECONDS = 600 // 10 minutes
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
@@ -1266,10 +1265,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * tools execute (added in recursivelyMakeClineRequests after streaming completes).
 	 * So we usually only need to flush the pending user message with tool_results.
 	 */
-	public async flushPendingToolResultsToHistory(): Promise<void> {
+	public async flushPendingToolResultsToHistory(): Promise<boolean> {
 		// Only flush if there's actually pending content to save
 		if (this.userMessageContent.length === 0) {
-			return
+			return true
 		}
 
 		// CRITICAL: Wait for the assistant message to be saved to API history first.
@@ -1299,7 +1298,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		// If task was aborted while waiting, don't flush
 		if (this.abort) {
-			return
+			return false
 		}
 
 		// Save the user message with tool_result blocks
@@ -1316,23 +1315,56 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		const userMessageWithTs = { ...validatedMessage, ts: Date.now() }
 		this.apiConversationHistory.push(userMessageWithTs as ApiMessage)
 
-		await this.saveApiConversationHistory()
+		const saved = await this.saveApiConversationHistory()
 
-		// Clear the pending content since it's now saved
-		this.userMessageContent = []
+		if (saved) {
+			// Clear the pending content since it's now saved
+			this.userMessageContent = []
+		} else {
+			console.warn(
+				`[Task#${this.taskId}] flushPendingToolResultsToHistory: save failed, retaining pending tool results in memory`,
+			)
+		}
+
+		return saved
 	}
 
-	private async saveApiConversationHistory() {
+	private async saveApiConversationHistory(): Promise<boolean> {
 		try {
 			await saveApiMessages({
-				messages: this.apiConversationHistory,
+				messages: structuredClone(this.apiConversationHistory),
 				taskId: this.taskId,
 				globalStoragePath: this.globalStoragePath,
 			})
+			return true
 		} catch (error) {
-			// In the off chance this fails, we don't want to stop the task.
 			console.error("Failed to save API conversation history:", error)
+			return false
 		}
+	}
+
+	/**
+	 * Public wrapper to retry saving the API conversation history.
+	 * Uses exponential backoff: up to 3 attempts with delays of 100 ms, 500 ms, 1500 ms.
+	 * Used by delegation flow when flushPendingToolResultsToHistory reports failure.
+	 */
+	public async retrySaveApiConversationHistory(): Promise<boolean> {
+		const delays = [100, 500, 1500]
+
+		for (let attempt = 0; attempt < delays.length; attempt++) {
+			await new Promise<void>((resolve) => setTimeout(resolve, delays[attempt]))
+			console.warn(
+				`[Task#${this.taskId}] retrySaveApiConversationHistory: retry attempt ${attempt + 1}/${delays.length}`,
+			)
+
+			const success = await this.saveApiConversationHistory()
+
+			if (success) {
+				return true
+			}
+		}
+
+		return false
 	}
 
 	// Cline Messages
@@ -1404,10 +1436,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// }
 	}
 
-	private async saveClineMessages() {
+	private async saveClineMessages(): Promise<boolean> {
 		try {
 			await saveTaskMessages({
-				messages: this.clineMessages,
+				messages: structuredClone(this.clineMessages),
 				taskId: this.taskId,
 				globalStoragePath: this.globalStoragePath,
 			})
@@ -1437,8 +1469,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.debouncedEmitTokenUsage(tokenUsage, this.toolUsage)
 
 			await this.providerRef.deref()?.updateTaskHistory(historyItem)
+			return true
 		} catch (error) {
 			console.error("Failed to save CoStrict messages:", error)
+			return false
 		}
 	}
 
@@ -1916,6 +1950,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				experiments: state?.experiments,
 				apiConfiguration,
 				browserToolEnabled: state?.browserToolEnabled ?? true,
+				disabledTools: state?.disabledTools,
 				modelInfo,
 				includeAllToolsWithRestrictions: false,
 			})
@@ -2722,18 +2757,20 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		if (lastUserMsgIndex >= 0) {
 			const lastUserMsg = this.apiConversationHistory[lastUserMsgIndex]
 			if (Array.isArray(lastUserMsg.content)) {
-				// Remove any existing environment_details blocks before adding fresh ones,
-				// then append env details to the last text or tool_result block.
-				// This avoids creating standalone trailing text blocks which can break
-				// interleaved-thinking models like DeepSeek reasoner.
-				const contentWithoutEnvDetails = removeEnvironmentDetailsBlocks(
-					lastUserMsg.content as (
-						| Anthropic.Messages.TextBlockParam
-						| Anthropic.Messages.ImageBlockParam
-						| Anthropic.Messages.ToolResultBlockParam
-					)[],
+				// Remove any existing environment_details blocks before adding fresh ones
+				const contentWithoutEnvDetails = lastUserMsg.content.filter(
+					(block: Anthropic.Messages.ContentBlockParam) => {
+						if (block.type === "text" && typeof block.text === "string") {
+							const isEnvironmentDetailsBlock =
+								block.text.trim().startsWith("<environment_details>") &&
+								block.text.trim().endsWith("</environment_details>")
+							return !isEnvironmentDetailsBlock
+						}
+						return true
+					},
 				)
-				lastUserMsg.content = appendEnvironmentDetails(contentWithoutEnvDetails, environmentDetails)
+				// Add fresh environment details
+				lastUserMsg.content = [...contentWithoutEnvDetails, { type: "text" as const, text: environmentDetails }]
 			}
 		}
 
@@ -2878,12 +2915,23 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			// Remove any existing environment_details blocks before adding fresh ones.
 			// This prevents duplicate environment details when resuming tasks,
 			// where the old user message content may already contain environment details from the previous session.
-			const contentWithoutEnvDetails = removeEnvironmentDetailsBlocks(parsedUserContent)
+			// We check for both opening and closing tags to ensure we're matching complete environment detail blocks,
+			// not just mentions of the tag in regular content.
+			const contentWithoutEnvDetails = parsedUserContent.filter((block) => {
+				if (block.type === "text" && typeof block.text === "string") {
+					// Check if this text block is a complete environment_details block
+					// by verifying it starts with the opening tag and ends with the closing tag
+					const isEnvironmentDetailsBlock =
+						block.text.trim().startsWith("<environment_details>") &&
+						block.text.trim().endsWith("</environment_details>")
+					return !isEnvironmentDetailsBlock
+				}
+				return true
+			})
 
-			// Append environment details to the last text or tool_result block.
-			// This avoids creating standalone trailing text blocks which can break
-			// interleaved-thinking models like DeepSeek reasoner that expect specific message shapes.
-			let finalUserContent = appendEnvironmentDetails(contentWithoutEnvDetails, environmentDetails)
+			// Add environment details as its own text block, separate from tool
+			// results.
+			let finalUserContent = [...contentWithoutEnvDetails, { type: "text" as const, text: environmentDetails }]
 			// Only add user message to conversation history if:
 			// 1. This is the first attempt (retryAttempt === 0), AND
 			// 2. The original userContent was not empty (empty signals delegation resume where
@@ -4182,6 +4230,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				experiments: state?.experiments,
 				apiConfiguration,
 				browserToolEnabled: state?.browserToolEnabled ?? true,
+				disabledTools: state?.disabledTools,
 				modelInfo,
 				includeAllToolsWithRestrictions: false,
 			})
@@ -4400,6 +4449,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						experiments: state?.experiments,
 						apiConfiguration,
 						browserToolEnabled: state?.browserToolEnabled ?? true,
+						disabledTools: state?.disabledTools,
 						modelInfo,
 						includeAllToolsWithRestrictions: false,
 					})
@@ -4563,6 +4613,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				experiments: state?.experiments,
 				apiConfiguration,
 				browserToolEnabled: state?.browserToolEnabled ?? true,
+				disabledTools: state?.disabledTools,
 				modelInfo,
 				useLitePrompts: experiments?.useLitePrompts ?? false,
 				includeAllToolsWithRestrictions: supportsAllowedFunctionNames,
@@ -4952,7 +5003,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					// - models explicitly opting in via preserveReasoning
 					// - AI SDK providers (provider packages decide what to include in the native request)
 					const shouldPreserveForApi =
-						this.api.getModel().info.preserveReasoning === true || this.api.isAiSdkProvider()
+						this.api.getModel().info.preserveReasoning === true || this.api?.isAiSdkProvider?.()
 
 					let assistantContent: Anthropic.Messages.MessageParam["content"]
 

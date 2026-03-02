@@ -1,6 +1,6 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import { createCerebras } from "@ai-sdk/cerebras"
-import { streamText, generateText, ToolSet } from "ai"
+import { streamText, generateText, ToolSet, LanguageModel } from "ai"
 
 import { cerebrasModels, cerebrasDefaultModelId, type CerebrasModelId, type ModelInfo } from "@roo-code/types"
 
@@ -49,14 +49,20 @@ export class CerebrasHandler extends BaseProvider implements SingleCompletionHan
 	override getModel(): { id: string; info: ModelInfo; maxTokens?: number; temperature?: number } {
 		const id = (this.options.apiModelId ?? cerebrasDefaultModelId) as CerebrasModelId
 		const info = cerebrasModels[id as keyof typeof cerebrasModels] || cerebrasModels[cerebrasDefaultModelId]
-		const params = getModelParams({ format: "openai", modelId: id, model: info, settings: this.options })
+		const params = getModelParams({
+			format: "openai",
+			modelId: id,
+			model: info,
+			settings: this.options,
+			defaultTemperature: CEREBRAS_DEFAULT_TEMPERATURE,
+		})
 		return { id, info, ...params }
 	}
 
 	/**
 	 * Get the language model for the configured model ID.
 	 */
-	protected getLanguageModel() {
+	protected getLanguageModel(): LanguageModel {
 		const { id } = this.getModel()
 		return this.provider(id)
 	}
