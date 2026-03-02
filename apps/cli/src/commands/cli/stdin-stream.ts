@@ -294,6 +294,43 @@ export async function runStdinStreamMode({ host, jsonEmitter, setStreamRequestId
 	let hasSeenQueueState = false
 	let lastQueueDepth = 0
 	let lastQueueMessageIds: string[] = []
+	const pendingQueuedMessageRequestIds: string[] = []
+	const queueMessageRequestIdByMessageId = new Map<string, string>()
+
+	const assignRequestIdsToNewQueueMessages = (queueMessageIds: string[]) => {
+		for (const messageId of queueMessageIds) {
+			if (queueMessageRequestIdByMessageId.has(messageId)) {
+				continue
+			}
+
+			const requestId = pendingQueuedMessageRequestIds.shift()
+			if (!requestId) {
+				continue
+			}
+
+			queueMessageRequestIdByMessageId.set(messageId, requestId)
+		}
+	}
+
+	const promoteRequestIdForDequeuedMessages = (queueMessageIds: string[]) => {
+		if (lastQueueMessageIds.length === 0) {
+			return
+		}
+
+		const remainingIds = new Set(queueMessageIds)
+
+		for (const dequeuedMessageId of lastQueueMessageIds) {
+			if (remainingIds.has(dequeuedMessageId)) {
+				continue
+			}
+
+			const requestId = queueMessageRequestIdByMessageId.get(dequeuedMessageId)
+			if (requestId) {
+				setStreamRequestId(requestId)
+			}
+			queueMessageRequestIdByMessageId.delete(dequeuedMessageId)
+		}
+	}
 
 	const waitForPreviousTaskToSettle = async () => {
 		if (!activeTaskPromise) {
@@ -349,12 +386,46 @@ export async function runStdinStreamMode({ host, jsonEmitter, setStreamRequestId
 
 	const onExtensionMessage = (message: {
 		type?: string
+		text?: unknown
 		state?: {
 			currentTaskId?: unknown
 			currentTaskItem?: { id?: unknown }
 			messageQueue?: unknown
 		}
 	}) => {
+		if (message.type === "commandExecutionStatus") {
+			if (typeof message.text !== "string") {
+				return
+			}
+
+			let parsedStatus: unknown
+			try {
+				parsedStatus = JSON.parse(message.text)
+			} catch {
+				return
+			}
+
+			if (!isRecord(parsedStatus) || typeof parsedStatus.status !== "string") {
+				return
+			}
+
+			if (parsedStatus.status === "output" && typeof parsedStatus.output === "string") {
+				jsonEmitter.emitCommandOutputChunk(parsedStatus.output)
+				return
+			}
+
+			if (
+				parsedStatus.status === "exited" ||
+				parsedStatus.status === "timeout" ||
+				parsedStatus.status === "fallback"
+			) {
+				jsonEmitter.emitCommandOutputDone()
+				return
+			}
+
+			return
+		}
+
 		if (message.type !== "state") {
 			return
 		}
@@ -373,6 +444,7 @@ export async function runStdinStreamMode({ host, jsonEmitter, setStreamRequestId
 		const queueMessageIds = queueSnapshot.map((item) => item.id)
 
 		if (!hasSeenQueueState) {
+			assignRequestIdsToNewQueueMessages(queueMessageIds)
 			hasSeenQueueState = true
 			lastQueueDepth = queueDepth
 			lastQueueMessageIds = queueMessageIds
@@ -397,6 +469,9 @@ export async function runStdinStreamMode({ host, jsonEmitter, setStreamRequestId
 		if (!depthChanged && !idsChanged) {
 			return
 		}
+
+		promoteRequestIdForDequeuedMessages(queueMessageIds)
+		assignRequestIdsToNewQueueMessages(queueMessageIds)
 
 		const subtype: "enqueued" | "dequeued" | "drained" | "updated" = depthChanged
 			? queueDepth > lastQueueDepth
@@ -447,9 +522,19 @@ export async function runStdinStreamMode({ host, jsonEmitter, setStreamRequestId
 				success: event.success,
 			})
 
+			// If user messages were queued while the task was still running, shift
+			// event attribution to the oldest pending message request as soon as the
+			// task turn completes so prompt echo/user feedback events are tagged.
+			const oldestQueuedMessageId = lastQueueMessageIds[0]
+			const nextQueuedRequestId =
+				pendingQueuedMessageRequestIds[0] ??
+				(oldestQueuedMessageId ? queueMessageRequestIdByMessageId.get(oldestQueuedMessageId) : undefined)
+			if (nextQueuedRequestId) {
+				setStreamRequestId(nextQueuedRequestId)
+			}
+
 			activeTaskCommand = undefined
 			activeRequestId = undefined
-			setStreamRequestId(undefined)
 			cancelRequestedForActiveTask = false
 		}
 	})
@@ -463,7 +548,7 @@ export async function runStdinStreamMode({ host, jsonEmitter, setStreamRequestId
 			}
 
 			switch (stdinCommand.command) {
-				case "start":
+				case "start": {
 					// A task can emit completion events before runTask() finalizers run.
 					// Wait for full settlement to avoid false "task_busy" on immediate next start.
 					// Safe from races: `for await` processes stdin commands serially, so no
@@ -503,8 +588,16 @@ export async function runStdinStreamMode({ host, jsonEmitter, setStreamRequestId
 						success: true,
 					})
 
+					// In CLI stdin-stream mode, default to the execa terminal provider so
+					// command output can be streamed deterministically. Explicit per-request
+					// config still wins.
+					const taskConfiguration = {
+						terminalShellIntegrationDisabled: true,
+						...(stdinCommand.configuration ?? {}),
+					}
+
 					activeTaskPromise = host
-						.runTask(stdinCommand.prompt, latestTaskId, stdinCommand.configuration)
+						.runTask(stdinCommand.prompt, latestTaskId, taskConfiguration)
 						.catch((error) => {
 							const message = error instanceof Error ? error.message : String(error)
 
@@ -559,6 +652,7 @@ export async function runStdinStreamMode({ host, jsonEmitter, setStreamRequestId
 						})
 
 					break
+				}
 
 				case "message": {
 					// If cancel was requested, wait briefly for the task to be rehydrated
@@ -583,8 +677,6 @@ export async function runStdinStreamMode({ host, jsonEmitter, setStreamRequestId
 						break
 					}
 
-					setStreamRequestId(stdinCommand.requestId)
-
 					jsonEmitter.emitControl({
 						subtype: "ack",
 						requestId: stdinCommand.requestId,
@@ -596,6 +688,10 @@ export async function runStdinStreamMode({ host, jsonEmitter, setStreamRequestId
 					})
 
 					host.sendToExtension({ type: "queueMessage", text: stdinCommand.prompt })
+					pendingQueuedMessageRequestIds.push(stdinCommand.requestId)
+					if (host.isWaitingForInput()) {
+						setStreamRequestId(stdinCommand.requestId)
+					}
 
 					jsonEmitter.emitControl({
 						subtype: "done",
