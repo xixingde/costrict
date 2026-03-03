@@ -7,6 +7,7 @@ import askMultipleChoice from "./ask_multiple_choice"
 import sequentialThinking from "./sequential_thinking"
 import attemptCompletion from "./attempt_completion"
 // import codebaseSearch from "./codebase_search"
+import costrictCheckpoint from "./costrict_checkpoint"
 import editTool from "./edit"
 import executeCommand from "./execute_command"
 import fileOutline from "./file_outline"
@@ -144,6 +145,7 @@ export function getNativeTools(options: NativeToolsOptions = {}): OpenAI.Chat.Ch
 		sequentialThinking,
 		attemptCompletion,
 		// codebaseSearch,
+		costrictCheckpoint,
 		executeCommand,
 		fileOutline,
 		generateImage,

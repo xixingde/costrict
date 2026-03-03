@@ -38,6 +38,7 @@ import { generateImageTool } from "../tools/GenerateImageTool"
 import { applyDiffTool as applyDiffToolClass } from "../tools/ApplyDiffTool"
 import { sequentialThinkingTool } from "../tools/SequentialThinking"
 import { fileOutlineTool } from "../tools/FileOutline"
+import { checkpointTool } from "../tools/CheckpointTool"
 import { isValidToolName, validateToolUse } from "../tools/validateToolUse"
 // import { codebaseSearchTool } from "../tools/CodebaseSearchTool"
 
@@ -903,6 +904,13 @@ export async function presentAssistantMessage(cline: Task) {
 					break
 				case "file_outline":
 					await fileOutlineTool.handle(cline, block as ToolUse<"file_outline">, {
+						askApproval,
+						handleError,
+						pushToolResult,
+					})
+					break
+				case "costrict_checkpoint":
+					await checkpointTool.handle(cline, block as ToolUse<"costrict_checkpoint">, {
 						askApproval,
 						handleError,
 						pushToolResult,
