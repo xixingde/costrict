@@ -276,6 +276,11 @@ export interface AskMultipleChoiceToolUse extends ToolUse<"ask_multiple_choice">
 	params: Partial<Pick<Record<ToolParamName, string>, "title" | "questions">>
 }
 
+export interface CostrictCheckpointToolUse extends ToolUse<"costrict_checkpoint"> {
+	name: "costrict_checkpoint"
+	params: Partial<Pick<Record<ToolParamName, string>, "action" | "message" | "commit_hash" | "files">>
+}
+
 export interface AttemptCompletionToolUse extends ToolUse<"attempt_completion"> {
 	name: "attempt_completion"
 	params: Partial<Pick<Record<ToolParamName, string>, "result">>
@@ -342,7 +347,7 @@ export const TOOL_DISPLAY_NAMES: Record<ToolName, string> = {
 	custom_tool: "use custom tools",
 	fake_tool_call: "use tool calls",
 	file_outline: "file outline",
-	costrict_checkpoint: "manage checkpoints",
+	costrict_checkpoint: "manage costrict checkpoints",
 } as const
 
 // Define available tool groups.
@@ -385,6 +390,7 @@ export const ALWAYS_AVAILABLE_TOOLS: ToolName[] = [
 	"update_todo_list",
 	"run_slash_command",
 	"skill",
+	"costrict_checkpoint",
 ] as const
 
 /**

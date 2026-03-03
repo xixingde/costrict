@@ -409,6 +409,30 @@ export async function presentAssistantMessage(cline: Task) {
 						return `[${block.name} for '${block.params.skill}'${block.params.args ? ` with args: ${block.params.args}` : ""}]`
 					case "generate_image":
 						return `[${block.name} for '${block.params.path}']`
+					case "costrict_checkpoint":
+						switch (block.params.action) {
+							case "list":
+								return `[${block.name} list]`
+							case "commit":
+								return block.params.message
+									? `[${block.name} commit: "${block.params.message.substring(0, 300)}${block.params.message.length > 300 ? "..." : ""}"]`
+									: `[${block.name} commit]`
+							case "show_diff":
+								return block.params.commit_hash
+									? `[${block.name} show diff for ${block.params.commit_hash}]`
+									: `[${block.name} show diff]`
+							case "restore":
+								const restoreMsg = block.params.commit_hash || "checkpoint"
+								return block.params.files?.length
+									? `[${block.name} restore ${restoreMsg} (${block.params.files.length} files)]`
+									: `[${block.name} restore ${restoreMsg}]`
+							case "revert":
+								return block.params.commit_hash
+									? `[${block.name} revert ${block.params.commit_hash}]`
+									: `[${block.name} revert]`
+							default:
+								return `[${block.name}]`
+						}
 					default:
 						return `[${block.name}]`
 				}

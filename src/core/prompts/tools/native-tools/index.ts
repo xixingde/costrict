@@ -55,6 +55,7 @@ import {
 	getLiteSearchAndReplaceDescription,
 	getLiteSearchReplaceDescription,
 	getLiteReadCommandOutputDescription,
+	getLiteCostrictCheckpointDescription,
 } from "../lite-descriptions"
 
 /**
@@ -82,6 +83,8 @@ function getLiteDescription(tool: OpenAI.Chat.ChatCompletionFunctionTool): strin
 			return getLiteAttemptCompletionDescription()
 		case "browser_action":
 			return getLiteBrowserActionDescription()
+		case "costrict_checkpoint":
+			return getLiteCostrictCheckpointDescription()
 		// case "codebase_search":
 		// 	return getLiteCodebaseSearchDescription()
 		case "execute_command":

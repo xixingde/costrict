@@ -80,7 +80,9 @@ getLiteSwitchModeDescription.toolname = "switch_mode"
 
 export function getLiteNewTaskDescription(): string {
 	return `## new_task
-Create new task in specified mode.
+Create a task from the message (+todo if any).
+CRITICAL: Call alone. Gather info in a prior turn if needed.
+
 Params fields: mode (REQUIRED), message (REQUIRED), todos (REQUIRED)`
 }
 getLiteNewTaskDescription.toolname = "new_task"
@@ -273,6 +275,17 @@ Params fields:
 }
 getLiteFileOutlineDescription.toolname = "file_outline"
 
+export function getLiteCostrictCheckpointDescription(): string {
+	return `## costrict_checkpoint
+Creates and manages snapshots of project state using a shadow Git repository.
+Params fields:
+- action (REQUIRED): The action to perform - "commit", "list", "show_diff", "restore", or "revert"
+- message (optional): Commit message (required when action is "commit")
+- commit_hash (optional): Commit hash (required for "restore", "show_diff", "revert" actions)
+- files (optional): List of file paths to restore (only for "restore" action)`
+}
+getLiteCostrictCheckpointDescription.toolname = "costrict_checkpoint"
+
 const liteTools = [
 	getLiteReadFileDescription,
 	getLiteWriteToFileDescription,
@@ -299,6 +312,7 @@ const liteTools = [
 	getLiteSearchReplaceDescription,
 	getLiteFileOutlineDescription,
 	getLiteAttemptCompletionDescription,
+	getLiteCostrictCheckpointDescription,
 ]
 
 export const liteRetryPrompt = (tag = "tool_call") => `
