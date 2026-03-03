@@ -38,6 +38,7 @@ import { generateImageTool } from "../tools/GenerateImageTool"
 import { applyDiffTool as applyDiffToolClass } from "../tools/ApplyDiffTool"
 import { sequentialThinkingTool } from "../tools/SequentialThinking"
 import { fileOutlineTool } from "../tools/FileOutline"
+import { checkpointTool } from "../tools/CheckpointTool"
 import { isValidToolName, validateToolUse } from "../tools/validateToolUse"
 // import { codebaseSearchTool } from "../tools/CodebaseSearchTool"
 
@@ -408,6 +409,30 @@ export async function presentAssistantMessage(cline: Task) {
 						return `[${block.name} for '${block.params.skill}'${block.params.args ? ` with args: ${block.params.args}` : ""}]`
 					case "generate_image":
 						return `[${block.name} for '${block.params.path}']`
+					case "costrict_checkpoint":
+						switch (block.params.action) {
+							case "list":
+								return `[${block.name} list]`
+							case "commit":
+								return block.params.message
+									? `[${block.name} commit: "${block.params.message.substring(0, 300)}${block.params.message.length > 300 ? "..." : ""}"]`
+									: `[${block.name} commit]`
+							case "show_diff":
+								return block.params.commit_hash
+									? `[${block.name} show diff for ${block.params.commit_hash}]`
+									: `[${block.name} show diff]`
+							case "restore":
+								const restoreMsg = block.params.commit_hash || "checkpoint"
+								return block.params.files?.length
+									? `[${block.name} restore ${restoreMsg} (${block.params.files.length} files)]`
+									: `[${block.name} restore ${restoreMsg}]`
+							case "revert":
+								return block.params.commit_hash
+									? `[${block.name} revert ${block.params.commit_hash}]`
+									: `[${block.name} revert]`
+							default:
+								return `[${block.name}]`
+						}
 					default:
 						return `[${block.name}]`
 				}
@@ -903,6 +928,13 @@ export async function presentAssistantMessage(cline: Task) {
 					break
 				case "file_outline":
 					await fileOutlineTool.handle(cline, block as ToolUse<"file_outline">, {
+						askApproval,
+						handleError,
+						pushToolResult,
+					})
+					break
+				case "costrict_checkpoint":
+					await checkpointTool.handle(cline, block as ToolUse<"costrict_checkpoint">, {
 						askApproval,
 						handleError,
 						pushToolResult,

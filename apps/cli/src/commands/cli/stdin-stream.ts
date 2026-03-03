@@ -214,6 +214,20 @@ const STDIN_EOF_RESUME_WAIT_TIMEOUT_MS = 2_000
 const STDIN_EOF_POLL_INTERVAL_MS = 100
 const STDIN_EOF_IDLE_ASKS = new Set(["completion_result", "resume_completed_task"])
 const STDIN_EOF_IDLE_STABLE_POLLS = 2
+const MESSAGE_AS_ASK_RESPONSE_ASKS = new Set([
+	"followup",
+	"tool",
+	"command",
+	"use_mcp_server",
+	"completion_result",
+	"resume_task",
+	"resume_completed_task",
+	"mistake_limit_reached",
+])
+
+export function shouldSendMessageAsAskResponse(waitingForInput: boolean, currentAsk: string | undefined): boolean {
+	return waitingForInput && typeof currentAsk === "string" && MESSAGE_AS_ASK_RESPONSE_ASKS.has(currentAsk)
+}
 
 function isResumableState(host: ExtensionHost): boolean {
 	const agentState = host.client.getAgentState()
@@ -432,16 +446,22 @@ export async function runStdinStreamMode({ host, jsonEmitter, setStreamRequestId
 				return
 			}
 
-			if (
-				parsedStatus.status === "exited" ||
-				parsedStatus.status === "timeout" ||
-				parsedStatus.status === "fallback"
-			) {
+			if (parsedStatus.status === "exited") {
 				const exitCode =
 					parsedStatus.status === "exited" && typeof parsedStatus.exitCode === "number"
 						? parsedStatus.exitCode
 						: undefined
-				jsonEmitter.emitCommandOutputDone(exitCode)
+
+				if (typeof parsedStatus.output === "string") {
+					jsonEmitter.emitCommandOutputChunk(parsedStatus.output)
+				}
+
+				jsonEmitter.markCommandOutputExited(exitCode)
+				return
+			}
+
+			if (parsedStatus.status === "timeout" || parsedStatus.status === "fallback") {
+				jsonEmitter.emitCommandOutputDone(undefined)
 				return
 			}
 
@@ -684,6 +704,8 @@ export async function runStdinStreamMode({ host, jsonEmitter, setStreamRequestId
 					}
 
 					const wasResumable = isResumableState(host)
+					const currentAsk = host.client.getCurrentAsk()
+					const shouldSendAsAskResponse = shouldSendMessageAsAskResponse(host.isWaitingForInput(), currentAsk)
 
 					if (!host.client.hasActiveTask()) {
 						jsonEmitter.emitControl({
@@ -708,6 +730,29 @@ export async function runStdinStreamMode({ host, jsonEmitter, setStreamRequestId
 						code: "accepted",
 						success: true,
 					})
+
+					if (shouldSendAsAskResponse) {
+						// Match webview behavior: if there is an active ask, route message directly as an ask response.
+						host.sendToExtension({
+							type: "askResponse",
+							askResponse: "messageResponse",
+							text: stdinCommand.prompt,
+							images: stdinCommand.images,
+						})
+
+						setStreamRequestId(stdinCommand.requestId)
+						jsonEmitter.emitControl({
+							subtype: "done",
+							requestId: stdinCommand.requestId,
+							command: "message",
+							taskId: latestTaskId,
+							content: "message sent to current ask",
+							code: "responded",
+							success: true,
+						})
+						awaitingPostCancelRecovery = false
+						break
+					}
 
 					host.sendToExtension({
 						type: "queueMessage",

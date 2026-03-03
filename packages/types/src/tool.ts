@@ -59,6 +59,7 @@ export const toolNames = [
 	"custom_tool",
 	"sequential_thinking",
 	"file_outline",
+	"costrict_checkpoint",
 ] as const
 
 export const toolNamesSchema = z.enum(toolNames)

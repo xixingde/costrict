@@ -545,6 +545,17 @@ export class NativeToolCallParser {
 				}
 				break
 
+			case "costrict_checkpoint":
+				if (partialArgs.action !== undefined) {
+					nativeArgs = {
+						action: partialArgs.action,
+						message: partialArgs.message,
+						commit_hash: partialArgs.commit_hash,
+						files: partialArgs.files,
+					}
+				}
+				break
+
 			case "apply_diff":
 				if (partialArgs.path !== undefined || partialArgs.diff !== undefined) {
 					nativeArgs = {
@@ -958,6 +969,15 @@ export class NativeToolCallParser {
 							questions: normalizedArgs.questions,
 						} as NativeArgsFor<TName>
 					}
+					break
+
+				case "costrict_checkpoint":
+					nativeArgs = {
+						action: normalizedArgs.action || "list",
+						message: normalizedArgs.message,
+						commit_hash: normalizedArgs.commit_hash,
+						files: normalizedArgs.files,
+					} as NativeArgsFor<TName>
 					break
 
 				case "codebase_search":
