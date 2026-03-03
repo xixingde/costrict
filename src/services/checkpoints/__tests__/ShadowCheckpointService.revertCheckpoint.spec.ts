@@ -14,7 +14,7 @@ function extractHash(str: string | undefined): string | undefined {
 	return match ? match[0] : str
 }
 
-const tmpDir = path.join(os.tmpdir(), "CheckpointService")
+const tmpDir = path.join(os.tmpdir(), "CheckpointServiceRevert")
 
 const initWorkspaceRepo = async ({
 	workspaceDir,
