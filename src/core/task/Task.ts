@@ -5333,6 +5333,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					...this.apiConfiguration,
 					zgsmModelId: modelId || "Auto",
 				})
+
+				// Update this task's API configuration to match the new profile
+				const newState = await provider.getState()
+				if (newState?.apiConfiguration) {
+					this.updateApiConfiguration(newState.apiConfiguration)
+				}
 			}
 
 			await this.say("auto_switch_model", `${oldModelId} --> ${modelId}`)

@@ -80,10 +80,13 @@ getLiteSwitchModeDescription.toolname = "switch_mode"
 
 export function getLiteNewTaskDescription(): string {
 	return `## new_task
-Create a task from the message (+todo if any).
+Create a new task instance in the chosen mode using your provided message and initial todo list (if required).
 CRITICAL: Call alone. Gather info in a prior turn if needed.
 
-Params fields: mode (REQUIRED), message (REQUIRED), todos (REQUIRED)`
+Params fields:
+ - mode (REQUIRED)
+ - message (REQUIRED)
+ - todos (REQUIRED)`
 }
 getLiteNewTaskDescription.toolname = "new_task"
 
@@ -312,7 +315,7 @@ const liteTools = [
 	getLiteSearchReplaceDescription,
 	getLiteFileOutlineDescription,
 	getLiteAttemptCompletionDescription,
-	getLiteCostrictCheckpointDescription,
+	// getLiteCostrictCheckpointDescription,
 ]
 
 export const liteRetryPrompt = (tag = "tool_call") => `
