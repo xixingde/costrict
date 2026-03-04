@@ -83,7 +83,7 @@ function getLiteDescription(tool: OpenAI.Chat.ChatCompletionFunctionTool): strin
 			return getLiteAttemptCompletionDescription()
 		case "browser_action":
 			return getLiteBrowserActionDescription()
-		// case "costrict_checkpoint": // todo: implement 
+		// case "costrict_checkpoint": // todo: implement
 		// 	return getLiteCostrictCheckpointDescription()
 		// case "codebase_search":
 		// 	return getLiteCodebaseSearchDescription()
