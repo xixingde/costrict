@@ -4,15 +4,23 @@ import {
 	planApply as zhCNPlanApply,
 	plan as zhCNPlan,
 	quickExplore as zhCNQuickExplore,
+	requirements as zhCNRequirements,
+	spec as zhCNSpec,
 	subcoding as zhCNSubcoding,
 	taskCheck as zhCNTaskCheck,
+	task as zhCNTask,
+	design as zhCNDesign,
 } from "./zh-CN/index.js"
 import {
 	planApply as enPlanApply,
 	plan as enPlan,
 	quickExplore as enQuickExplore,
+	requirements as enRequirements,
+	spec as enSpec,
 	subcoding as enSubcoding,
 	taskCheck as enTaskCheck,
+	task as enTask,
+	design as enDesign,
 } from "./en/index.js"
 
 type PromptRegistry = Record<string, Record<string, PromptComponent>>
@@ -23,15 +31,22 @@ const registry: PromptRegistry = {
 		subcoding: zhCNSubcoding,
 		"plan-apply": zhCNPlanApply,
 		"quick-explore": zhCNQuickExplore,
-
+		requirements: zhCNRequirements,
 		"task-check": zhCNTaskCheck,
+		task: zhCNTask,
+		strict: zhCNSpec,
+		design: zhCNDesign,
 	},
 	en: {
 		plan: enPlan,
 		subcoding: enSubcoding,
 		"plan-apply": enPlanApply,
 		"quick-explore": enQuickExplore,
+		requirements: enRequirements,
 		"task-check": enTaskCheck,
+		task: enTask,
+		strict: enSpec,
+		design: enDesign,
 	},
 	// Future model dimension: simply append "zh-CN_claude": { ... }
 }
